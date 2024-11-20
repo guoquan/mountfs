@@ -6,12 +6,29 @@
     <title>mouNTFS - Write to NTFS drives on your Mac</title>
     <style>
         :root {
-            --bg-color: #ffffff;
-            --text-color: #24292f;
-            --accent-color: #0969da;
-            --feature-bg: #f6f8fa;
-            --code-bg: #ffffff;
-            --border-color: #d0d7de;
+            /* Base Colors */
+            --base-bg-color: #ffffff;
+            --base-text-color: #333333;
+            --base-accent-color: #71c9ce;
+            --base-feature-bg-color: #f5f5f5;
+            --base-code-bg-color: #ffffff;
+            --base-border-color: #cccccc;
+            
+            /* Variant Colors - Cooler Teal Theme */
+            --variant-dark-bg-color: #007c91;
+            --variant-light-bg-color: #e0f7fa;
+            --variant-light-text-color: #ffffff;
+            --variant-dark-text-color: #007c91;
+            --variant-subtitle-color: #71c9ce;
+            --variant-note-color: #71c9ce;
+            --variant-border-color: #007c91;
+            
+            /* Font and Layout */
+            --base-padding: 2rem;
+            --base-margin: 3rem 0;
+            --base-border-radius: 6px;
+            --base-box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            --base-font-size: 18px;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -19,8 +36,22 @@
             max-width: 1000px;
             margin: 0 auto;
             padding: 2rem;
-            background: var(--bg-color);
-            color: var(--text-color);
+            background: var(--base-bg-color);
+            color: var(--base-text-color);
+            font-size: var(--base-font-size);
+        }
+        a {
+            color: var(--base-accent-color);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .base-section {
+            margin: var(--base-margin);
+            padding: var(--base-padding);
+            border-radius: var(--base-border-radius);
+            box-shadow: var(--base-box-shadow);
         }
         .header {
             display: flex;
@@ -37,9 +68,9 @@
             flex-wrap: nowrap;
         }
         .project-name {
-            font-size: 3rem;
+            font-size: 2rem;
             margin-bottom: 1rem;
-            color: var(--text-color);
+            color: var(--base-text-color);
         }
         .project-name .mou {
             font-style: italic;
@@ -53,8 +84,8 @@
             font-weight: normal;
         }
         .subtitle {
-            font-size: 1.2rem;
-            color: #57606a;
+            font-size: 1rem;
+            color: var(--base-text-color);
             margin-bottom: 2rem;
         }
         .features {
@@ -65,14 +96,14 @@
         }
         .feature {
             padding: 1.5rem;
-            border-radius: 6px;
-            background: var(--feature-bg);
-            border: 1px solid var(--border-color);
+            border-radius: var(--base-border-radius);
+            background: var(--base-feature-bg-color);
+            border: 1px solid var(--base-border-color);
         }
         .feature summary {
             cursor: pointer;
             font-weight: 500;
-            color: var(--accent-color);
+            color: var(--variant-dark-text-color);
             list-style: none;
             outline: none;
         }
@@ -84,41 +115,43 @@
             margin-bottom: 0;
         }
         .usage-banner {
-            margin: 3rem 0;
-            padding: 1rem 2rem;
-            background: var(--accent-color);
-            border-radius: 6px;
+            background: var(--variant-dark-bg-color);
+            border: 1px solid var(--variant-border-color);
             text-align: center;
-            color: white;
+            color: var(--variant-light-text-color);
+            font-style: italic;
+        }
+        .usage-banner p {
+            font-size: 1rem;
+        }
+        .usage-banner strong {
+            font-weight: bold;
         }
         .usage-banner code {
             padding: 0.2rem 0.4rem;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 4px;
-            color: white;
+            color: var(--variant-light-text-color);
         }
         .installation {
-            margin: 3rem 0;
-            padding: 2rem;
-            background: var(--feature-bg);
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
+            background: var(--base-feature-bg-color);
+            border: 1px solid var(--base-border-color);
         }
         pre {
-            background: var(--code-bg);
+            background: var(--base-code-bg-color);
             padding: 1rem;
-            border-radius: 6px;
+            border-radius: var(--base-border-radius);
             overflow-x: auto;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--base-border-color);
         }
         code {
             font-family: ui-monospace, 'SF Mono', Monaco, Consolas, monospace;
-            color: var(--text-color);
-            background: var(--code-bg);
+            color: var(--base-text-color);
+            background: var(--base-code-bg-color);
         }
         .note {
             font-size: 0.9rem;
-            color: #57606a;
+            color: var(--variant-note-color);
             font-style: italic;
         }
         ul {
@@ -128,30 +161,21 @@
             margin: 0.5rem 0;
         }
         .github-link {
-            margin: 2rem 0;
-            padding: 1rem;
-            background: var(--feature-bg);
-            border-radius: 6px;
+            background: var(--base-feature-bg-color);
             text-align: center;
-            border: 1px solid var(--border-color);
-        }
-        .github-link a {
-            color: var(--accent-color);
-            text-decoration: none;
-        }
-        .github-link a:hover {
-            text-decoration: underline;
+            border: 1px solid var(--base-border-color);
         }
         .footer {
             margin-top: 4rem;
             padding-top: 2rem;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid var(--base-border-color);
             font-size: 0.9rem;
-            color: #57606a;
+            color: var(--variant-note-color);
             text-align: center;
         }
         h2 {
-            color: var(--text-color);
+            color: var(--base-text-color);
+            font-size: 1.5rem;
         }
         @media (max-width: 768px) {
             .header {
@@ -192,11 +216,50 @@
                 pointer-events: none;
             }
         }
+        .project-name a {
+            text-decoration: none;
+            color: inherit;
+        }
+        .project-name a:hover {
+            opacity: 0.9;
+        }
+        .installation a {
+            color: var(--base-accent-color);
+            text-decoration: none;
+        }
+        .installation a:hover {
+            text-decoration: underline;
+        }
+        .contribution {
+            background: var(--variant-light-bg-color);
+            border: 1px solid var(--variant-border-color);
+            color: var(--variant-dark-text-color);
+            text-align: left;
+        }
+        .contribution h2 {
+            color: var(--variant-dark-text-color);
+            font-weight: bold;
+        }
+        .contribution p, .contribution ul {
+            color: var(--variant-dark-text-color);
+        }
+        .contribution ul {
+            margin: 1rem 0;
+            list-style-type: disc;
+            padding-left: 1.5rem;
+        }
+        .contribution li {
+            margin: 0.5rem 0;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1 class="project-name"><span class="mou">mou</span><span class="nt">NT</span><span class="fs">FS</span></h1>
+        <h1 class="project-name">
+            <a href="https://mountfs.sh">
+                <span class="mou">mou</span><span class="nt">NT</span><span class="fs">FS</span>
+            </a>
+        </h1>
         <div class="github-buttons">
             <a class="github-button" href="https://github.com/guoquan/mountfs" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-mark-github" data-size="large" aria-label="View guoquan/mountfs on GitHub">View on GitHub</a>
             <a class="github-button" href="https://github.com/guoquan/mountfs" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star guoquan/mountfs on GitHub">Star</a>
@@ -205,57 +268,76 @@
     </div>
 
     <div class="subtitle">
-        Write to Windows NTFS drives on your Mac with native macOS dialogs that feel right at home.
+        Write to Windows NTFS drives on your Mac with native macOS dialogs that feel right at home. Since macOS lost NTFS write support, we got you covered!
     </div>
 
     <div class="features">
         <details class="feature">
             <summary>🎯 Simple & Focused</summary>
-            <p>One script that does one thing well - mounting NTFS drives with write access.</p>
+            <p>One script that does one thing well - mounting NTFS drives with write access. No GUI bloat, just clean functionality.</p>
         </details>
         <details class="feature">
             <summary>🔐 Native Experience</summary>
-            <p>Uses macOS's native file picker and authentication dialogs.</p>
+            <p>Uses macOS's native file picker and authentication dialogs. Feels right at home on your Mac.</p>
         </details>
         <details class="feature">
             <summary>🤖 AI Co-developed</summary>
-            <p>An experiment in human-AI collaboration, with all code written by AI.</p>
+            <p>An experiment in human-AI collaboration. All code is written by AI, with humans focusing on design, review, and direction. This must be a fun ride!</p>
         </details>
     </div>
 
-    <div class="usage-banner">
-        <p>🚀 To use: Click in Finder or run <code>./mountfs.sh</code> in terminal, then follow the prompts!</p>
+    <div class="usage-banner base-section">
+        <p>🚀 To use: <strong>Double-click</strong> <code>mountfs.sh</code> in Finder, <strong>OR</strong> <strong>run</strong> <code>./mountfs.sh</code> in terminal, then follow the prompts!</p>
     </div>
 
-    <div class="installation">
+    <div class="installation base-section">
         <h2>Installation</h2>
+        <p>0. First, you'll need <a href="https://brew.sh">Homebrew</a> for all the cool stuff 🍺</p>
         <p>1. Install required dependencies:</p>
         <pre><code>brew install --cask macfuse
 brew install gromgit/fuse/ntfs-3g-mac</code></pre>
 
-        <p>2. Download and make executable:</p>
-        <pre><code>curl -O https://raw.githubusercontent.com/guoquan/mountfs/main/mountfs.sh
+        <p>2. Change to where you want to keep the script (don't get lost 😉):</p>
+        <pre><code>cd ~/Downloads     # or wherever you prefer</code></pre>
+
+        <p>3. Download and make executable:</p>
+        <pre><code>curl -L -o mountfs.sh https://get.mountfs.sh
 chmod +x mountfs.sh</code></pre>
 
-        <p>3. Configure security settings:</p>
+        <p>4. Configure security settings:</p>
         <ul>
             <li>Trust macFUSE library in Settings → Privacy & Security (signed by "Benjamin Fleischer")</li>
-            <li>Trust ntfs-3g driver (may require a system restart)</li>
+            <li>macFUSE needs a kernel extension to be enabled, which requires a system restart</li>
             <li>Grant disk access when prompted</li>
         </ul>
-        <p class="note">Note: These security settings are required by macOS to allow third-party filesystem drivers. They only need to be configured once.</p>
+        <p class="note">Note: These security settings are required by macOS to allow third-party file system drivers. They only need to be configured once, unless you uninstall or reinstall the drivers. Refer to <a href="https://github.com/osxfuse/osxfuse/wiki/NTFS-3G">macFUSE wiki</a> for more details.</p>
     </div>
 
-    <div class="github-link">
+    <div class="github-link base-section">
         <p>
             For more detailed information, including usage instructions, troubleshooting, and alternatives, 
             please refer to our <a href="https://github.com/guoquan/mountfs#readme">GitHub README</a>.
         </p>
     </div>
 
+    <div class="contribution base-section">
+        <h2>Contribution</h2>
+        <p>
+            Contributions and suggestions are welcome! Feel free to open issues or pull requests.
+        </p>
+        <p>
+            As a human-AI collaboration project:
+        </p>
+        <ul>
+            <li>For code contributions, please bring your AI buddy and keep the no-direct-human-coding spirit</li>
+            <li>For other contributions (docs, testing, reviews, etc.), both humans and AI buddies are more than welcome!</li>
+        </ul>
+        <p>Given wide-spread AI concerns, safety review is welcome.</p>
+    </div>
+
     <div class="footer">
-        <p>A free and open source project. MIT License © 2024 Quan Guo</p>
-        <p>We ❤️ open source! Happy hacking with 🤖</p>
+        <p><a href="https://mountfs.sh">mountfs.sh</a> is a free and open source project. MIT License © 2024 Quan Guo</p>
+        <p>We ❤️ open source! Happy hacking with AI 🤖</p>
     </div>
 
     <!-- GitHub Buttons script -->
