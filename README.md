@@ -127,7 +127,7 @@ Given wide-spread AI concerns, safety review is welcome.
 
 | 🤖 AI | 👤 Humans |
 |-------|-----------|
-| 💫 [Claude](https://anthropic.com/claude) (3.5 Sonnet, via [Cursor](https://cursor.sh))<br> 🧠 [GPT](https://openai.com/index/gpt-4/) (GPT-4o) | 🐰 [guoquan](https://guoquan.net) |
+| 🦾 [Claude](https://anthropic.com/claude) (3.5 Sonnet, via [Cursor](https://cursor.sh))<br> 🧠 [GPT](https://openai.com/index/gpt-4/) (GPT-4o) | 🐰 [guoquan](https://guoquan.net) |
 
 ### License
 
