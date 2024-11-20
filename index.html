@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mouNTFS - Write to NTFS drives on your Mac</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #24292f;
+            --accent-color: #0969da;
+            --feature-bg: #f6f8fa;
+            --code-bg: #ffffff;
+            --border-color: #d0d7de;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .github-buttons {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+        .project-name {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+        .project-name .mou {
+            font-style: italic;
+        }
+        .project-name .nt {
+            font-style: italic;
+            font-weight: bold;
+        }
+        .project-name .fs {
+            font-style: normal;
+            font-weight: normal;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            color: #57606a;
+            margin-bottom: 2rem;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .feature {
+            padding: 1.5rem;
+            border-radius: 6px;
+            background: var(--feature-bg);
+            border: 1px solid var(--border-color);
+        }
+        .feature summary {
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--accent-color);
+            list-style: none;
+            outline: none;
+        }
+        .feature summary::-webkit-details-marker {
+            display: none;
+        }
+        .feature p {
+            margin-top: 1rem;
+            margin-bottom: 0;
+        }
+        .usage-banner {
+            margin: 3rem 0;
+            padding: 1rem 2rem;
+            background: var(--accent-color);
+            border-radius: 6px;
+            text-align: center;
+            color: white;
+        }
+        .usage-banner code {
+            padding: 0.2rem 0.4rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: white;
+        }
+        .installation {
+            margin: 3rem 0;
+            padding: 2rem;
+            background: var(--feature-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        pre {
+            background: var(--code-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+        code {
+            font-family: ui-monospace, 'SF Mono', Monaco, Consolas, monospace;
+            color: var(--text-color);
+            background: var(--code-bg);
+        }
+        .note {
+            font-size: 0.9rem;
+            color: #57606a;
+            font-style: italic;
+        }
+        ul {
+            padding-left: 1.5rem;
+        }
+        li {
+            margin: 0.5rem 0;
+        }
+        .github-link {
+            margin: 2rem 0;
+            padding: 1rem;
+            background: var(--feature-bg);
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        .github-link a {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+        .github-link a:hover {
+            text-decoration: underline;
+        }
+        .footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.9rem;
+            color: #57606a;
+            text-align: center;
+        }
+        h2 {
+            color: var(--text-color);
+        }
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .github-buttons {
+                width: 100%;
+                justify-content: flex-start;
+            }
+            .features {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+                margin: 1rem 0;
+            }
+            .feature {
+                padding: 1rem;
+            }
+            .feature summary {
+                position: relative;
+                padding-right: 1.5rem;
+            }
+            .feature summary::after {
+                content: '›';
+                position: absolute;
+                right: 0;
+                transition: transform 0.2s;
+            }
+            .feature[open] summary::after {
+                transform: rotate(90deg);
+            }
+        }
+        @media (min-width: 769px) {
+            .feature summary {
+                pointer-events: none;
+            }
+            .feature[open] {
+                pointer-events: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="project-name"><span class="mou">mou</span><span class="nt">NT</span><span class="fs">FS</span></h1>
+        <div class="github-buttons">
+            <a class="github-button" href="https://github.com/guoquan/mountfs" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-mark-github" data-size="large" aria-label="View guoquan/mountfs on GitHub">View on GitHub</a>
+            <a class="github-button" href="https://github.com/guoquan/mountfs" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star guoquan/mountfs on GitHub">Star</a>
+            <a class="github-button" href="https://github.com/guoquan/mountfs/issues" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-issue-opened" data-size="large" data-show-count="true" aria-label="Issue guoquan/mountfs on GitHub">Issue</a>
+        </div>
+    </div>
+
+    <div class="subtitle">
+        Write to Windows NTFS drives on your Mac with native macOS dialogs that feel right at home.
+    </div>
+
+    <div class="features">
+        <details class="feature">
+            <summary>🎯 Simple & Focused</summary>
+            <p>One script that does one thing well - mounting NTFS drives with write access.</p>
+        </details>
+        <details class="feature">
+            <summary>🔐 Native Experience</summary>
+            <p>Uses macOS's native file picker and authentication dialogs.</p>
+        </details>
+        <details class="feature">
+            <summary>🤖 AI Co-developed</summary>
+            <p>An experiment in human-AI collaboration, with all code written by AI.</p>
+        </details>
+    </div>
+
+    <div class="usage-banner">
+        <p>🚀 To use: Click in Finder or run <code>./mountfs.sh</code> in terminal, then follow the prompts!</p>
+    </div>
+
+    <div class="installation">
+        <h2>Installation</h2>
+        <p>1. Install required dependencies:</p>
+        <pre><code>brew install --cask macfuse
+brew install gromgit/fuse/ntfs-3g-mac</code></pre>
+
+        <p>2. Download and make executable:</p>
+        <pre><code>curl -O https://raw.githubusercontent.com/guoquan/mountfs/main/mountfs.sh
+chmod +x mountfs.sh</code></pre>
+
+        <p>3. Configure security settings:</p>
+        <ul>
+            <li>Trust macFUSE library in Settings → Privacy & Security (signed by "Benjamin Fleischer")</li>
+            <li>Trust ntfs-3g driver (may require a system restart)</li>
+            <li>Grant disk access when prompted</li>
+        </ul>
+        <p class="note">Note: These security settings are required by macOS to allow third-party filesystem drivers. They only need to be configured once.</p>
+    </div>
+
+    <div class="github-link">
+        <p>
+            For more detailed information, including usage instructions, troubleshooting, and alternatives, 
+            please refer to our <a href="https://github.com/guoquan/mountfs#readme">GitHub README</a>.
+        </p>
+    </div>
+
+    <div class="footer">
+        <p>A free and open source project. MIT License © 2024 Quan Guo</p>
+        <p>We ❤️ open source! Happy hacking with 🤖</p>
+    </div>
+
+    <!-- GitHub Buttons script -->
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+
+    <script>
+        function updateFeatures() {
+            const features = document.querySelectorAll('.feature');
+            const isWide = window.innerWidth >= 769;
+            features.forEach(feature => {
+                feature.open = isWide;
+            });
+        }
+        
+        // Run on load and resize
+        window.addEventListener('load', updateFeatures);
+        window.addEventListener('resize', updateFeatures);
+    </script>
+</body>
+</html> 
