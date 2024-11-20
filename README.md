@@ -1,7 +1,8 @@
 # *mouNT*FS
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Human-AI](https://img.shields.io/badge/Built--with-AI-blue)](#contributors)
+[![Built-with-AI](https://img.shields.io/badge/Built--with-AI_🤖-blueviolet)](https://github.com/guoquan/mountfs#contributors)
+[![Website](https://img.shields.io/badge/HTTPS-mountfs.sh_🌐-blue)](https://mountfs.sh)
 
 ## What's *mouNT*FS
 
@@ -9,7 +10,9 @@
 
 Currently, *mouNT*FS is just one simple shell script that does one thing well - mounting NTFS drives with write access. We keep it clean and focused.
 
-🤝 This project is an experiment in human-AI collaboration, co-authored with AI buddies 🤖. All code is written by AI, with humans focusing on design, review, and direction - no direct human coding. This must be a fun ride and let's see where it goes.
+🤝 This project is an experiment in human-AI collaboration, co-developed with AI buddies.
+🤖 All code is written by AI, with 👤 humans focusing on design, review, and direction - no direct human coding.
+🥳 This must be a fun ride, and let's see where it goes.
 
 ### Features
 
@@ -31,11 +34,14 @@ The script safely handles NTFS mounting by first unmounting the volume, then try
 
 ### Requirements
 
-- macOS
+- macOS - so that you lose NTFS read-write access
+- [Homebrew](https://brew.sh) - to install macFUSE and ntfs-3g, and a lot of cool stuff for macOS 🍺
 - [macFUSE](https://osxfuse.github.io) - FUSE file system support for macOS
-- [ntfs-3g](https://github.com/tuxera/ntfs-3g) - NTFS driver with write support
+- [ntfs-3g](https://github.com/tuxera/ntfs-3g) - NTFS driver with write support ([macOS version](https://github.com/gromgit/homebrew-fuse))
 
 ### Installation
+
+0. Make sure you have [Homebrew](https://brew.sh) installed.
 
 1. Install macFUSE and ntfs-3g-mac:
 
@@ -47,22 +53,25 @@ brew install gromgit/fuse/ntfs-3g-mac
 2. Download `mountfs.sh`:
 
 ```bash
-curl -O https://raw.githubusercontent.com/guoquan/mountfs/main/mountfs.sh
+cd ~/Downloads  # or any directory you won't get lost
+curl -L -o mountfs.sh https://get.mountfs.sh
 chmod +x mountfs.sh
 ```
 
 3. Configure security settings:
    - Trust macFUSE library in Settings → Privacy & Security (signed by "Benjamin Fleischer")
-   - Trust ntfs-3g driver (may require a system restart)
+   - macFUSE needs a kernel extension to be enabled, which requires a system restart
    - Grant disk access when prompted
 
-Note: These security settings are required by macOS to allow third-party filesystem drivers. They only need to be configured once.
+Note: These security settings are required by macOS to allow third-party file system drivers. They only need to be configured once, unless you uninstall or reinstall the drivers.
+
+Refer to [macFUSE wiki](https://github.com/macfuse/macfuse/wiki/Getting-Started#how-to-install-macfuse) for more details.
 
 ### Usage
 
 1. **Launch**:
-   - Double-click in Finder, or
-   - Run in terminal: `./mountfs.sh`
+   - Double-click `mountfs.sh` in Finder, *OR*
+   - Run in terminal `./mountfs.sh`
 
 2. **Select Volume**:
    - Choose your NTFS volume in the native file picker
@@ -89,7 +98,7 @@ Note: These security settings are required by macOS to allow third-party filesys
 If mounting fails:
 
 1. Ensure the volume is NTFS formatted
-2. Check ntfs-3g installation (if using)
+2. Check macFUSE and ntfs-3g installation
 3. Try safely ejecting and reconnecting
 4. Check system logs for errors
 
