@@ -4,41 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>mouNTFS - Write to NTFS drives on your Mac</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Write to NTFS drives on your Mac with native macOS dialogs. Simple, focused tool with no GUI bloat. Open source project co-developed with AI.">
+    <meta name="keywords" content="NTFS, Mac, macOS, write access, NTFS-3G, macFUSE, file system, open source">
+    <meta name="author" content="Quan Guo">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://mountfs.sh">
+    
+    <!-- Emoji Favicon - no image file needed -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id=%22logoGradient%22 x1=%220%%22 y1=%220%%22 x2=%22100%%22 y2=%22100%%22><stop offset=%220%%22 style=%22stop-color:%236b7ceb%22/><stop offset=%22100%%22 style=%22stop-color:%2324292f%22/></linearGradient></defs><text x=%2215%22 y=%2265%22 font-size=%2245%22 font-weight=%22bold%22 font-family=%22Arial, sans-serif%22 fill=%22url(%23logoGradient)%22>mN</text></svg>">
+    
+    <!-- OpenGraph tags -->
+    <meta property="og:title" content="mouNTFS - Write to NTFS drives on your Mac">
+    <meta property="og:description" content="Simple, native way to write to NTFS drives on your Mac. No GUI bloat, just clean functionality with native macOS dialogs. AI-assisted open source project.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mountfs.sh">
+    
+    <!-- Twitter/X Card tags -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:site" content="@guoquan">
+
     <style>
         :root {
-            /* Base Colors */
+            /* Base Colors - Professional Mac-style */
             --base-bg-color: #ffffff;
-            --base-text-color: #333333;
-            --base-accent-color: #71c9ce;
+            --base-text-color: #24292f;
+            --base-accent-color: #6b7ceb;
             --base-feature-bg-color: #f5f5f5;
             --base-code-bg-color: #ffffff;
             --base-border-color: #cccccc;
             
-            /* Variant Colors - Cooler Teal Theme */
-            --variant-dark-bg-color: #007c91;
-            --variant-light-bg-color: #e0f7fa;
+            /* Variant Colors - Innovation Theme */
+            --variant-dark-bg-color: #6272e0;
+            --variant-light-bg-color: #f2f4ff;
             --variant-light-text-color: #ffffff;
-            --variant-dark-text-color: #007c91;
-            --variant-subtitle-color: #71c9ce;
-            --variant-note-color: #71c9ce;
-            --variant-border-color: #007c91;
+            --variant-dark-text-color: #5a6ad7;
+            --variant-subtitle-color: #8494f0;
+            --variant-note-color: #8494f0;
+            --variant-dark-border-color: #4f5ecc;
+            --variant-light-border-color: #5a6ad7;
             
             /* Font and Layout */
-            --base-padding: 2rem;
-            --base-margin: 3rem 0;
-            --base-border-radius: 6px;
-            --base-box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            --base-font-size: 18px;
+            --base-padding: 1.5rem;
+            --base-margin: 2rem 0;
+            --base-border-radius: 0.35rem;
+            
+            /* New variant colors for code section */
+            --code-bg-color: #e0e7ff; /* Light blue background */
+            --code-text-color: #1a237e; /* Dark blue text */
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
             max-width: 1000px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: var(--base-padding);
             background: var(--base-bg-color);
             color: var(--base-text-color);
             font-size: var(--base-font-size);
+        }
+        code, .project-name a::after, .project-name a::before {
+            font-family: ui-monospace, 'SF Mono', Monaco, Consolas, monospace;
+            font-style: normal;
         }
         a {
             color: var(--base-accent-color);
@@ -47,33 +75,88 @@
         a:hover {
             text-decoration: underline;
         }
-        .base-section {
-            margin: var(--base-margin);
+        pre {
+            color: var(--base-text-color);
+            background: var(--base-code-bg-color);
             padding: var(--base-padding);
             border-radius: var(--base-border-radius);
-            box-shadow: var(--base-box-shadow);
+            overflow-x: auto;
+            border: 1px solid var(--base-border-color);
         }
+        pre.code-inline {
+            display: inline;
+            padding: calc(var(--base-padding) * 0.5);
+        }
+        pre.code-inline code {
+            line-height: 1;
+        }
+        pre.code-block {
+            display: block;
+        }
+        ul {
+            padding-left: 1.5rem;
+        }
+        .note {
+            font-size: 0.9em;
+            color: var(--base-accent-color);
+            border-top: 1px dashed var(--base-border-color);
+            padding-top: 1em;
+            font-style: italic;
+        }
+        .note a {
+            font-style: normal;
+            font-weight: bold;
+        }
+
         .header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 1rem;
+            margin: var(--base-margin);
             flex-wrap: wrap;
             gap: 1rem;
         }
-        .github-buttons {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: nowrap;
+        .logo {
+            display: none;
         }
-        .project-name {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            color: var(--base-text-color);
+        .project-name a {
+            display: inline-block;
+            background: linear-gradient(135deg, 
+                var(--base-accent-color) 0%,
+                var(--base-text-color) 50%,
+                var(--base-text-color) 100%);
+            background-size: 200%;
+            background-position-x: 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            transition: all 0.3s ease;
+        }
+        .project-name a:hover {
+            text-decoration: none;
+            /* transform: translateY(calc(-1 * var(--base-border-radius))); */
+            background-position-x: 0%;
+            /* text-shadow: 0 var(--base-border-radius) var(--base-border-radius) var(--base-border-color); */
+            /* filter: drop-shadow(0 var(--base-border-radius) var(--base-border-radius) var(--base-border-color)); */
+        }
+        .project-name a::before, .project-name a::after {
+            font-size: 0em;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .project-name a:hover::before, .project-name a:hover::after {
+            font-size: 0.6em;
+            opacity: 1;
+        }
+        .project-name a::after {
+            content: '.sh';
+        }
+        .project-name a::before {
+            content: 'https://';
         }
         .project-name .mou {
             font-style: italic;
+            font-weight: bold;
         }
         .project-name .nt {
             font-style: italic;
@@ -83,99 +166,190 @@
             font-style: normal;
             font-weight: normal;
         }
+
         .subtitle {
-            font-size: 1rem;
-            color: var(--base-text-color);
-            margin-bottom: 2rem;
+            /* empty */
         }
+
+        .base-section {
+            margin: var(--base-margin);
+            padding: var(--base-padding);
+            border-radius: var(--base-border-radius);
+            background: linear-gradient(135deg, var(--base-feature-bg-color) 0%, var(--base-bg-color) 100%);
+            border: 1px solid var(--base-border-color);
+        }
+
         .features {
+            margin: var(--base-margin);
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-            margin: 2rem 0;
+            gap: 1.5em;
         }
         .feature {
-            padding: 1.5rem;
+            padding: var(--base-padding);
             border-radius: var(--base-border-radius);
-            background: var(--base-feature-bg-color);
+            background: linear-gradient(135deg, var(--base-feature-bg-color) 0%, var(--base-bg-color) 100%);
             border: 1px solid var(--base-border-color);
-        }
-        .feature summary {
+            transition: all 0.3s ease;
             cursor: pointer;
-            font-weight: 500;
-            color: var(--variant-dark-text-color);
-            list-style: none;
-            outline: none;
         }
-        .feature summary::-webkit-details-marker {
-            display: none;
+        .feature:hover {
+            transform: translateY(calc(-1 * var(--base-border-radius)));
+            box-shadow: 0 var(--base-border-radius) var(--base-border-radius) var(--base-border-color);
         }
-        .feature p {
-            margin-top: 1rem;
-            margin-bottom: 0;
-        }
-        .usage-banner {
-            background: var(--variant-dark-bg-color);
-            border: 1px solid var(--variant-border-color);
-            text-align: center;
-            color: var(--variant-light-text-color);
-            font-style: italic;
-        }
-        .usage-banner p {
-            font-size: 1rem;
-        }
-        .usage-banner strong {
+        .feature h3 {
+            margin: 0;
             font-weight: bold;
+            cursor: pointer;
         }
-        .usage-banner code {
-            padding: 0.2rem 0.4rem;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
+        .usage {
+            text-align: center;
+            background: linear-gradient(135deg, 
+                var(--variant-dark-border-color) 0%,
+                var(--variant-dark-bg-color) 50%,
+                var(--variant-dark-border-color) 100%
+            );
+            border: 1px solid var(--variant-dark-border-color);
             color: var(--variant-light-text-color);
-        }
-        .installation {
-            background: var(--base-feature-bg-color);
-            border: 1px solid var(--base-border-color);
-        }
-        pre {
-            background: var(--base-code-bg-color);
-            padding: 1rem;
-            border-radius: var(--base-border-radius);
-            overflow-x: auto;
-            border: 1px solid var(--base-border-color);
-        }
-        code {
-            font-family: ui-monospace, 'SF Mono', Monaco, Consolas, monospace;
-            color: var(--base-text-color);
-            background: var(--base-code-bg-color);
-        }
-        .note {
-            font-size: 0.9rem;
-            color: var(--variant-note-color);
             font-style: italic;
         }
-        ul {
-            padding-left: 1.5rem;
+        .approaches {
+            display: grid;
+            /* grid-template-columns: auto auto auto; */
+            grid-template-columns: 1fr auto 1fr;
+            gap: 1em;
+            width: 100%;
+            align-items: center;
         }
-        li {
-            margin: 0.5rem 0;
+        .approaches span {
+            vertical-align: middle;
         }
-        .github-link {
-            background: var(--base-feature-bg-color);
+        .approach {
+            padding: calc(0.5 * var(--base-padding));
+            border-radius: var(--base-border-radius);
+            color: var(--variant-dark-text-color);
+            background: linear-gradient(135deg, 
+                var(--variant-light-bg-color) 0%, 
+                var(--base-bg-color) 85%, 
+                var(--variant-light-bg-color) 100%
+            );
+            border: 1px solid var(--variant-light-border-color);
+        }
+        .approach pre {
+            display: inline-block;
+            white-space: nowrap;
+            width: fit-content;
+            vertical-align: middle;
+        }
+        .approach code {
+            display: block;
+            white-space: nowrap;
+        }
+        .clicking-effect {
+            animation: file-click 2s ease-in-out infinite;
+        }
+        .clicking-effect code {
+            border-radius: var(--base-border-radius);
+            padding: calc(0.5 * var(--base-border-radius));
+            margin: calc(-0.5 * var(--base-border-radius));
+            animation: file-name-click 2s ease-in-out infinite;
+        }
+        .clicking-effect code::after {
+            display: inline-block;
+            content: '🖱️';
+            font-size: 1.5em;
+            position: absolute;
+            margin-top: 0em;
+            margin-left: -1em;
+            animation: mouse-click 2s ease-in-out infinite;
+        }
+        @keyframes file-click {
+            0%, 100% {  }
+            35%, 60%, 80%, 90% { box-shadow: 0 0 1em 0 var(--base-border-color); }
+            85% { box-shadow: 0 0 10em 0 var(--base-border-color); }
+        }
+        @keyframes file-name-click {
+            0%, 100% {  }
+            45%, 90% { background: var(--base-bg-color); color: var(--base-text-color); }
+            46% { background: var(--variant-dark-bg-color); color: var(--variant-light-text-color); }
+            61% { background: var(--base-border-color); color: var(--variant-light-text-color); }
+            89% { background: var(--base-border-color); color: var(--variant-light-text-color); }
+        }
+        @keyframes mouse-click {
+            0%, 90%, 100% { transform: translateY(0.5em) translateX(1.5em); }
+            35%, 60% { transform: translateY(0); }
+            45% { transform: translateY(0) scale(0.8); }
+            50% { transform: translateY(0); }
+            55% { transform: translateY(0) scale(0.8); }
+        }
+        .typing-effect {
+        }
+        .typing-effect code {
+            overflow: hidden;
+            animation: typing 2s steps(16) forwards;
+        }
+        .typing-effect:hover code {
+            animation: typing-hover 2s steps(16) infinite;
+        }
+        .typing-effect code::before {
+            content: '$ ';
+        }
+        .typing-effect code::after {
+            content: ' ↩';
+            animation: blink-return 0.75s step-end infinite;
+            animation-delay: 2s;
+            animation-fill-mode: both;
+        }
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        @keyframes typing-hover {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        @keyframes blink-return {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .github-links {
             text-align: center;
-            border: 1px solid var(--base-border-color);
         }
+        .contribution {
+            color: var(--variant-dark-text-color);
+            background: linear-gradient(135deg, 
+                var(--variant-light-bg-color) 0%, 
+                var(--base-bg-color) 85%, 
+                var(--variant-light-bg-color) 100%
+            );
+            border: 1px solid var(--variant-light-border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contribution::before {
+            content: '🤝';
+            position: absolute;
+            right: -0.5em;
+            top: -0.5em;
+            font-size: 6em;
+            opacity: 0.1;
+            transform: rotate(15deg);
+        }
+        .contribution .note {
+            border-top: 1px dashed var(--variant-light-border-color);
+            color: var(--variant-text-color);
+        }
+
         .footer {
-            margin-top: 4rem;
-            padding-top: 2rem;
+            margin: var(--base-margin);
+            padding: var(--base-padding);
             border-top: 1px solid var(--base-border-color);
             font-size: 0.9rem;
-            color: var(--variant-note-color);
-            text-align: center;
-        }
-        h2 {
             color: var(--base-text-color);
-            font-size: 1.5rem;
+            text-align: center;
         }
         @media (max-width: 768px) {
             .header {
@@ -188,75 +362,77 @@
             }
             .features {
                 grid-template-columns: 1fr;
-                gap: 0.5rem;
-                margin: 1rem 0;
             }
             .feature {
-                padding: 1rem;
+                padding: calc(var(--base-padding) * 0.8);
             }
-            .feature summary {
+            .feature h3 {
                 position: relative;
-                padding-right: 1.5rem;
+                padding-right: 1em;  /* space for the arrow */
             }
-            .feature summary::after {
+            .feature h3::after {
                 content: '›';
                 position: absolute;
                 right: 0;
-                transition: transform 0.2s;
+                transition: all 0.3s ease;
             }
-            .feature[open] summary::after {
+            .feature h3.open::after {
                 transform: rotate(90deg);
+            }
+            .approaches {
+                grid-template-columns: 1fr;
+                gap: 1em;
             }
         }
         @media (min-width: 769px) {
-            .feature summary {
-                pointer-events: none;
+        }
+
+        /* Print styles */
+        @media print {
+            .github-buttons,
+            .clicking-effect code::after,
+            .typing-effect code::after {
+                display: none;
             }
-            .feature[open] {
-                pointer-events: none;
+            
+            body {
+                color: black;
+                background: white;
             }
-        }
-        .project-name a {
-            text-decoration: none;
-            color: inherit;
-        }
-        .project-name a:hover {
-            opacity: 0.9;
-        }
-        .installation a {
-            color: var(--base-accent-color);
-            text-decoration: none;
-        }
-        .installation a:hover {
-            text-decoration: underline;
-        }
-        .contribution {
-            background: var(--variant-light-bg-color);
-            border: 1px solid var(--variant-border-color);
-            color: var(--variant-dark-text-color);
-            text-align: left;
-        }
-        .contribution h2 {
-            color: var(--variant-dark-text-color);
-            font-weight: bold;
-        }
-        .contribution p, .contribution ul {
-            color: var(--variant-dark-text-color);
-        }
-        .contribution ul {
-            margin: 1rem 0;
-            list-style-type: disc;
-            padding-left: 1.5rem;
-        }
-        .contribution li {
-            margin: 0.5rem 0;
+            
+            a {
+                text-decoration: underline;
+            }
+            
+            .feature:hover {
+                transform: none;
+                box-shadow: none;
+            }
+            
+            pre {
+                border: 1px solid #ccc;
+                page-break-inside: avoid;
+            }
         }
     </style>
+    <link rel="preload" href="https://buttons.github.io/buttons.js" as="script">
 </head>
 <body>
     <div class="header">
-        <h1 class="project-name">
-            <a href="https://mountfs.sh">
+        <h1 class="project-name" aria-label="mouNTFS - Write to NTFS drives on your Mac">
+            <span class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="50" height="50" 
+                    aria-label="mouNTFS logo" role="img">
+                    <defs>
+                        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#6b7ceb"/>
+                            <stop offset="100%" style="stop-color:#24292f"/>
+                        </linearGradient>
+                    </defs>
+                    <text x="15" y="65" font-size="45" font-weight="bold" font-family="Arial, sans-serif" fill="url(#logoGradient)">mN</text>
+                </svg>
+            </span>
+            <a href="https://mountfs.sh" aria-label="mouNTFS homepage">
                 <span class="mou">mou</span><span class="nt">NT</span><span class="fs">FS</span>
             </a>
         </h1>
@@ -265,43 +441,54 @@
             <a class="github-button" href="https://github.com/guoquan/mountfs" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star guoquan/mountfs on GitHub">Star</a>
             <a class="github-button" href="https://github.com/guoquan/mountfs/issues" data-color-scheme="no-preference: light; light: light; dark: dark;" data-icon="octicon-issue-opened" data-size="large" data-show-count="true" aria-label="Issue guoquan/mountfs on GitHub">Issue</a>
         </div>
+        <div class="subtitle">
+            Write to NTFS drives on your Mac with native macOS dialogs that feel right at home. Since macOS lost NTFS write support, we got you covered!
+        </div>
     </div>
 
-    <div class="subtitle">
-        Write to Windows NTFS drives on your Mac with native macOS dialogs that feel right at home. Since macOS lost NTFS write support, we got you covered!
-    </div>
-
-    <div class="features">
-        <details class="feature">
-            <summary>🎯 Simple & Focused</summary>
+    <div class="features" role="list" aria-label="Key features">
+        <div class="feature" role="listitem">
+            <h3>🎯 Simple & Focused</h3>
             <p>One script that does one thing well - mounting NTFS drives with write access. No GUI bloat, just clean functionality.</p>
-        </details>
-        <details class="feature">
-            <summary>🔐 Native Experience</summary>
+        </div>
+        <div class="feature" role="listitem">
+            <h3>🔐 Native Experience</h3>
             <p>Uses macOS's native file picker and authentication dialogs. Feels right at home on your Mac.</p>
-        </details>
-        <details class="feature">
-            <summary>🤖 AI Co-developed</summary>
+        </div>
+        <div class="feature" role="listitem">
+            <h3>🤖 AI Co-developed</h3>
             <p>An experiment in human-AI collaboration. All code is written by AI, with humans focusing on design, review, and direction. This must be a fun ride!</p>
-        </details>
+        </div>
     </div>
 
-    <div class="usage-banner base-section">
-        <p>🚀 To use: <strong>Double-click</strong> <code>mountfs.sh</code> in Finder, <strong>OR</strong> <strong>run</strong> <code>./mountfs.sh</code> in terminal, then follow the prompts!</p>
+    <div class="usage base-section" role="region" aria-label="Usage instructions">
+        <p>🚀 To use:</p>
+        <div class="approaches">
+            <span class="approach">
+                <strong>Double-click</strong> in Finder
+                <pre class="clicking-effect code-inline"><code aria-label="mountfs.sh file to double-click">mountfs.sh</code></pre>
+            </span>
+            <span role="separator"><strong>or</strong></span>
+            <span class="approach">
+                <strong>Run</strong> in your favorite terminal
+                <pre class="typing-effect code-inline"><code aria-label="Command to run mountfs.sh">./mountfs.sh</code></pre>
+            </span>
+        </div>
+        <p>Then follow the prompts!</p>
     </div>
 
-    <div class="installation base-section">
-        <h2>Installation</h2>
+    <div class="installation base-section" role="region" aria-label="Installation instructions">
+        <h2>💻 Installation</h2>
         <p>0. First, you'll need <a href="https://brew.sh">Homebrew</a> for all the cool stuff 🍺</p>
         <p>1. Install required dependencies:</p>
-        <pre><code>brew install --cask macfuse
+        <pre class="code-block"><code>brew install --cask macfuse
 brew install gromgit/fuse/ntfs-3g-mac</code></pre>
 
         <p>2. Change to where you want to keep the script (don't get lost 😉):</p>
-        <pre><code>cd ~/Downloads     # or wherever you prefer</code></pre>
+        <pre class="code-block"><code>cd ~/Downloads     # or wherever you prefer</code></pre>
 
         <p>3. Download and make executable:</p>
-        <pre><code>curl -L -o mountfs.sh https://get.mountfs.sh
+        <pre class="code-block"><code>curl -L -o mountfs.sh https://get.mountfs.sh
 chmod +x mountfs.sh</code></pre>
 
         <p>4. Configure security settings:</p>
@@ -310,51 +497,79 @@ chmod +x mountfs.sh</code></pre>
             <li>macFUSE needs a kernel extension to be enabled, which requires a system restart</li>
             <li>Grant disk access when prompted</li>
         </ul>
-        <p class="note">Note: These security settings are required by macOS to allow third-party file system drivers. They only need to be configured once, unless you uninstall or reinstall the drivers. Refer to <a href="https://github.com/osxfuse/osxfuse/wiki/NTFS-3G">macFUSE wiki</a> for more details.</p>
+        <p class="note" role="note">Note: These security settings are required by macOS to allow third-party file system drivers. They only need to be configured once, unless you uninstall or reinstall the drivers. Refer to <a href="https://github.com/osxfuse/osxfuse/wiki/NTFS-3G">macFUSE wiki</a> for more details.</p>
     </div>
 
-    <div class="github-link base-section">
+    <div class="github-links base-section" role="region" aria-label="Additional resources">
         <p>
             For more detailed information, including usage instructions, troubleshooting, and alternatives, 
-            please refer to our <a href="https://github.com/guoquan/mountfs#readme">GitHub README</a>.
+            please refer to our <a href="https://github.com/guoquan/mountfs#readme" aria-label="Read full documentation on GitHub">GitHub README</a>.
         </p>
     </div>
 
-    <div class="contribution base-section">
-        <h2>Contribution</h2>
+    <div class="contribution base-section" role="region" aria-label="Contribution guidelines">
+        <h2>🌟 Contribution</h2>
         <p>
-            Contributions and suggestions are welcome! Feel free to open issues or pull requests.
+            🎉 Contributions and suggestions are welcome! Feel free to open issues or pull requests.
         </p>
         <p>
-            As a human-AI collaboration project:
+            🤝 As a <strong>human-AI</strong> collaboration project:
         </p>
-        <ul>
-            <li>For code contributions, please bring your AI buddy and keep the no-direct-human-coding spirit</li>
-            <li>For other contributions (docs, testing, reviews, etc.), both humans and AI buddies are more than welcome!</li>
+        <ul role="list">
+            <li role="listitem">🤖 For code contributions, please bring your AI buddy and keep the <strong>no-direct-human-coding</strong> spirit</li>
+            <li role="listitem">👥 For other contributions (docs, testing, reviews, etc.), both humans and AI buddies are more than welcome!</li>
         </ul>
-        <p>Given wide-spread AI concerns, safety review is welcome.</p>
+        <p class="note" role="note">🛡️ Given wide-spread AI concerns, safety review is welcome.</p>
     </div>
 
-    <div class="footer">
-        <p><a href="https://mountfs.sh">mountfs.sh</a> is a free and open source project. MIT License © 2024 Quan Guo</p>
+    <div class="footer" role="contentinfo">
+        <p><a href="https://mountfs.sh" aria-label="mouNTFS homepage">mountfs.sh</a> is a free and open source project. MIT License © 2024 <a href="https://guoquan.net" aria-label="Author's website">Quan Guo</a></p>
         <p>We ❤️ open source! Happy hacking with AI 🤖</p>
     </div>
 
     <!-- GitHub Buttons script -->
     <script async defer src="https://buttons.github.io/buttons.js"></script>
-
-    <script>
-        function updateFeatures() {
+    <script defer>
+        function setupFeatures() {
             const features = document.querySelectorAll('.feature');
-            const isWide = window.innerWidth >= 769;
+            
+            // First remove all existing click handlers
             features.forEach(feature => {
-                feature.open = isWide;
+                const title = feature.querySelector('h3');
+                const description = feature.querySelector('p');
+                
+                // Clone and replace to remove event listeners
+                const newTitle = title.cloneNode(true);
+                title.parentNode.replaceChild(newTitle, title);
             });
+            
+            if (window.innerWidth <= 768) {
+                // Mobile view: hide descriptions and setup click handlers
+                features.forEach(feature => {
+                    const description = feature.querySelector('p');
+                    description.style.display = 'none';
+                    
+                    const title = feature.querySelector('h3');
+                    title.addEventListener('click', () => {
+                        const isHidden = description.style.display === 'none';
+                        description.style.display = isHidden ? 'block' : 'none';
+                        title.classList.toggle('open');
+                    });
+                });
+            } else {
+                // Desktop view: show all descriptions
+                features.forEach(feature => {
+                    const description = feature.querySelector('p');
+                    description.style.display = 'block';
+                    
+                    const title = feature.querySelector('h3');
+                    title.classList.remove('open');
+                });
+            }
         }
-        
-        // Run on load and resize
-        window.addEventListener('load', updateFeatures);
-        window.addEventListener('resize', updateFeatures);
+
+        window.addEventListener('load', setupFeatures);
+        window.addEventListener('resize', setupFeatures);
     </script>
 </body>
-</html> 
+</html>
