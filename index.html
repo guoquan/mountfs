@@ -21,7 +21,7 @@
     <!-- Emoji Favicon - no image file needed -->
     <link
       rel="icon"
-      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id=%22logoGradient%22 x1=%220%%22 y1=%220%%22 x2=%22100%%22 y2=%22100%%22><stop offset=%220%%22 style=%22stop-color:%236b7ceb%22/><stop offset=%22100%%22 style=%22stop-color:%2324292f%22/></linearGradient></defs><text x=%2215%22 y=%2265%22 font-size=%2245%22 font-weight=%22bold%22 font-family=%22Arial, sans-serif%22 fill=%22url(%23logoGradient)%22>mN</text></svg>"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id=%22logoGradient%22 x1=%220%%22 y1=%220%%22 x2=%22100%%22 y2=%22100%%22><stop offset=%220%%22 style=%22stop-color:%236b7ceb%22/><stop offset=%22100%%22 style=%22stop-color:%2324292f%22/></linearGradient></defs><text x=%2252%22 y=%2265%22 font-size=%2260%22 font-weight=%22bold%22 font-family=%22Arial, sans-serif%22 fill=%22url(%23logoGradient)%22 text-anchor=%22middle%22><tspan font-style=%22italic%22>m</tspan><tspan>N</tspan></text></svg>"
     />
 
     <!-- OpenGraph tags -->
@@ -51,18 +51,16 @@
         --base-border-color: #cccccc;
 
         /* Variant Colors - Innovation Theme */
-        --variant-dark-bg-color: #6272e0;
         --variant-light-bg-color: #f2f4ff;
         --variant-light-text-color: #ffffff;
-        --variant-dark-text-color: #5a6ad7;
-        --variant-subtitle-color: #8494f0;
-        --variant-note-color: #8494f0;
-        --variant-dark-border-color: #4f5ecc;
         --variant-light-border-color: #5a6ad7;
+        --variant-dark-bg-color: #6272e0;
+        --variant-dark-text-color: #5a6ad7;
+        --variant-dark-border-color: #4f5ecc;
 
         /* Font and Layout */
-        --base-padding: 1.5rem;
-        --base-margin: 2rem 0;
+        --base-padding: 1rem;
+        --base-margin: 2rem;
         --base-border-radius: 0.35rem;
 
         /* New variant colors for code section */
@@ -111,18 +109,15 @@
       pre.code-block {
         display: block;
       }
-      ul {
-        padding-left: 1.5rem;
-      }
       .note {
         font-size: 0.9em;
         color: var(--base-accent-color);
         border-top: 1px dashed var(--base-border-color);
-        padding-top: 1em;
+        padding-top: 1em;  /* line-height */
+        margin-top: 1em;  /* line-height */
         font-style: italic;
       }
       .note a {
-        font-style: normal;
         font-weight: bold;
       }
 
@@ -132,13 +127,26 @@
         justify-content: space-between;
         margin: var(--base-margin);
         flex-wrap: wrap;
+      }
+      a.project-home {
+        display: flex;
+        align-items: center;
         gap: 1rem;
       }
-      .logo {
-        display: none;
+      a.project-home:hover {
+        text-decoration: none;
       }
-      .project-name a {
+      .logo {
+        display: inline-flex;
+        align-items: center;
+      }
+      .logo svg {
+        width: 2.5em;
+        height: 2.5em;
+      }
+      .project-name {
         display: inline-block;
+        align-items: center;
         background: linear-gradient(
           135deg,
           var(--base-accent-color) 0%,
@@ -152,28 +160,22 @@
         color: transparent;
         transition: all 0.3s ease;
       }
-      .project-name a:hover {
-        text-decoration: none;
-        /* transform: translateY(calc(-1 * var(--base-border-radius))); */
+      a.project-home:hover .project-name {
         background-position-x: 0%;
-        /* text-shadow: 0 var(--base-border-radius) var(--base-border-radius) var(--base-border-color); */
-        /* filter: drop-shadow(0 var(--base-border-radius) var(--base-border-radius) var(--base-border-color)); */
       }
-      .project-name a::before,
-      .project-name a::after {
+      .project-name::before,
+      .project-name::after {
         font-size: 0em;
-        opacity: 0;
         transition: all 0.3s ease;
       }
-      .project-name a:hover::before,
-      .project-name a:hover::after {
+      a.project-home:hover .project-name::before,
+      a.project-home:hover .project-name::after {
         font-size: 0.6em;
-        opacity: 1;
       }
-      .project-name a::after {
+      .project-name::after {
         content: ".sh";
       }
-      .project-name a::before {
+      .project-name::before {
         content: "https://";
       }
       .project-name .mou {
@@ -189,8 +191,12 @@
         font-weight: normal;
       }
 
+      .github-buttons {
+        /* display: flex; */
+      }
+
       .subtitle {
-        /* empty */
+        text-align: left;
       }
 
       .base-section {
@@ -208,8 +214,8 @@
       .features {
         margin: var(--base-margin);
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.5em;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: var(--base-margin);  /* external */
       }
       .feature {
         padding: var(--base-padding);
@@ -230,7 +236,6 @@
       }
       .feature h3 {
         margin: 0;
-        font-weight: bold;
         cursor: pointer;
       }
       .usage {
@@ -249,12 +254,8 @@
         display: grid;
         /* grid-template-columns: auto auto auto; */
         grid-template-columns: 1fr auto 1fr;
-        gap: 1em;
-        width: 100%;
+        gap: var(--base-padding);  /* internal */
         align-items: center;
-      }
-      .approaches span {
-        vertical-align: middle;
       }
       .approach {
         padding: calc(0.5 * var(--base-padding));
@@ -413,7 +414,6 @@
         position: relative;
         overflow: hidden;
       }
-
       .contribution::before {
         content: "🤝";
         position: absolute;
@@ -436,20 +436,22 @@
         color: var(--base-text-color);
         text-align: center;
       }
-      @media (max-width: 768px) {
+      @media screen and (max-width: 768px) {
         .header {
-          flex-direction: column;
-          align-items: flex-start;
+          display: block;
+          text-align: center;
         }
-        .github-buttons {
-          width: 100%;
-          justify-content: flex-start;
+        a.project-home {
+          display: block;
+        }
+        .logo,
+        .project-name {
+          line-height: 1;
+          display: block;
         }
         .features {
           grid-template-columns: 1fr;
-        }
-        .feature {
-          padding: calc(var(--base-padding) * 0.8);
+          gap: var(--base-padding);  /* internal */
         }
         .feature h3 {
           position: relative;
@@ -461,15 +463,18 @@
           right: 0;
           transition: all 0.3s ease;
         }
-        .feature h3.open::after {
+        .feature.open h3::after {
           transform: rotate(90deg);
+        }
+        .feature p {
+          display: none;
+        }
+        .feature.open p {
+          display: block;
         }
         .approaches {
           grid-template-columns: 1fr;
-          gap: 1em;
         }
-      }
-      @media (min-width: 769px) {
       }
 
       /* Print styles */
@@ -495,8 +500,14 @@
         }
 
         pre {
-          border: 1px solid #ccc;
           page-break-inside: avoid;
+        }
+
+        /* Ensure project name is visible when printing without background */
+        .project-name {
+          color: black !important;
+          -webkit-text-fill-color: black !important;
+          background: none !important;
         }
       }
     </style>
@@ -508,48 +519,50 @@
   </head>
   <body>
     <div class="header">
-      <h1
-        class="project-name"
-        aria-label="mouNTFS - Write to NTFS drives on your Mac"
-      >
-        <span class="logo">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 100 100"
-            width="50"
-            height="50"
-            aria-label="mouNTFS logo"
-            role="img"
-          >
-            <defs>
-              <linearGradient
-                id="logoGradient"
-                x1="0%"
-                y1="0%"
-                x2="100%"
-                y2="100%"
-              >
-                <stop offset="0%" style="stop-color: #6b7ceb" />
-                <stop offset="100%" style="stop-color: #24292f" />
-              </linearGradient>
-            </defs>
-            <text
-              x="15"
-              y="65"
-              font-size="45"
-              font-weight="bold"
-              font-family="Arial, sans-serif"
-              fill="url(#logoGradient)"
+      <h1 aria-label="mouNTFS - Write to NTFS drives on your Mac">
+        <a
+          class="project-home"
+          href="https://mountfs.sh"
+          aria-label="mouNTFS homepage"
+        >
+          <span class="logo">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 100 100"
+              aria-label="mouNTFS logo"
+              role="img"
             >
-              mN
-            </text>
-          </svg>
-        </span>
-        <a href="https://mountfs.sh" aria-label="mouNTFS homepage">
-          <span class="mou">mou</span><span class="nt">NT</span
-          ><span class="fs">FS</span>
+              <defs>
+                <linearGradient
+                  id="logoGradient"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="100%"
+                >
+                  <stop offset="0%" style="stop-color: #6b7ceb" />
+                  <stop offset="100%" style="stop-color: #24292f" />
+                </linearGradient>
+              </defs>
+              <text
+                x="52"
+                y="65"
+                font-size="60"
+                font-weight="bold"
+                font-family="Arial, sans-serif"
+                fill="url(#logoGradient)"
+                text-anchor="middle"
+              >
+                <tspan font-style="italic">m</tspan><tspan>N</tspan>
+              </text>
+            </svg>
+          </span>
+          <span class="project-name">
+            <span class="mou">mou</span><span class="nt">NT</span><span class="fs">FS</span>
+          </span>
         </a>
       </h1>
+
       <div class="github-buttons">
         <a
           class="github-button"
@@ -579,6 +592,15 @@
           data-show-count="true"
           aria-label="Issue guoquan/mountfs on GitHub"
           >Issue</a
+        >
+        <a
+          class="github-button"
+          href="https://fund.mountfs.sh"
+          data-color-scheme="no-preference: light; light: light; dark: dark;"
+          data-icon="octicon-heart"
+          data-size="large"
+          aria-label="Sponsor mountfs on GitHub"
+          >Sponsor</a
         >
       </div>
       <div class="subtitle">
@@ -726,10 +748,8 @@ chmod +x mountfs.sh</code></pre>
 
     <div class="footer" role="contentinfo">
       <p>
-        <a href="https://mountfs.sh" aria-label="mouNTFS homepage"
-          >mountfs.sh</a
-        >
-        is a free and open source project. MIT License © 2024
+        <a href="https://mountfs.sh" aria-label="mouNTFS homepage">mountfs.sh</a>
+        is a free and open source project. MIT License &copy; 2024
         <a href="https://guoquan.net" aria-label="Author's website">Quan Guo</a>
       </p>
       <p>We ❤️ open source! Happy hacking with AI 🤖</p>
@@ -744,7 +764,6 @@ chmod +x mountfs.sh</code></pre>
         // First remove all existing click handlers
         features.forEach((feature) => {
           const title = feature.querySelector("h3");
-          const description = feature.querySelector("p");
 
           // Clone and replace to remove event listeners
           const newTitle = title.cloneNode(true);
@@ -754,24 +773,23 @@ chmod +x mountfs.sh</code></pre>
         if (window.innerWidth <= 768) {
           // Mobile view: hide descriptions and setup click handlers
           features.forEach((feature) => {
-            const description = feature.querySelector("p");
-            description.style.display = "none";
-
             const title = feature.querySelector("h3");
             title.addEventListener("click", () => {
-              const isHidden = description.style.display === "none";
-              description.style.display = isHidden ? "block" : "none";
-              title.classList.toggle("open");
+              // Close all other descriptions
+              features.forEach((f) => {
+                if (f !== feature) {
+                  f.classList.remove("open");
+                }
+              });
+              // Open this one
+              feature.classList.toggle("open");
             });
           });
         } else {
           // Desktop view: show all descriptions
           features.forEach((feature) => {
-            const description = feature.querySelector("p");
-            description.style.display = "block";
-
-            const title = feature.querySelector("h3");
-            title.classList.remove("open");
+            // Reset open state ?
+            // feature.classList.remove("open");
           });
         }
       }
