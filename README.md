@@ -70,7 +70,7 @@ Refer to [macFUSE wiki](https://github.com/macfuse/macfuse/wiki/Getting-Started#
 ### Usage
 
 1. **Launch**:
-   - Double-click `mountfs.sh` in Finder, *OR*
+   - Double-click `mountfs.sh` in Finder (it will automatically open a terminal session if needed), *OR*
    - Run in terminal `./mountfs.sh`
 
 2. **Select Volume**:
