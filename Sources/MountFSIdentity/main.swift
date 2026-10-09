@@ -77,7 +77,13 @@ func mountState(_ device: String) -> [String: Any]? {
 }
 
 let arguments = CommandLine.arguments
-if arguments.count == 3, arguments[1] == "--identity", let value = mediaIdentity(arguments[2]) {
+if arguments.count == 2, arguments[1] == "--authorization-self-test" {
+    exit(authorizationSelfTest())
+} else if arguments.count >= 2, arguments[1] == "--authorization-session" {
+    exit(authorizationSession(Array(arguments.dropFirst(2))))
+} else if arguments.count >= 2, arguments[1] == "--authorization-request" {
+    exit(authorizationRequest(Array(arguments.dropFirst(2))))
+} else if arguments.count == 3, arguments[1] == "--identity", let value = mediaIdentity(arguments[2]) {
     print(value)
 } else if arguments.count == 3, arguments[1] == "--mount-state", let value = mountState(arguments[2]),
           let data = try? PropertyListSerialization.data(fromPropertyList: value, format: .xml, options: 0) {

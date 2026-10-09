@@ -1,6 +1,6 @@
 # *mouNT*FS
 
-Enable write access to external NTFS drives on your Mac. **0.2.7 is a development
+Enable write access to external NTFS drives on your Mac. **0.2.8 is a development
 update, pending actual macOS/NTFS drive validation.** It includes a native menu bar
 app and a rewritten standalone script. It is not yet a notarized public app release.
 
@@ -43,7 +43,7 @@ Requires macOS 13+ and Xcode command line tools. From the checkout:
 
 ```bash
 bash scripts/build-app.sh
-open dist/mouNTFS-0.2.7.app
+open dist/mouNTFS-0.2.8.app
 ```
 
 Successful macOS CI runs also provide a `mouNTFS-development-app` download artifact
@@ -128,8 +128,18 @@ safety reviews are welcome. Original collaborators: Claude 3.5 Sonnet, GPT-4o an
 MIT License © 2024-2026 Quan Guo.
 
 Development build archives, application bundles and Actions artifacts include
-version numbers. 0.2.7 packages mouNTFS-0.2.7.app inside a versioned archive.
+version numbers. 0.2.8 packages mouNTFS-0.2.8.app inside a versioned archive.
 Show Details includes each write-verification condition and filesystem errors.
 The bundled helper reads IOMedia connection identities and the kernel mount table,
 so FUSE write verification does not depend on diskutil recognizing the filesystem.
 Standalone shell use without the helper retains the boot-record identity fallback.
+
+0.2.8 uses one unprivileged native authorization host and one compiled AppleScript
+instance for the complete GUI mount transaction, including best-effort recovery.
+Only fixed commands for the pinned partition and controlled mount directory are
+accepted. The session exits at cleanup, parent termination or a five-minute limit;
+no password, authorization token or privileged daemon is persisted. Apple documents
+five-minute authorization reuse within the same script. Real authorization prompt
+count and authentication methods still require interactive macOS validation.
+Standalone operation without the bundled helper retains per-command authorization.
+This build does not add a separate Touch ID prompt or modify system PAM policies.

@@ -163,4 +163,19 @@ passed=$((passed + 1))
 )
 printf 'PASS app action requires explicit GUI device and does not prompt twice\n'
 passed=$((passed + 1))
+(
+    . "$ROOT/mountfs.sh"
+    GUI=1
+    AUTH_SESSION_PID=123
+    AUTH_HELPER=fake_authorization_host
+    # shellcheck disable=SC2317
+    fake_authorization_host() {
+        [ "$1" = --authorization-request ] && [ "$3" = 123 ] &&
+            [ "$4" = /usr/sbin/diskutil ] && [ "$5" = unmount ] && [ "$6" = disk6s1 ]
+    }
+    osascript_cmd() { return 99; }
+    run_privileged /usr/sbin/diskutil unmount disk6s1
+)
+printf 'PASS privileged requests reuse the existing host instead of starting osascript\n'
+passed=$((passed + 1))
 printf '%s regression groups passed.\n' "$passed"
