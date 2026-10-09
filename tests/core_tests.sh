@@ -112,6 +112,7 @@ passed=$((passed + 1))
 (
     . "$ROOT/mountfs.sh"
     SESSION_DIR="$FIXTURE"
+    ntfs_boot_identity() { return 1; }
     diskutil_cmd() { :; }
     kind=ntfs; is_internal=false; identity=ABC-123; partition_identity=; identifier=disk4s1
     plist_value() {

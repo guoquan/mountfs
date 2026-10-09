@@ -4,6 +4,7 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 . "$ROOT/mountfs.sh"
 SESSION_DIR=$(mktemp -d)
+ntfs_boot_identity() { return 1; }
 trap 'rm -rf "$SESSION_DIR"' EXIT
 /usr/sbin/diskutil info -plist / > "$SESSION_DIR/root.plist"
 actual="$SESSION_DIR/root.plist"

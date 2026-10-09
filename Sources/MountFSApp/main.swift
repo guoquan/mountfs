@@ -65,7 +65,7 @@ struct ScanResult {
 func scanVolumes() -> ScanResult? {
     guard let list = diskDictionary(["list", "-plist"]), let disks = list["AllDisks"] as? [String]
     else { return nil }
-    var report = ["mouNTFS 0.2.2 — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
+    var report = ["mouNTFS 0.2.3 — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
     let volumes: [Volume] = disks.compactMap { device in
         guard let info = diskDictionary(["info", "-plist", device]) else {
             report.append("\(device): cannot read or parse diskutil info")
@@ -122,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.delegate = self
         menu.autoenablesItems = false
-        menu.addItem(item("mouNTFS 0.2.2"))
+        menu.addItem(item("mouNTFS 0.2.3"))
         menu.addItem(item(status))
         menu.addItem(item("Select a drive below to enable writing"))
         menu.addItem(.separator())
@@ -218,6 +218,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         rebuildMenu()
         DispatchQueue.global(qos: .userInitiated).async {
             let result = runCommand(executable, arguments)
+            var details = result.text
+            if result.status != 0 && result.status != 2 && arguments.contains("--device") {
+                let scan = scanVolumes()?.report ?? "Disk scan unavailable."
+                let diagnosis = runCommand(executable, [arguments[0], "--diagnose"]).text
+                details += "\n\n--- Read-only disk scan ---\n" + scan
+                details += "\n\n--- Installation diagnosis ---\n" + diagnosis
+            }
+            let operationDetails = details
             DispatchQueue.main.async {
                 self.busy = false
                 self.status = result.status == 0 ? "Completed" : (result.status == 2 ? "Cancelled" : "Operation failed")
@@ -226,15 +234,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     NSApp.activate(ignoringOtherApps: true)
                     let alert = NSAlert()
                     alert.messageText = "The operation could not be completed"
-                    alert.informativeText = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    alert.informativeText = result.text.components(separatedBy: .newlines)
+                        .first(where: { $0.hasPrefix("Error:") })
+                        ?? "macOS or the driver could not complete the operation. Open Show Details for the operation log and read-only diagnostics."
                     alert.alertStyle = .warning
                     alert.addButton(withTitle: "OK")
                     alert.addButton(withTitle: "Show Details")
                     if alert.runModal() == .alertSecondButtonReturn {
-                        self.showOutput(title: self.status, text: result.text)
+                        self.showOutput(title: self.status, text: operationDetails)
                     }
                 } else if result.status == 0 {
-                    self.showOutput(title: self.status, text: result.text)
+                    self.showOutput(title: self.status, text: operationDetails)
                 }
                 self.refresh()
             }

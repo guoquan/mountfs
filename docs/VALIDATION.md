@@ -37,10 +37,26 @@ Before public distribution:
 
 0.2.2 addresses missing VolumeUUID by preferring the GPT partition DiskUUID.
 Identifiers are namespaced to avoid confusing partition and filesystem UUIDs.
-Disks exposing neither remain blocked; device numbers/names are not safe identity
-fallbacks. Real GPT and MBR NTFS drives, plus UUID visibility after FUSE mounting,
+0.2.3 adds a read-only NTFS boot-record fingerprint for disks exposing neither.
+Device numbers/names are not safe identity fallbacks. Real GPT and MBR NTFS drives, plus UUID visibility after FUSE mounting,
 still need validation. The local scan report records only identity availability.
 
 The app now builds AppIcon.icns and a template menu bar mark from the website's
 italic m/upright N branding. CI checks icon packaging; Finder rendering and menu
 bar legibility in light/dark mode require a Mac check.
+
+0.2.3 reads 512 bytes from the validated raw external partition using od. It tries
+an unprivileged read, then requests OS authorization only when necessary. The
+NTFS OEM signature, sector/cluster sizes, sector trailer and nonzero serial and
+geometry must pass validation. SHA-256 covers the entire record. Once selected,
+this identity source is pinned for verification/recovery even if UUID metadata
+later appears. Read failure or a changed record stops further disk operations.
+Layout reference: https://github.com/torvalds/linux/blob/master/fs/ntfs3/ntfs.h
+
+Five simulated boot-identity groups cover absent UUIDs, metadata appearance,
+changed serial, malformed/truncated records, read authorization failure and
+replacement refusal. They do not establish actual raw-device read behavior.
+Validate MBR/GPT USB drives with no UUID before/after unmount and FUSE mounting,
+macOS disk-access permissions, authorization cancellation and unplug/replacement.
+A byte-identical cloned volume shares this fingerprint, as cloned UUIDs do; this
+is accidental replacement protection, not hardware authentication.

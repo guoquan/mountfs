@@ -3,7 +3,7 @@
 # See LICENSE for the full license text.
 # Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-MOUNTFS_VERSION=0.2.2
+MOUNTFS_VERSION=0.2.3
 GUI=1
 BACKEND=kernel
 DRIVER=
@@ -33,7 +33,7 @@ plist_value() {
 }
 
 load_volume() {
-    local target="$1" policy="${2:-ntfs}" info="$SESSION_DIR/info.plist" fs whole
+    local target="$1" policy="${2:-ntfs}" expected_identity="${3:-}" info="$SESSION_DIR/info.plist" fs whole
     diskutil_cmd info -plist "$target" > "$info" || return 1
     DEVICE=$(plist_value "$info" DeviceIdentifier) || return 1
     case "$DEVICE" in
@@ -52,21 +52,61 @@ load_volume() {
     [ "$INTERNAL" = false ] || { fail "Internal disks are not supported in this release."; return 1; }
     # GPT partition UUID survives filesystem-driver changes. Never fall back to
     # a device number, volume name or mount path: those can match a replacement.
-    VOLUME_UUID=$(volume_identity "$info") || {
-        fail "Cannot establish a stable volume identity for $DEVICE: diskutil returned neither DiskUUID nor VolumeUUID. Operation stopped to avoid targeting a different drive. Open Show Disk Scan Report and report the identity fields; do not reformat the drive."
+    VOLUME_UUID=$(volume_identity "$info" "$expected_identity") || {
+        fail "Cannot verify the identity of $DEVICE. No usable UUID or readable, valid NTFS boot record was found. If macOS requested disk access, allow mouNTFS access and retry. Keep the drive connected; inspect Disk Utility if the error persists."
         return 1
     }
     VOLUME_NAME=$(plist_value "$info" VolumeName) || VOLUME_NAME="$DEVICE"
     load_mount_state "$info"
 }
 
+# od only reads the first 512 bytes; it does not open the device for writing.
+# Use a fixed executable and validated raw partition path, without a shell pipe
+# inside the privileged command. Binary data is converted to text for AppleScript.
+raw_read_command() { /usr/bin/od "$@"; }
+read_ntfs_boot_hex() {
+    local device="$1" raw hex
+    [[ "$device" =~ ^disk[0-9]+s[0-9]+(s[0-9]+)?$ ]] || return 1
+    raw="/dev/r$device"
+    hex=$(raw_read_command -An -v -tx1 -N512 "$raw" 2>/dev/null) || {
+        message "Reading the NTFS identity requires macOS authorization (read-only, 512 bytes)."
+        hex=$(run_privileged /usr/bin/od -An -v -tx1 -N512 "$raw") || return 1
+    }
+    hex=$(printf '%s' "$hex" | tr -d '[:space:]')
+    [ "${#hex}" -eq 1024 ] || return 1
+    case "$hex" in *[!0-9a-f]*) return 1 ;; esac
+    printf '%s\n' "$hex"
+}
+
+ntfs_boot_identity() {
+    local hex serial digest
+    hex=$(read_ntfs_boot_hex "$DEVICE") || return 1
+    # NTFS OEM signature, sector trailer, supported sector and cluster sizes.
+    # Layout: linux fs/ntfs3/ntfs.h struct NTFS_BOOT (serial at offset 0x48).
+    [ "${hex:6:16}" = 4e54465320202020 ] || return 1
+    [ "${hex:1020:4}" = 55aa ] || return 1
+    case "${hex:22:4}" in 0002|0004|0008|0010) ;; *) return 1 ;; esac
+    case "${hex:26:2}" in 01|02|04|08|10|20|40|80) ;; *) return 1 ;; esac
+    serial=${hex:144:16}
+    case "$serial" in 0000000000000000|ffffffffffffffff) return 1 ;; esac
+    [ "${hex:80:16}" != 0000000000000000 ] || return 1
+    # Fingerprint the entire boot record, including serial and geometry. Never
+    # identify a drive using diskNsM, its label or its mount path alone.
+    digest=$(printf '%s' "$hex" | /usr/bin/shasum -a 256) || return 1
+    digest=${digest%% *}
+    printf 'ntfs-boot:%s\n' "$digest"
+}
+
 volume_identity() {
-    local info="$1" value
+    local info="$1" expected="${2:-}" value
+    # Pin the chosen identity source throughout the transaction even if a FUSE
+    # driver makes additional UUID metadata appear after mounting.
+    case "$expected" in ntfs-boot:*) ntfs_boot_identity; return $? ;; esac
     value=$(plist_value "$info" DiskUUID) || value=
     if [ -n "$value" ]; then printf 'partition:%s\n' "$value"; return 0; fi
     value=$(plist_value "$info" VolumeUUID) || value=
     if [ -n "$value" ]; then printf 'volume:%s\n' "$value"; return 0; fi
-    return 1
+    ntfs_boot_identity
 }
 
 load_mount_state() {
@@ -197,7 +237,7 @@ acquire_lock() {
 
 same_volume() {
     local expected_device="$1" expected_uuid="$2"
-    load_volume "$expected_device" identity || return 1
+    load_volume "$expected_device" identity "$expected_uuid" || return 1
     [ "$DEVICE" = "$expected_device" ] && [ "$VOLUME_UUID" = "$expected_uuid" ]
 }
 
@@ -383,7 +423,7 @@ main() {
         target=$(select_volume); rc=$?
         [ "$rc" -eq 0 ] || return "$rc"
     fi
-    load_volume "$target" || { fail "Cannot load the selected external NTFS partition."; return 1; }
+    load_volume "$target" || return 1
     mount_volume
 }
 
