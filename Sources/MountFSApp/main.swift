@@ -5,7 +5,7 @@ import MountFSCore
 let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.7"
 
 func helperResult(_ option: String, device: String) -> CommandResult? {
-    let candidates = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,
+    let candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,
                       URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(".build/release/MountFSIdentity").path]
     guard let path = candidates.compactMap({ $0 }).first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return nil }
     return runCommand(path, [option, device], mergeErrors: false)
