@@ -61,6 +61,8 @@ load_volume() {
 # dd, convert it to text with od, then inspect only the first 512 bytes. This
 # fixed shell source has no interpolated device/name/path; the validated device
 # is passed as $1. pipefail preserves a failed dd even when od exits successfully.
+# $1 is expanded by the child Bash, never while constructing the command.
+# shellcheck disable=SC2016
 BOOT_READ_SCRIPT='/bin/dd if="$1" bs=4096 count=1 | /usr/bin/od -An -v -tx1'
 raw_read_command() { /bin/bash -o pipefail -c "$BOOT_READ_SCRIPT" mountfs-read "$1"; }
 read_ntfs_boot_hex() {
@@ -75,10 +77,10 @@ read_ntfs_boot_hex() {
         }
     }
     hex=$(printf '%s' "$hex" | tr -d '[:space:]' | tr 'A-F' 'a-f')
-    [ "${#hex}" -ge 1024 ] && [ "${#hex}" -le 8192 ] || {
+    if [ "${#hex}" -lt 1024 ] || [ "${#hex}" -gt 8192 ]; then
         fail "NTFS identity read returned an unexpected length (${#hex} hex characters; at least 1024 required)."
         return 1
-    }
+    fi
     case "$hex" in *[!0-9a-f]*) fail "NTFS identity read returned invalid hex output."; return 1 ;; esac
     printf '%s\n' "${hex:0:1024}"
 }

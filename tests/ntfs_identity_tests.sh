@@ -61,6 +61,8 @@ plist_value() {
 SESSION_DIR=$(mktemp -d)
 trap 'rm -rf "$SESSION_DIR"' EXIT
 diskutil_cmd() { :; }
+# Invoked indirectly by same_volume -> load_volume -> boot identity.
+# shellcheck disable=SC2317
 raw_read_command() { printf '%s\n' "$fixture"; }
 same_volume disk4s1 "$original"
 fixture="${valid:0:144}fedcba9876543210${valid:160}"
