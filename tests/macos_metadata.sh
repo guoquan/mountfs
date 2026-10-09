@@ -3,6 +3,7 @@
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 . "$ROOT/mountfs.sh"
+    media_identity_command() { return 1; }
 SESSION_DIR=$(mktemp -d)
 ntfs_boot_identity() { return 1; }
 trap 'rm -rf "$SESSION_DIR"' EXIT

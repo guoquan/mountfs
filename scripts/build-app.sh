@@ -12,6 +12,7 @@ VERSION=$(bash mountfs.sh --version)
 APP="$PROJECT_ROOT/dist/mouNTFS-$VERSION.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/MountFS" "$APP/Contents/MacOS/mouNTFS"
+cp "$BIN_DIR/MountFSIdentity" "$APP/Contents/MacOS/mountfs-identity"
 cp mountfs.sh "$APP/Contents/Resources/mountfs.sh"
 ICON_WORK=$(mktemp -d "${TMPDIR:-/tmp}/mountfs-icons.XXXXXXXX")
 trap 'rm -rf "$ICON_WORK"' EXIT

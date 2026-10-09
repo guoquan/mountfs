@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import MountFSCore
 
 struct Volume: Equatable {
@@ -65,7 +66,7 @@ struct ScanResult {
 func scanVolumes() -> ScanResult? {
     guard let list = diskDictionary(["list", "-plist"]), let disks = list["AllDisks"] as? [String]
     else { return nil }
-    var report = ["mouNTFS 0.2.4 — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
+    var report = ["mouNTFS 0.2.5 — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
     let volumes: [Volume] = disks.compactMap { device in
         guard let info = diskDictionary(["info", "-plist", device]) else {
             report.append("\(device): cannot read or parse diskutil info")
@@ -122,7 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.delegate = self
         menu.autoenablesItems = false
-        menu.addItem(item("mouNTFS 0.2.4"))
+        menu.addItem(item("mouNTFS 0.2.5"))
         menu.addItem(item(status))
         menu.addItem(item("Select a drive below to enable writing"))
         menu.addItem(.separator())
@@ -254,6 +255,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func mountVolume(_ sender: NSMenuItem) {
         guard let device = sender.representedObject as? String else { return }
         guard let script = scriptPath() else { showOutput(title: "Installation incomplete", text: "Bundled mountfs.sh was not found. Rebuild the app with scripts/build-app.sh."); return }
+        // Request scoped removable-volume access from the GUI process itself.
+        // No names/content are read or logged; only open/close the mounted root.
+        if let info = diskDictionary(["info", "-plist", device]),
+           let point = DiskMetadata(info).mountPoint, let directory = opendir(point) {
+            closedir(directory)
+        }
         execute("Enabling write access…", executable: "/bin/bash", arguments: [script, "--device", device, "--backend", backend])
     }
 

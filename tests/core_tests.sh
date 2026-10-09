@@ -9,6 +9,7 @@ passed=0
 run_case() (
     set +e
     . "$ROOT/mountfs.sh"
+    media_identity_command() { return 1; }
     TEST_DIR="$FIXTURE/$1"
     mkdir -p "$TEST_DIR"
     printf 'mounted\n' > "$TEST_DIR/state"
@@ -97,6 +98,7 @@ done
 
 (
     . "$ROOT/mountfs.sh"
+    media_identity_command() { return 1; }
     point="$FIXTURE/probe with spaces and 'quotes'"
     mkdir -p "$point"
     printf 'user data\n' > "$point/.write_test"
@@ -111,6 +113,7 @@ passed=$((passed + 1))
 # Exercise structured metadata validation without relying on a real disk.
 (
     . "$ROOT/mountfs.sh"
+    media_identity_command() { return 1; }
     SESSION_DIR="$FIXTURE"
     ntfs_boot_identity() { return 1; }
     diskutil_cmd() { :; }

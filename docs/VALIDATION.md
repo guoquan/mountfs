@@ -69,3 +69,17 @@ OEM signature, trailer, sector/cluster sizes, serial or geometry. A real dd/od
 regular-file fixture runs on both CI platforms, including read-failure handling;
 physical-device alignment and permissions still require user testing.
 Build bundles/archives and Actions artifact names now include the version.
+
+0.2.5 adds a bundled, unprivileged IOKit metadata executable for UUID-less devices.
+Identity includes the partition registry ID, parent whole-media registry ID and
+size. This connection-scoped token is never stored or reused across process/boot
+sessions. Its source is pinned during the transaction. Replacement, disappearance
+or helper failure stops operations instead of switching to an alternate source.
+It does not open /dev, request administrator access or read filesystem content.
+The GUI also opens/closes the mounted root to trigger scoped removable-volume
+consent before spawning the core. Apple's privacy UI remains user-controlled.
+
+Four simulated groups validate no raw reads, source pinning, replacement/parent
+changes and malformed/unavailable identity. CI queries a real IOMedia twice and
+validates invalid input/nonexistent-device rejection. Actual IOMedia stability
+across NTFS unmount/FUSE remount, TCC consent and driver raw access remain pending.

@@ -3,7 +3,7 @@
 # See LICENSE for the full license text.
 # Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-MOUNTFS_VERSION=0.2.4
+MOUNTFS_VERSION=0.2.5
 GUI=1
 BACKEND=kernel
 DRIVER=
@@ -104,15 +104,37 @@ ntfs_boot_identity() {
     printf 'ntfs-boot:%s\n' "$digest"
 }
 
+# Bundled native helper queries the live IOMedia registry, without opening /dev.
+# Its identity is valid only for this process/connection, never persisted.
+media_identity_command() {
+    local script_dir helper
+    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
+    for helper in "$script_dir/../MacOS/mountfs-identity" "$script_dir/.build/release/MountFSIdentity"; do
+        if [ -x "$helper" ]; then "$helper" --identity "$DEVICE"; return $?; fi
+    done
+    return 1
+}
+
+media_identity() {
+    local value
+    value=$(media_identity_command) || return 1
+    [[ "$value" =~ ^iomedia:[0-9]+:[0-9]+:[0-9]+$ ]] || return 1
+    printf '%s\n' "$value"
+}
+
 volume_identity() {
     local info="$1" expected="${2:-}" value
     # Pin the chosen identity source throughout the transaction even if a FUSE
     # driver makes additional UUID metadata appear after mounting.
-    case "$expected" in ntfs-boot:*) ntfs_boot_identity; return $? ;; esac
+    case "$expected" in
+        iomedia:*) media_identity || { fail "The connected media identity is unavailable; reconnect and retry. No alternate identity source was used."; return 1; }; return 0 ;;
+        ntfs-boot:*) ntfs_boot_identity; return $? ;;
+    esac
     value=$(plist_value "$info" DiskUUID) || value=
     if [ -n "$value" ]; then printf 'partition:%s\n' "$value"; return 0; fi
     value=$(plist_value "$info" VolumeUUID) || value=
     if [ -n "$value" ]; then printf 'volume:%s\n' "$value"; return 0; fi
+    if media_identity; then return 0; fi
     ntfs_boot_identity
 }
 
