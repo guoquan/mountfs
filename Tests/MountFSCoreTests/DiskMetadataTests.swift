@@ -45,6 +45,32 @@ final class DiskMetadataTests: XCTestCase {
         XCTAssertTrue(DiskMetadata(info).readOnly)
     }
 
+    func testKernelMountStateOverridesDiskutilForMenu() {
+        let state: [String: Any] = ["MountPoint": "/Volumes/mountfs.disk4s1.test", "WritableVolume": true]
+        let disk = DiskMetadata(ntfs, mountState: state)
+        XCTAssertFalse(disk.readOnly)
+        XCTAssertEqual(disk.mountPoint, "/Volumes/mountfs.disk4s1.test")
+        XCTAssertTrue(disk.isExternalNTFSPartition)
+        let absent = DiskMetadata(ntfs, mountState: ["MountPoint": "", "WritableVolume": false])
+        XCTAssertFalse(absent.isMounted)
+        XCTAssertTrue(absent.readOnly)
+    }
+
+    func testOnlyVerifiedNTFSIdentityKeepsFUSEVolumeInMenu() {
+        var info = ntfs
+        info["FilesystemType"] = "macfuse"
+        XCTAssertFalse(DiskMetadata(info).isExternalNTFSPartition)
+        XCTAssertTrue(DiskMetadata(info, verifiedNTFS: true).isExternalNTFSPartition)
+        info.removeValue(forKey: "FilesystemType")
+        XCTAssertTrue(DiskMetadata(info, verifiedNTFS: true).isExternalNTFSPartition)
+        info["Internal"] = true
+        XCTAssertFalse(DiskMetadata(info, verifiedNTFS: true).isExternalNTFSPartition)
+        info = ntfs; info["FilesystemType"] = "exfat"
+        XCTAssertFalse(DiskMetadata(info, verifiedNTFS: true).isExternalNTFSPartition)
+        info["FilesystemType"] = "macfuse"; info["WholeDisk"] = true
+        XCTAssertFalse(DiskMetadata(info, verifiedNTFS: true).isExternalNTFSPartition)
+    }
+
     func testLiveMacOSSchema() throws {
         #if os(macOS)
         let process = Process()

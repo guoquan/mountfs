@@ -11,15 +11,19 @@ public struct DiskMetadata {
     public let mountPoint: String?
     public let readOnly: Bool
 
-    public init(_ info: [String: Any]) {
+    public init(_ info: [String: Any], mountState: [String: Any]? = nil, verifiedNTFS: Bool = false) {
         device = info["DeviceIdentifier"] as? String ?? "unknown"
         name = info["VolumeName"] as? String ?? device
-        filesystem = info["FilesystemType"] as? String
+        let reportedFilesystem = info["FilesystemType"] as? String
+        let fuseTypes = ["macfuse", "fusefs", "osxfuse", "ntfs-3g"]
+        filesystem = verifiedNTFS && (reportedFilesystem == nil || fuseTypes.contains(reportedFilesystem!))
+            ? "ntfs" : reportedFilesystem
         isInternal = info["Internal"] as? Bool
         isWholeDisk = info["WholeDisk"] as? Bool
-        let point = info["MountPoint"] as? String ?? ""
+        let state = mountState ?? info
+        let point = state["MountPoint"] as? String ?? ""
         mountPoint = point.isEmpty ? nil : point
-        readOnly = !(info["WritableVolume"] as? Bool ?? false)
+        readOnly = !(state["WritableVolume"] as? Bool ?? false)
     }
 
     public var isMounted: Bool { mountPoint != nil }

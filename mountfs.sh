@@ -3,8 +3,9 @@
 # See LICENSE for the full license text.
 # Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-MOUNTFS_VERSION=0.2.6
+MOUNTFS_VERSION=0.2.7
 GUI=1
+APP_ACTION=0
 BACKEND=kernel
 DRIVER=
 SESSION_DIR=
@@ -246,6 +247,9 @@ APPLESCRIPT
 
 confirm_mount() {
     local response
+    # The app's explicit per-volume menu action already expresses confirmation.
+    # Standalone GUI/CLI invocations retain their confirmation prompt.
+    if [ "$APP_ACTION" -eq 1 ] && [ "$GUI" -eq 1 ]; then return 0; fi
     if [ "$GUI" -eq 1 ]; then
         osascript_cmd - "$VOLUME_NAME" "$DEVICE" "$BACKEND" <<'APPLESCRIPT'
 on run argv
@@ -437,6 +441,7 @@ main() {
             --help|-h) usage; return 0 ;;
             --version) printf '%s\n' "$MOUNTFS_VERSION"; return 0 ;;
             --cli) GUI=0 ;;
+            --app-action) APP_ACTION=1 ;;
             --list) action=list; GUI=0 ;;
             --diagnose) action=diagnose ;;
             --device|--backend)
@@ -447,6 +452,9 @@ main() {
         esac
         shift
     done
+    if [ "$APP_ACTION" -eq 1 ] && { [ "$GUI" -ne 1 ] || [ -z "$target" ] || [ "$action" != mount ]; }; then
+        fail "App actions require an explicitly selected GUI volume."; return 2
+    fi
     [ "$(uname -s)" = Darwin ] || { fail "mouNTFS requires macOS."; return 1; }
     [ "$(id -u)" -ne 0 ] || { fail "Run as your normal user, not with sudo."; return 1; }
     USER_ID=$(id -u); GROUP_ID=$(id -g)

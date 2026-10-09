@@ -152,4 +152,15 @@ passed=$((passed + 1))
 )
 printf 'PASS metadata, external-disk and identity validation\n'
 passed=$((passed + 1))
+(
+    . "$ROOT/mountfs.sh"
+    # App menu action replaces only its own redundant GUI confirmation.
+    APP_ACTION=1
+    GUI=1
+    confirm_mount
+    if main --app-action --cli --device disk4s1 >/dev/null 2>&1; then exit 1; fi
+    if main --app-action >/dev/null 2>&1; then exit 1; fi
+)
+printf 'PASS app action requires explicit GUI device and does not prompt twice\n'
+passed=$((passed + 1))
 printf '%s regression groups passed.\n' "$passed"

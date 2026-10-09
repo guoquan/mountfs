@@ -1,6 +1,6 @@
 # *mouNT*FS
 
-Enable write access to external NTFS drives on your Mac. **0.2.6 is a development
+Enable write access to external NTFS drives on your Mac. **0.2.7 is a development
 update, pending actual macOS/NTFS drive validation.** It includes a native menu bar
 app and a rewritten standalone script. It is not yet a notarized public app release.
 
@@ -43,14 +43,18 @@ Requires macOS 13+ and Xcode command line tools. From the checkout:
 
 ```bash
 bash scripts/build-app.sh
-open dist/mouNTFS-0.2.6.app
+open dist/mouNTFS-0.2.7.app
 ```
 
 Successful macOS CI runs also provide a `mouNTFS-development-app` download artifact
 on the Actions run page. It is an ad-hoc signed development build, not notarized.
 
-Select a drive and **Enable Write Access…**. The core confirms the operation and
-requests authorization through macOS. Other disk actions and quitting are disabled
+Select a drive and **Enable Write Access…**. That menu action confirms the
+operation; macOS still handles administrator authorization. A spinning menu bar
+icon indicates work in progress. Successful mounting/ejection does not open a log
+window. **Diagnostics → Show Last Operation…** keeps the latest operation log.
+Finder opens after verified mounting by default; the menu preference can disable
+this. Installation diagnosis and failures still offer their requested details. Other disk actions and quitting are disabled
 during the operation. Output appears in a selectable window. **Safely Eject…**
 confirms before ejecting the physical disk, including its other partitions.
 
@@ -79,7 +83,8 @@ Exit codes: 0 success, 1 failure, 2 cancellation/invalid arguments, 130 interrup
 
 ## Mounting and recovery
 
-Only external NTFS partitions with a readable VolumeUUID are supported. Internal
+External NTFS partitions require a stable partition/volume UUID or a live IOMedia
+connection identity (validated boot-record fallback for standalone use). Internal
 and whole disks are rejected. The core checks the drive and driver, obtains a device
 lock, confirms, creates a unique `/Volumes/mountfs.diskNsM.<random>` directory,
 unmounts without force, mounts with ntfs-3g, and verifies a private file can be
@@ -88,7 +93,7 @@ created/written/removed as the current user. Permissions use your uid/gid and
 message does not claim a fresh write test.
 
 Failed transactions attempt to restore the same volume read-only through macOS.
-Recovery is not issued if the disk disappeared or its UUID changed; unrelated
+Recovery is not issued if the disk disappeared or its pinned identity changed; unrelated
 mounts are left alone. Authorization cancellation, busy disks or OS errors can
 prevent recovery: inspect the output and Disk Utility. Signal handling is best-effort;
 it cannot handle SIGKILL/power loss or eliminate every hot-plug race.
@@ -123,7 +128,7 @@ safety reviews are welcome. Original collaborators: Claude 3.5 Sonnet, GPT-4o an
 MIT License © 2024-2026 Quan Guo.
 
 Development build archives, application bundles and Actions artifacts include
-version numbers. 0.2.6 packages mouNTFS-0.2.6.app inside a versioned archive.
+version numbers. 0.2.7 packages mouNTFS-0.2.7.app inside a versioned archive.
 Show Details includes each write-verification condition and filesystem errors.
 The bundled helper reads IOMedia connection identities and the kernel mount table,
 so FUSE write verification does not depend on diskutil recognizing the filesystem.
