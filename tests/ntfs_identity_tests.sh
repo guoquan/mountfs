@@ -75,7 +75,6 @@ printf 'PASS same_volume rejects UUID-less replacement device\n'
 (
     reader_fixture_dir="$SESSION_DIR"
     . "$ROOT/mountfs.sh"
-    media_identity_command() { return 1; }
     fixture_file="$reader_fixture_dir/boot.bin"
     /usr/bin/perl -e 'print pack("H*", $ARGV[0])' "$valid" > "$fixture_file"
     aligned=$(raw_read_command "$fixture_file" 2>/dev/null | tr -d '[:space:]')
