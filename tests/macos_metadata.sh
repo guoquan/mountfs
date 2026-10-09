@@ -5,7 +5,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 . "$ROOT/mountfs.sh"
 SESSION_DIR=$(mktemp -d)
 trap 'rm -rf "$SESSION_DIR"' EXIT
-diskutil_cmd info -plist / > "$SESSION_DIR/root.plist"
+/usr/sbin/diskutil info -plist / > "$SESSION_DIR/root.plist"
 actual="$SESSION_DIR/root.plist"
 [ "$(plist_value "$actual" WholeDisk)" = false ]
 case "$(plist_value "$actual" WritableVolume)" in true|false) ;; *) exit 1 ;; esac
