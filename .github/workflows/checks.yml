@@ -27,3 +27,11 @@ jobs:
           bash scripts/build-app.sh
           codesign --verify --deep --strict dist/mouNTFS.app
           test -f dist/mouNTFS.app/Contents/Resources/mountfs.sh
+          ditto -c -k --sequesterRsrc --keepParent dist/mouNTFS.app dist/mouNTFS-dev.zip
+      - name: Upload development app
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mouNTFS-development-app
+          path: dist/mouNTFS-dev.zip
+          retention-days: 14

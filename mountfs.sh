@@ -117,7 +117,7 @@ select_volume() {
         diskutil_cmd info -plist "$id" > "$info" 2>/dev/null || continue
         fs=$(plist_value "$info" FilesystemType) || continue
         internal=$(plist_value "$info" Internal) || continue
-        [ "$fs" = ntfs ] && [ "$internal" = false ] || continue
+        if [ "$fs" != ntfs ] || [ "$internal" != false ]; then continue; fi
         label=$(plist_value "$info" VolumeName) || label="NTFS"
         identifiers[${#identifiers[@]}]="$id"
         labels[${#labels[@]}]="$id — $label"
@@ -208,9 +208,9 @@ recover_volume() {
             message "Original mount is still present; left unchanged."
             return 0
         fi
-        [ -n "$NEW_MOUNT_POINT" ] && [ "$MOUNT_POINT" = "$NEW_MOUNT_POINT" ] || {
-            fail "A different mount appeared; left unchanged."; return 1;
-        }
+        if [ -z "$NEW_MOUNT_POINT" ] || [ "$MOUNT_POINT" != "$NEW_MOUNT_POINT" ]; then
+            fail "A different mount appeared; left unchanged."; return 1
+        fi
         run_privileged /usr/sbin/diskutil unmount "$expected_device" || return 1
     fi
     run_privileged /usr/sbin/diskutil mount readOnly "$expected_device" || {

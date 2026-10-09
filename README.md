@@ -40,6 +40,9 @@ bash scripts/build-app.sh
 open dist/mouNTFS.app
 ```
 
+Successful macOS CI runs also provide a `mouNTFS-development-app` download artifact
+on the Actions run page. It is an ad-hoc signed development build, not notarized.
+
 Select a drive and **Enable Write Access…**. The core confirms the operation and
 requests authorization through macOS. Other disk actions and quitting are disabled
 during the operation. Output appears in a selectable window. **Safely Eject…**
