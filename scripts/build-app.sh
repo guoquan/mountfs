@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+cd "$PROJECT_ROOT"
+if [ "$(uname -s)" != Darwin ]; then
+    printf 'The menu bar app must be built on macOS with Xcode command line tools.\n' >&2
+    exit 1
+fi
+swift build -c release
+BIN_DIR=$(swift build -c release --show-bin-path)
+APP="$PROJECT_ROOT/dist/mouNTFS.app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp "$BIN_DIR/MountFS" "$APP/Contents/MacOS/mouNTFS"
+cp mountfs.sh "$APP/Contents/Resources/mountfs.sh"
+cp scripts/Info.plist "$APP/Contents/Info.plist"
+# Ad-hoc signing is for local development only. Public distribution requires
+# a Developer ID signature and Apple notarization.
+/usr/bin/codesign --force --deep --sign - "$APP"
+printf 'Built local development app: %s\n' "$APP"

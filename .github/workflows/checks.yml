@@ -1,0 +1,29 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  core:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax and regression simulations
+        run: |
+          bash -n mountfs.sh scripts/build-app.sh tests/core_tests.sh
+          bash tests/core_tests.sh
+          bash mountfs.sh --help
+          test "$(bash mountfs.sh --version)" = 0.2.0
+      - name: ShellCheck
+        if: runner.os == 'Linux'
+        run: shellcheck mountfs.sh scripts/build-app.sh tests/core_tests.sh
+      - name: Build local menu bar app
+        if: runner.os == 'macOS'
+        run: |
+          bash scripts/build-app.sh
+          codesign --verify --deep --strict dist/mouNTFS.app
+          test -f dist/mouNTFS.app/Contents/Resources/mountfs.sh

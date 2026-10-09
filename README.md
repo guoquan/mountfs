@@ -1,143 +1,114 @@
 # *mouNT*FS
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Built-with-AI](https://img.shields.io/badge/Built--with-AI_🤖-blueviolet)](https://github.com/guoquan/mountfs#contributors)
-[![Website](https://img.shields.io/badge/HTTPS-mountfs.sh_🌐-blue)](https://mountfs.sh)
+Enable write access to external NTFS drives on your Mac. **0.2.0 is a development
+update, pending actual macOS/NTFS drive validation.** It includes a native menu bar
+app and a rewritten standalone script. It is not yet a notarized public app release.
 
-## What's *mouNT*FS
+## Features
 
-*mouNT*FS (pronounced "maun-tee-ef-es") helps you write to NTFS (pronounced "en-tee-ef-es") drives on your Mac. No more "read-only" frustration! Just select your drive, provide your password to confirm, and you're ready to go - with native macOS dialogs that feel right at home.
+- Native menu bar: volume list, enable writing, Finder, safe eject, installation
+  diagnosis, and refresh every five seconds. No automatic mounting.
+- Bash 3.2-compatible core, structured disk metadata and per-user device locks.
+- macOS system authorization; CLI uses sudo directly. No custom password input.
+- Exclusive temporary write probes and best-effort read-only recovery on failure.
+- No force-unmount, clearing Windows hibernation, or forced NTFS recovery.
+- Explicit experimental FSKit option; kernel backend remains the default.
+- Regression simulations and CI. See [release validation](docs/VALIDATION.md).
 
-Currently, *mouNT*FS is just one simple shell script that does one thing well - mounting NTFS drives with write access. We keep it clean and focused.
+## Install drivers
 
-🤝 This project is an experiment in human-AI collaboration, co-developed with AI buddies.
-🤖 All code is written by AI, with 👤 humans focusing on design, review, and direction - no direct human coding.
-🥳 This must be a fun ride, and let's see where it goes.
-
-### Features
-
-- 🤖 Co-developed with AI buddies
-- 📁 Native file picker for volume selection
-- 🔐 Secure password handling through system dialog
-- 📊 Detailed volume information:
-  - Volume name and device path
-  - Current usage and total size
-  - File system and mount status
-- 🔄 Automatic fallback between mount methods
-- ✅ Write access verification
-
-### Under the Hood
-
-The script safely handles NTFS mounting by first unmounting the volume, then trying the `mount_ntfs` with read-write option. If that fails, it falls back to the more reliable `ntfs-3g`. After mounting, it verifies write access and uses native macOS dialogs throughout the process.
-
-## Getting Started
-
-### Requirements
-
-- macOS - so that you lose NTFS read-write access
-- [Homebrew](https://brew.sh) - to install macFUSE and ntfs-3g, and a lot of cool stuff for macOS 🍺
-- [macFUSE](https://osxfuse.github.io) - FUSE file system support for macOS
-- [ntfs-3g](https://github.com/tuxera/ntfs-3g) - NTFS driver with write support ([macOS version](https://github.com/gromgit/homebrew-fuse))
-
-### Installation
-
-0. Make sure you have [Homebrew](https://brew.sh) installed.
-
-1. Install macFUSE and ntfs-3g-mac:
+Requires macOS, Homebrew, macFUSE and ntfs-3g-mac:
 
 ```bash
 brew install --cask macfuse
 brew install gromgit/fuse/ntfs-3g-mac
 ```
 
-2. Download `mountfs.sh`:
+Follow the current [macFUSE installation guide](https://github.com/macfuse/macfuse/wiki/Getting-Started).
+The kernel backend requires kernel-extension approval, and on Apple Silicon may
+require changing startup security policy in Recovery Mode. FSKit is a user-space
+backend available from macOS 15.4 and does not require that kernel-extension setup.
+Actual backend support depends on installed macOS/macFUSE/ntfs-3g versions.
+This tool does not install drivers or change security policies automatically.
+
+## Build the menu bar app
+
+Requires macOS 13+ and Xcode command line tools. From the checkout:
 
 ```bash
-cd ~/Downloads  # or any directory you won't get lost
-curl -L -o mountfs.sh https://get.mountfs.sh
-chmod +x mountfs.sh
+bash scripts/build-app.sh
+open dist/mouNTFS.app
 ```
 
-3. Configure security settings:
-   - Trust macFUSE library in Settings → Privacy & Security (signed by "Benjamin Fleischer")
-   - macFUSE needs a kernel extension to be enabled, which requires a system restart
-   - Grant disk access when prompted
+Select a drive and **Enable Write Access…**. The core confirms the operation and
+requests authorization through macOS. Other disk actions and quitting are disabled
+during the operation. Output appears in a selectable window. **Safely Eject…**
+confirms before ejecting the physical disk, including its other partitions.
 
-Note: These security settings are required by macOS to allow third-party file system drivers. They only need to be configured once, unless you uninstall or reinstall the drivers.
+The build ad-hoc signs for local development. Public distribution still requires
+Developer ID signing and notarization; this does not bypass Gatekeeper. The first
+app version has English UI; localization and a first-run setup wizard are pending.
 
-Refer to [macFUSE wiki](https://github.com/macfuse/macfuse/wiki/Getting-Started#how-to-install-macfuse) for more details.
+## Standalone script
 
-### Usage
+Use the script from this checkout; the separate website download endpoint has not
+been changed by this update.
 
-1. **Launch**:
-   - Double-click `mountfs.sh` in Finder, *OR*
-   - Run in terminal `./mountfs.sh`
+```bash
+bash mountfs.sh                       # native picker and system authorization
+bash mountfs.sh --list                # enumerate external NTFS partitions
+bash mountfs.sh --diagnose            # environment check; no disk changes
+bash mountfs.sh --device disk4s1      # still confirms
+bash mountfs.sh --cli --device disk4s1
+bash mountfs.sh --backend fskit        # opt into experimental FSKit
+```
 
-2. **Select Volume**:
-   - Choose your NTFS volume in the native file picker
-   - Non-NTFS volumes will be automatically rejected
+Use `--list` to identify your partition; `disk4s1` is only an example. Run as your
+normal user, not with sudo. Finder does not reliably execute `.sh` on double-click;
+use the app or Terminal. The script no longer opens Terminal when there is no TTY.
+Exit codes: 0 success, 1 failure, 2 cancellation/invalid arguments, 130 interruption.
 
-3. **Review & Confirm**:
-   - Check volume information
-   - Confirm the mount operation
+## Mounting and recovery
 
-4. **Authenticate**:
-   - Enter administrator password in the popup dialog
+Only external NTFS partitions with a readable VolumeUUID are supported. Internal
+and whole disks are rejected. The core checks the drive and driver, obtains a device
+lock, confirms, creates a unique `/Volumes/mountfs.diskNsM.<random>` directory,
+unmounts without force, mounts with ntfs-3g, and verifies a private file can be
+created/written/removed as the current user. Permissions use your uid/gid and
+`umask=077`. Already-writable volumes are left unchanged based on metadata; that
+message does not claim a fresh write test.
 
-## Using *mouNT*FS
+Failed transactions attempt to restore the same volume read-only through macOS.
+Recovery is not issued if the disk disappeared or its UUID changed; unrelated
+mounts are left alone. Authorization cancellation, busy disks or OS errors can
+prevent recovery: inspect the output and Disk Utility. Signal handling is best-effort;
+it cannot handle SIGKILL/power loss or eliminate every hot-plug race.
 
-### Notes
+Hibernated or unclean volumes are refused using `norecover`. Fully shut down or
+repair the drive in Windows. The old `remove_hiberfile,force` defaults are removed.
+The fixed `.write_test` filename is no longer touched.
 
-- Requires administrator privileges for mounting
-- Performs safe unmount before remounting
-- Verifies write access after mounting
-- Uses the best available mount method
+Locks coordinate operations by the same user, not other users/tools. A crash can
+leave `~/Library/Caches/mountfs/diskNsM.lock`: inspect its `pid`, confirm the process
+has stopped and inspect the drive before removing the lock manually.
 
-### Troubleshooting
+## Development
 
-If mounting fails:
+```bash
+bash -n mountfs.sh
+bash tests/core_tests.sh
+shellcheck mountfs.sh scripts/build-app.sh tests/core_tests.sh
+swift build                          # macOS only
+```
 
-1. Ensure the volume is NTFS formatted
-2. Check macFUSE and ntfs-3g installation
-3. Try safely ejecting and reconnecting
-4. Check system logs for errors
+Tests simulate success, cancellation, busy disks, driver failure, false-success
+read-only mounts, failed probes, unplugged/replaced disks and metadata validation.
+A filesystem test verifies exclusive probes preserve existing user files.
+Simulations and compilation do not establish real-drive compatibility.
 
-## Alternatives
+## Human–AI collaboration
 
-- **[Mounty](https://mounty.app/)** - Popular free GUI app for NTFS mounting
-- **[NTFS for Mac by Paragon](https://www.paragon-software.com/home/ntfs-mac/)** - Commercial solution with full NTFS support
-- **[Tuxera NTFS](https://www.tuxera.com/products/tuxera-ntfs-for-mac/)** - Another commercial driver with high performance
-- Feel free to explore other alternatives!
-
-*mouNT*FS focuses on simplicity and native macOS integration while remaining free and open source. We ❤️ open source!
-
-## Information
-
-### Roadmap
-
-- [ ] GUI interface with native macOS look and feel
-- [ ] Better error messages and recovery options
-- [ ] System tray integration for quick access
-- [ ] Volume monitoring for automatic mounting
-- [ ] Localization support for multiple languages
-
-### Contribution
-
-Contributions and suggestions are welcome! Feel free to open issues or pull requests.
-
-As a human-AI collaboration project:
-
-- For **code** contributions, please bring your AI buddy and keep the no-direct-human-coding spirit
-- For **other** contributions (docs, testing, reviews, etc.), both humans and AI buddies are more than welcome!
-
-Given wide-spread AI concerns, safety review is welcome.
-
-### Contributors
-
-| 🤖 AI | 👤 Humans |
-|-------|-----------|
-| 🦾 [Claude](https://anthropic.com/claude) (3.5 Sonnet, via [Cursor](https://cursor.sh))<br> 🧠 [GPT](https://openai.com/index/gpt-4/) (GPT-4o) | 🐰 [guoquan](https://guoquan.net) |
-
-### License
-
-[MIT License](LICENSE) © 2024 Quan Guo
+AI writes code while humans direct design and review. Contributions, testing and
+safety reviews are welcome. Original collaborators: Claude 3.5 Sonnet, GPT-4o and
+[guoquan](https://guoquan.net). The 0.2.0 development update was prepared with Codex.
+MIT License © 2024-2026 Quan Guo.

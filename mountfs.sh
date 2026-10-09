@@ -1,218 +1,370 @@
 #!/bin/bash
+# mouNTFS — MIT License, Copyright (c) 2024-2026 Quan Guo.
+# See LICENSE for the full license text.
+# Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-# MIT License
-# 
-# Copyright (c) 2024 Quan Guo
-# 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+MOUNTFS_VERSION=0.2.0
+GUI=1
+BACKEND=kernel
+DRIVER=
+SESSION_DIR=
+LOCK_DIR=
+DEVICE=
+VOLUME_NAME=
+MOUNT_POINT=
+VOLUME_UUID=
+MOUNTED=false
+READ_ONLY=true
+INTERNAL=true
+NEW_MOUNT_POINT=
+RECOVERY_NEEDED=0
+USER_ID=
+GROUP_ID=
 
-# Ensure proper terminal session
-if [ ! -t 1 ]; then
-    # Get the default terminal application
-    default_terminal=$(osascript -e '
-        try
-            tell application "System Events"
-                return name of first application process whose frontmost is true and background only is false and name contains "Term"
-            end tell
-        on error
-            return "Terminal"
-        end try
-    ')
-    
-    # Launch in the detected terminal directly
-    open -a "$default_terminal" -n --args "$0"
-    exit 0
-fi
+diskutil_cmd() { /usr/sbin/diskutil "$@"; }
+osascript_cmd() { /usr/bin/osascript "$@"; }
 
-# Function to get disk information
-get_disk_info() {
-    local mount_point="$1"
-    local device="$2"
-    local info=$(diskutil info "$device")
-    
-    # Get volume name and basic info
-    printf "Volume Name:    %s\n" "$(basename "$mount_point")"
-    printf "Device:         %s\n" "$device"
-    printf "File System:    %s\n" "$(echo "$info" | grep "Type (Bundle):" | cut -d: -f2- | xargs)"
-    
-    # Get size information using df -h for human-readable format
-    local df_info=$(df -h "$device" | tail -n 1)
-    local used=$(echo "$df_info" | awk '{print $3}')
-    local total=$(echo "$df_info" | awk '{print $2}')
-    printf "Size:           %s / %s\n" "$used" "$total"
-    
-    # Check if read-only
-    local mount_info=$(mount | grep "$device")
-    if [[ $mount_info == *"read-only"* ]] || [[ $mount_info == *"(ro"* ]]; then
-        printf "Status:         Currently Read-Only\n"
-    else
-        printf "Status:         Read-Write\n"
+message() { printf '%s\n' "$*" >&2; }
+fail() { message "Error: $*"; return 1; }
+
+# Read structured disk metadata, never parse localized diskutil/df text.
+plist_value() {
+    /usr/libexec/PlistBuddy -c "Print :$2" "$1" 2>/dev/null
+}
+
+load_volume() {
+    local target="$1" policy="${2:-ntfs}" info="$SESSION_DIR/info.plist" fs whole
+    diskutil_cmd info -plist "$target" > "$info" || return 1
+    DEVICE=$(plist_value "$info" DeviceIdentifier) || return 1
+    case "$DEVICE" in
+        disk[0-9]*s[0-9]*) ;;
+        *) fail "Select an NTFS partition, not an entire disk."; return 1 ;;
+    esac
+    # Constrain the identifier before it is used in paths or privileged commands.
+    [[ "$DEVICE" =~ ^disk[0-9]+s[0-9]+(s[0-9]+)?$ ]] || return 1
+    if [ "$policy" = ntfs ]; then
+        fs=$(plist_value "$info" FilesystemType) || return 1
+        [ "$fs" = ntfs ] || { fail "Selected partition is not NTFS ($fs)."; return 1; }
     fi
-}
-
-# Function to show confirmation dialog
-show_confirmation() {
-    local mount_point="$1"
-    local device="$2"
-    local disk_info=$(get_disk_info "$mount_point" "$device")
-    local response
-    response=$(osascript -e "display dialog \"Selected Volume:\n$disk_info\n\nThis operation will:\n• Request administrator password (in a popup dialog)\n• Unmount and remount the NTFS volume\n• Enable write access to the volume\" buttons {\"Cancel\", \"OK\"} default button \"OK\" with icon caution")
-    [[ $response == *"OK"* ]]
-}
-
-# Function to get filesystem type
-get_volume_fs_type() {
-    local mount_point="$1"
-    local device=$(df "$mount_point" | grep "^/dev" | awk '{print $1}')
-    [ -n "$device" ] && diskutil info "$device" | grep "Type (Bundle):" | awk '{print $NF}'
-}
-
-# Function to select a mount point using AppleScript
-select_mount_point() {
-    local mount_point
-    mount_point=$(osascript -e 'try
-        set volumePath to POSIX file "/Volumes" as alias
-        set selectedFolder to choose folder with prompt "Select NTFS volume to mount:" default location volumePath
-        POSIX path of selectedFolder
-    on error
-        return "cancelled"
-    end try' 2>/dev/null)
-
-    # Check if cancelled
-    [ "$mount_point" = "cancelled" ] && {
-        echo "Selection cancelled by user." >&2
-        return 1
+    whole=$(plist_value "$info" Whole) || return 1
+    [ "$whole" = false ] || return 1
+    INTERNAL=$(plist_value "$info" Internal) || return 1
+    [ "$INTERNAL" = false ] || { fail "Internal disks are not supported in this release."; return 1; }
+    VOLUME_UUID=$(plist_value "$info" VolumeUUID) || {
+        fail "Cannot establish a stable volume identity."; return 1;
     }
-
-    # Remove trailing slash if present
-    mount_point="${mount_point%/}"
-
-    # Verify it's an NTFS volume
-    local fs_type=$(get_volume_fs_type "$mount_point")
-    if [ "$fs_type" != "ntfs" ]; then
-        echo "Error: Selected volume is not NTFS (type: $fs_type)" >&2
-        return 1
-    fi
-
-    # Get device path
-    local device=$(df "$mount_point" | grep "^/dev" | awk '{print $1}')
-    if [ -z "$device" ]; then
-        echo "Error: Could not determine device for mount point" >&2
-        return 1
-    fi
-
-    # Return mount point and device path as a single line
-    printf "%s\t%s" "$mount_point" "$device"
+    [ -n "$VOLUME_UUID" ] || return 1
+    VOLUME_NAME=$(plist_value "$info" VolumeName) || VOLUME_NAME="$DEVICE"
+    MOUNTED=$(plist_value "$info" Mounted) || return 1
+    MOUNT_POINT=$(plist_value "$info" MountPoint) || MOUNT_POINT=
+    READ_ONLY=$(plist_value "$info" ReadOnlyVolume) || READ_ONLY=true
 }
 
-# Function to get sudo password via GUI
-get_sudo_password() {
-    # Skip terminal activation - let the dialog handle focus
-    osascript -e 'text returned of (display dialog "Please enter administrator password:" with title "Sudo Authentication" default answer "" buttons {"Cancel", "OK"} default button "OK" with hidden answer)'
-}
-
-# Function to remount NTFS volume with write access
-remount_ntfs() {
-    local mount_point="$1"
-    local device="$2"
-    
-    # Debug output
-    echo "Debug: mount_point=$mount_point"
-    echo "Debug: device=$device"
-    
-    # Request sudo access if needed
-    echo "Requesting administrator privileges..."
-    local password
-    password=$(get_sudo_password) || {
-        echo "Error: Administrator privileges required" >&2
-        return 1
-    }
-    
-    # Verify sudo access with the password
-    if ! echo "$password" | sudo -S -v 2>/dev/null; then
-        echo "Error: Invalid password" >&2
-        return 1
-    fi
-    
-    # Run all mount operations in a single sudo session
-    echo "$password" | sudo -S bash -c "
-# Debug inside sudo
-echo 'Debug inside sudo:'
-echo 'mount_point=$mount_point'
-echo 'device=$device'
-
-# Unmount first
-echo 'Unmounting volume...'
-diskutil unmount '$mount_point' || exit 1
-
-# Try mount_ntfs first (built-in)
-echo 'Trying mount_ntfs...'
-mount_ntfs -o rw '$device' '$mount_point' 2>&1
-mount_status=\$?
-echo 'mount_ntfs status: '\$mount_status
-[ \$mount_status -eq 0 ] && exit 0
-
-# Fallback to ntfs-3g if available
-if command -v ntfs-3g >/dev/null 2>&1; then
-    echo 'mount_ntfs failed, trying ntfs-3g...'
-    ntfs-3g '$device' '$mount_point' -o local,allow_other,remove_hiberfile,force 2>&1
-    exit \$?
-fi
-
-exit 1
-"
-    local mount_status=$?
-    
-    # Clear password from memory
-    password=""
-    
-    [ $mount_status -eq 0 ] || return 1
-    
-    sleep 2
-    
-    # Verify mount and write access
-    if mount | grep -q "$mount_point"; then
-        if touch "$mount_point/.write_test" 2>/dev/null; then
-            rm "$mount_point/.write_test"
-            echo "Successfully mounted with write access"
+find_driver() {
+    local candidate
+    for candidate in /opt/homebrew/bin/ntfs-3g /usr/local/bin/ntfs-3g; do
+        if [ -x "$candidate" ] && [ ! -d "$candidate" ]; then
+            DRIVER="$candidate"
             return 0
         fi
-        echo "Warning: Volume mounted but might be read-only" >&2
+    done
+    fail "ntfs-3g was not found. Install: brew install gromgit/fuse/ntfs-3g-mac"
+}
+
+check_backend() {
+    local version major minor
+    case "$BACKEND" in
+        kernel) return 0 ;;
+        fskit)
+            version=$(/usr/bin/sw_vers -productVersion) || return 1
+            major=${version%%.*}
+            minor=${version#*.}; minor=${minor%%.*}
+            if [ "$major" -lt 15 ] || { [ "$major" -eq 15 ] && [ "$minor" -lt 4 ]; }; then
+                fail "FSKit requires macOS 15.4 or later."
+                return 1
+            fi
+            message "FSKit is experimental in mouNTFS; this version combination requires real-disk validation."
+            ;;
+        *) fail "Unknown backend: $BACKEND"; return 1 ;;
+    esac
+}
+
+# AppleScript source is constant. Every argument is shell-quoted by AppleScript.
+# CLI uses sudo's own authentication. Neither mode handles the user's password.
+run_privileged() {
+    if [ "$GUI" -eq 0 ]; then
+        /usr/bin/sudo -- "$@"
     else
-        echo "Error: Mount failed" >&2
-        diskutil mount "$device" >/dev/null 2>&1
+        osascript_cmd - "$@" <<'APPLESCRIPT'
+on run argv
+    set commandText to ""
+    repeat with argument in argv
+        set commandText to commandText & quoted form of (contents of argument) & " "
+    end repeat
+    return do shell script commandText with administrator privileges
+end run
+APPLESCRIPT
     fi
-    return 1
 }
 
-# Main script execution
+select_volume() {
+    local listing="$SESSION_DIR/disks.plist" index=0 id info fs internal label selected
+    local identifiers=() labels=()
+    diskutil_cmd list -plist > "$listing" || return 1
+    while id=$(plist_value "$listing" "AllDisks:$index"); do
+        index=$((index + 1))
+        info="$SESSION_DIR/candidate.plist"
+        diskutil_cmd info -plist "$id" > "$info" 2>/dev/null || continue
+        fs=$(plist_value "$info" FilesystemType) || continue
+        internal=$(plist_value "$info" Internal) || continue
+        [ "$fs" = ntfs ] && [ "$internal" = false ] || continue
+        label=$(plist_value "$info" VolumeName) || label="NTFS"
+        identifiers[${#identifiers[@]}]="$id"
+        labels[${#labels[@]}]="$id — $label"
+    done
+    [ "${#identifiers[@]}" -gt 0 ] || { fail "No external NTFS partitions found. Connect your drive and retry."; return 1; }
+    if [ "$GUI" -eq 1 ]; then
+        selected=$(osascript_cmd - "${labels[@]}" <<'APPLESCRIPT'
+on run argv
+    set selection to choose from list argv with title "mouNTFS" with prompt "Select an external NTFS volume:" OK button name "Continue" cancel button name "Cancel"
+    if selection is false then return ""
+    return item 1 of selection
+end run
+APPLESCRIPT
+        ) || return 1
+        [ -n "$selected" ] || return 2
+        for ((index=0; index<${#labels[@]}; index++)); do
+            if [ "$selected" = "${labels[$index]}" ]; then
+                printf '%s\n' "${identifiers[$index]}"
+                return 0
+            fi
+        done
+        return 1
+    fi
+    for ((index=0; index<${#labels[@]}; index++)); do
+        printf '%s\n' "${labels[$index]}"
+    done
+}
+
+confirm_mount() {
+    local response
+    if [ "$GUI" -eq 1 ]; then
+        osascript_cmd - "$VOLUME_NAME" "$DEVICE" "$BACKEND" <<'APPLESCRIPT'
+on run argv
+    display dialog "Volume: " & item 1 of argv & "\nDevice: " & item 2 of argv & "\nBackend: " & item 3 of argv & "\n\nClose files on this drive before continuing. mouNTFS will unmount and remount it, then create and remove a private test file. Hibernated or unclean volumes will not be forced writable." with title "mouNTFS" buttons {"Cancel", "Enable Write Access"} default button "Enable Write Access" cancel button "Cancel" with icon caution
+end run
+APPLESCRIPT
+    else
+        message "Unmount and remount $DEVICE ($VOLUME_NAME) using $BACKEND? Close files on this drive first."
+        printf 'Type yes to continue: ' >&2
+        IFS= read -r response || return 1
+        [ "$response" = yes ]
+    fi
+}
+
+acquire_lock() {
+    local cache="${HOME}/Library/Caches/mountfs"
+    # Lock is per login user. Never automatically break an existing lock.
+    (umask 077; mkdir -p "$cache") || return 1
+    LOCK_DIR="$cache/$DEVICE.lock"
+    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+        LOCK_DIR=
+        fail "Another operation holds this device lock. If an earlier process crashed, inspect ~/Library/Caches/mountfs/$DEVICE.lock before removing it."
+        return 1
+    fi
+    printf '%s\n' "$$" > "$LOCK_DIR/pid"
+}
+
+same_volume() {
+    local expected_device="$1" expected_uuid="$2"
+    load_volume "$expected_device" identity || return 1
+    [ "$DEVICE" = "$expected_device" ] && [ "$VOLUME_UUID" = "$expected_uuid" ]
+}
+
+verify_write() {
+    local expected_device="$1" expected_uuid="$2" expected_point="$3" probe
+    same_volume "$expected_device" "$expected_uuid" || return 1
+    [ "$MOUNTED" = true ] && [ "$MOUNT_POINT" = "$expected_point" ] || return 1
+    [ "$READ_ONLY" = false ] || return 1
+    # mktemp creates exclusively; it cannot overwrite an existing user file.
+    probe=$(mktemp "$expected_point/.mountfs-write-test.XXXXXXXX") || return 1
+    if ! printf 'mouNTFS write verification\n' > "$probe"; then
+        rm -f -- "$probe"
+        return 1
+    fi
+    rm -- "$probe" || return 1
+}
+
+recover_volume() {
+    local expected_device="$1" expected_uuid="$2"
+    message "Restoring the volume through macOS..."
+    same_volume "$expected_device" "$expected_uuid" || {
+        fail "Drive disappeared or its identity changed. Reconnect and inspect it; no recovery command was issued."
+        return 1
+    }
+    if [ "$MOUNTED" = true ]; then
+        # Do not unmount an unrelated mount created concurrently by another program.
+        if [ "$MOUNT_POINT" = "$ORIGINAL_MOUNT_POINT" ]; then
+            message "Original mount is still present; left unchanged."
+            return 0
+        fi
+        [ -n "$NEW_MOUNT_POINT" ] && [ "$MOUNT_POINT" = "$NEW_MOUNT_POINT" ] || {
+            fail "A different mount appeared; left unchanged."; return 1;
+        }
+        run_privileged /usr/sbin/diskutil unmount "$expected_device" || return 1
+    fi
+    run_privileged /usr/sbin/diskutil mount readOnly "$expected_device" || {
+        fail "Automatic read-only recovery failed. Use Disk Utility to inspect the drive."
+        return 1
+    }
+    message "Read-only recovery completed."
+}
+
+cleanup() {
+    local status=$?
+    trap - EXIT INT TERM HUP
+    if [ "$RECOVERY_NEEDED" -eq 1 ]; then
+        recover_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" || status=1
+    fi
+    if [ -n "$NEW_MOUNT_POINT" ]; then
+        # Only remove our empty mount directory. rmdir never removes user files.
+        # An active mount is deliberately retained, even if its root is empty.
+        if same_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" && [ "$MOUNT_POINT" != "$NEW_MOUNT_POINT" ]; then
+            run_privileged /bin/rmdir "$NEW_MOUNT_POINT" >/dev/null 2>&1 || true
+        fi
+    fi
+    if [ -n "$LOCK_DIR" ]; then
+        rm -f -- "$LOCK_DIR/pid"
+        rmdir "$LOCK_DIR" 2>/dev/null || true
+    fi
+    [ -z "$SESSION_DIR" ] || rm -rf -- "$SESSION_DIR"
+    return "$status"
+}
+
+mount_volume() {
+    local options rc=0
+    TRANSACTION_DEVICE="$DEVICE"
+    TRANSACTION_UUID="$VOLUME_UUID"
+    ORIGINAL_MOUNT_POINT="$MOUNT_POINT"
+    acquire_lock || return 1
+    same_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" || return 1
+    if [ "$MOUNTED" = true ] && [ "$READ_ONLY" = false ]; then
+        message "Volume already reports writable; no remount performed."
+        return 0
+    fi
+    confirm_mount || { message "Operation cancelled; the drive was not changed."; return 2; }
+    # Acquire CLI credentials before the first disk mutation.
+    if [ "$GUI" -eq 0 ]; then /usr/bin/sudo -v || return 1; fi
+    same_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" || return 1
+    message "[1/4] Preparing mount directory..."
+    NEW_MOUNT_POINT=$(run_privileged /usr/bin/mktemp -d "/Volumes/mountfs.$TRANSACTION_DEVICE.XXXXXXXX") || return 1
+    # Only accept the controlled directory generated by the OS.
+    [[ "$NEW_MOUNT_POINT" =~ ^/Volumes/mountfs\.disk[0-9]+s[0-9]+(s[0-9]+)?\.[A-Za-z0-9]+$ ]] || {
+        NEW_MOUNT_POINT=; fail "Unexpected mount directory returned."; return 1;
+    }
+    message "[2/4] Unmounting volume..."
+    if [ "$MOUNTED" = true ]; then
+        # Arm recovery before unmount, including interrupted commands.
+        RECOVERY_NEEDED=1
+        run_privileged /usr/sbin/diskutil unmount "$TRANSACTION_DEVICE" || return 1
+    else
+        RECOVERY_NEEDED=1
+    fi
+    same_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" || return 1
+    [ "$MOUNTED" = false ] || { fail "Volume is still mounted; refusing a second mount."; return 1; }
+    options="rw,norecover,allow_other,default_permissions,uid=$USER_ID,gid=$GROUP_ID,umask=077"
+    if [ "$BACKEND" = fskit ]; then options="$options,backend=fskit"; else options="$options,local"; fi
+    message "[3/4] Mounting with ntfs-3g ($BACKEND)..."
+    run_privileged "$DRIVER" "/dev/$TRANSACTION_DEVICE" "$NEW_MOUNT_POINT" -o "$options" || rc=$?
+    if [ "$rc" -ne 0 ]; then
+        fail "Driver failed. Hibernated or unclean volumes must be shut down/repaired in Windows; this tool will not force them writable."
+        return 1
+    fi
+    message "[4/4] Verifying write access as the current user..."
+    # Retry metadata visibility, not the destructive mount operation.
+    local attempt
+    for attempt in 1 2 3; do
+        message "Verification attempt $attempt/3"
+        if verify_write "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" "$NEW_MOUNT_POINT"; then
+            RECOVERY_NEEDED=0
+            message "Write access verified: $NEW_MOUNT_POINT"
+            return 0
+        fi
+        sleep 1
+    done
+    fail "Mount returned success, but write access could not be verified."
+}
+
+diagnose() {
+    local rc=0
+    printf 'mouNTFS: %s\nmacOS: %s\nArchitecture: %s\n' "$MOUNTFS_VERSION" "$(/usr/bin/sw_vers -productVersion)" "$(uname -m)"
+    if find_driver; then printf 'ntfs-3g: %s\n' "$DRIVER"; else rc=1; fi
+    if [ -d /Library/Filesystems/macfuse.fs ]; then
+        printf 'macFUSE bundle: installed (backend readiness requires a mount test)\n'
+    else
+        printf 'macFUSE bundle: missing\n'
+        rc=1
+    fi
+    printf 'Requested backend: %s\n' "$BACKEND"
+    check_backend || rc=1
+    return "$rc"
+}
+
+usage() {
+    cat <<'HELP'
+mouNTFS — enable write access to external NTFS drives on macOS
+Usage:
+  ./mountfs.sh                         Native volume picker and system authorization
+  ./mountfs.sh --device disk4s1         Select a partition directly; still confirms
+  ./mountfs.sh --cli --device disk4s1   Terminal confirmation and sudo authentication
+  ./mountfs.sh --list                  List external NTFS partitions (no authorization)
+  ./mountfs.sh --diagnose              Check environment (no disk changes)
+  ./mountfs.sh --backend fskit          Opt into experimental FSKit backend
+  ./mountfs.sh --version | --help
+
+Default backend: kernel. Requires macFUSE and Homebrew ntfs-3g-mac.
+FSKit requires macOS 15.4+ and a compatible macFUSE/ntfs-3g combination.
+Internal disks, forced recovery and clearing Windows hibernation are unsupported.
+Exit codes: 0 success, 1 failure, 2 cancellation/invalid arguments, 130 interruption.
+HELP
+}
+
 main() {
-    # Get mount point and device path
-    local result
-    result=$(select_mount_point) || exit 1
-    MOUNT_POINT=$(echo "$result" | cut -f1)
-    DEVICE=$(echo "$result" | cut -f2)
-    
-    show_confirmation "$MOUNT_POINT" "$DEVICE" && {
-        remount_ntfs "$MOUNT_POINT" "$DEVICE"
-    } || echo "Operation cancelled"
+    local target='' action=mount rc
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --help|-h) usage; return 0 ;;
+            --version) printf '%s\n' "$MOUNTFS_VERSION"; return 0 ;;
+            --cli) GUI=0 ;;
+            --list) action=list; GUI=0 ;;
+            --diagnose) action=diagnose ;;
+            --device|--backend)
+                [ "$#" -ge 2 ] || { usage >&2; return 2; }
+                if [ "$1" = --device ]; then target="$2"; else BACKEND="$2"; fi
+                shift ;;
+            *) fail "Unknown argument: $1"; return 2 ;;
+        esac
+        shift
+    done
+    [ "$(uname -s)" = Darwin ] || { fail "mouNTFS requires macOS."; return 1; }
+    [ "$(id -u)" -ne 0 ] || { fail "Run as your normal user, not with sudo."; return 1; }
+    USER_ID=$(id -u); GROUP_ID=$(id -g)
+    umask 077
+    SESSION_DIR=$(mktemp -d "${TMPDIR:-/tmp}/mountfs.XXXXXXXX") || return 1
+    trap 'cleanup; exit $?' EXIT
+    trap 'exit 130' INT TERM HUP
+    case "$action" in
+        list) select_volume; return $? ;;
+        diagnose) diagnose; return $? ;;
+    esac
+    find_driver && check_backend || return 1
+    if [ -z "$target" ]; then
+        if [ "$GUI" -eq 0 ]; then fail "Use --list, then --cli --device diskNsM."; return 2; fi
+        target=$(select_volume); rc=$?
+        [ "$rc" -eq 0 ] || return "$rc"
+    fi
+    load_volume "$target" || { fail "Cannot load the selected external NTFS partition."; return 1; }
+    mount_volume
 }
 
-# Run main if script is executed directly
-[[ "${BASH_SOURCE[0]}" == "${0}" ]] && main 
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then main "$@"; exit $?; fi
