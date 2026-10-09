@@ -1,5 +1,6 @@
 import Foundation
 import IOKit
+import Darwin
 
 // Connection-scoped identity: no raw disk handles, content reads or privileges.
 // The physical IOMedia object is retained across filesystem unmount/remount.
@@ -46,10 +47,42 @@ func mediaIdentity(_ device: String) -> String? {
     return "iomedia:\(partitionID):\(parentID):\(size.uint64Value)"
 }
 
+// Read the kernel mount table, not diskutil's filesystem recognition metadata.
+func mountState(_ device: String) -> [String: Any]? {
+    guard device.range(of: "^disk[0-9]+s[0-9]+(s[0-9]+)?$", options: .regularExpression) != nil else { return nil }
+    var entries: UnsafeMutablePointer<statfs>?
+    let count = getmntinfo(&entries, MNT_NOWAIT)
+    guard count > 0, let entries else { return nil }
+    var result: [String: Any] = ["MountPoint": "", "WritableVolume": false, "FilesystemType": "", "MountSource": ""]
+    var found = false
+    for index in 0..<Int(count) {
+        var entry = entries[index]
+        let source = withUnsafeBytes(of: &entry.f_mntfromname) { bytes in
+            String(cString: bytes.baseAddress!.assumingMemoryBound(to: CChar.self))
+        }
+        guard source == "/dev/\(device)" || source == "/dev/r\(device)" else { continue }
+        // Ambiguous duplicate mounts must never select an arbitrary path.
+        guard !found else { return nil }
+        found = true
+        let point = withUnsafeBytes(of: &entry.f_mntonname) { bytes in
+            String(cString: bytes.baseAddress!.assumingMemoryBound(to: CChar.self))
+        }
+        let type = withUnsafeBytes(of: &entry.f_fstypename) { bytes in
+            String(cString: bytes.baseAddress!.assumingMemoryBound(to: CChar.self))
+        }
+        result = ["MountPoint": point, "WritableVolume": (entry.f_flags & UInt32(MNT_RDONLY)) == 0,
+                  "FilesystemType": type, "MountSource": source]
+    }
+    return result
+}
+
 let arguments = CommandLine.arguments
 if arguments.count == 3, arguments[1] == "--identity", let value = mediaIdentity(arguments[2]) {
     print(value)
+} else if arguments.count == 3, arguments[1] == "--mount-state", let value = mountState(arguments[2]),
+          let data = try? PropertyListSerialization.data(fromPropertyList: value, format: .xml, options: 0) {
+    FileHandle.standardOutput.write(data)
 } else {
-    FileHandle.standardError.write(Data("Cannot establish a current IOMedia partition identity.\n".utf8))
+    FileHandle.standardError.write(Data("Cannot query current partition identity or kernel mount state.\n".utf8))
     exit(1)
 }

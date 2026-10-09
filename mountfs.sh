@@ -3,7 +3,7 @@
 # See LICENSE for the full license text.
 # Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-MOUNTFS_VERSION=0.2.5
+MOUNTFS_VERSION=0.2.6
 GUI=1
 BACKEND=kernel
 DRIVER=
@@ -106,14 +106,16 @@ ntfs_boot_identity() {
 
 # Bundled native helper queries the live IOMedia registry, without opening /dev.
 # Its identity is valid only for this process/connection, never persisted.
-media_identity_command() {
+native_helper_command() {
     local script_dir helper
     script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || return 1
     for helper in "$script_dir/../MacOS/mountfs-identity" "$script_dir/.build/release/MountFSIdentity"; do
-        if [ -x "$helper" ]; then "$helper" --identity "$DEVICE"; return $?; fi
+        if [ -x "$helper" ]; then "$helper" "$@"; return $?; fi
     done
-    return 1
+    return 127
 }
+
+media_identity_command() { native_helper_command --identity "$DEVICE"; }
 
 media_identity() {
     local value
@@ -139,7 +141,14 @@ volume_identity() {
 }
 
 load_mount_state() {
-    local info="$1" writable
+    local info="$1" writable native="$SESSION_DIR/mount-state.plist" status
+    if native_helper_command --mount-state "$DEVICE" > "$native"; then
+        info="$native"
+    else
+        status=$?
+        [ "$status" = 127 ] || { fail "Cannot read the kernel mount table for $DEVICE."; return 1; }
+        # Standalone shell usage without the bundled helper retains diskutil.
+    fi
     MOUNT_POINT=$(plist_value "$info" MountPoint) || MOUNT_POINT=
     # diskutil reports mounting through MountPoint, not a Mounted boolean.
     MOUNTED=false
@@ -272,16 +281,19 @@ same_volume() {
 
 verify_write() {
     local expected_device="$1" expected_uuid="$2" expected_point="$3" probe
-    same_volume "$expected_device" "$expected_uuid" || return 1
-    [ "$MOUNTED" = true ] && [ "$MOUNT_POINT" = "$expected_point" ] || return 1
-    [ "$READ_ONLY" = false ] || return 1
+    same_volume "$expected_device" "$expected_uuid" || { message "Verification: selected device identity could not be confirmed."; return 1; }
+    message "Verification state: device=$DEVICE; mounted=$MOUNTED; mountPoint=$MOUNT_POINT; readOnly=$READ_ONLY; expectedPoint=$expected_point"
+    [ "$MOUNTED" = true ] || { message "Verification: no mount for the selected device in the mount table."; return 1; }
+    [ "$MOUNT_POINT" = "$expected_point" ] || { message "Verification: mount path does not match this transaction."; return 1; }
+    [ "$READ_ONLY" = false ] || { message "Verification: filesystem is mounted read-only."; return 1; }
     # mktemp creates exclusively; it cannot overwrite an existing user file.
-    probe=$(mktemp "$expected_point/.mountfs-write-test.XXXXXXXX") || return 1
+    probe=$(mktemp "$expected_point/.mountfs-write-test.XXXXXXXX") || { message "Verification: current user could not create the test file (uid=$USER_ID, gid=$GROUP_ID)."; return 1; }
     if ! printf 'mouNTFS write verification\n' > "$probe"; then
+        message "Verification: writing the test file failed."
         rm -f -- "$probe"
         return 1
     fi
-    rm -- "$probe" || return 1
+    rm -- "$probe" || { message "Verification: deleting the test file failed: $probe"; return 1; }
 }
 
 recover_volume() {

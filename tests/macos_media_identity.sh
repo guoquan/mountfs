@@ -8,6 +8,20 @@ if "$HELPER" --identity disk99999s1 >/dev/null 2>&1; then exit 1; fi
 listing=$(mktemp)
 trap 'rm -f "$listing"' EXIT
 /usr/sbin/diskutil list -plist > "$listing"
+# Exercise the real kernel mount table against a mounted CI filesystem.
+/usr/sbin/diskutil info -plist /System/Volumes/Data > "$listing"
+mounted_device=$(/usr/libexec/PlistBuddy -c 'Print :DeviceIdentifier' "$listing")
+expected_point=$(/usr/libexec/PlistBuddy -c 'Print :MountPoint' "$listing")
+"$HELPER" --mount-state "$mounted_device" > "$listing"
+[ "$(/usr/libexec/PlistBuddy -c 'Print :MountPoint' "$listing")" = "$expected_point" ]
+[ "$(/usr/libexec/PlistBuddy -c 'Print :MountSource' "$listing")" = "/dev/$mounted_device" ]
+[ "$(/usr/libexec/PlistBuddy -c 'Print :WritableVolume' "$listing")" = true ]
+"$HELPER" --mount-state disk99999s1 > "$listing"
+[ -z "$(/usr/libexec/PlistBuddy -c 'Print :MountPoint' "$listing")" ]
+[ "$(/usr/libexec/PlistBuddy -c 'Print :WritableVolume' "$listing")" = false ]
+if "$HELPER" --mount-state 'disk0s1;touch bad' >/dev/null 2>&1; then exit 1; fi
+printf 'PASS actual kernel mount source/path/flags and missing mount rejection\n'
+/usr/sbin/diskutil list -plist > "$listing"
 index=0
 while device=$(/usr/libexec/PlistBuddy -c "Print :AllDisks:$index" "$listing" 2>/dev/null); do
     index=$((index + 1))

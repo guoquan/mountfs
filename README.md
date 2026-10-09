@@ -1,6 +1,6 @@
 # *mouNT*FS
 
-Enable write access to external NTFS drives on your Mac. **0.2.5 is a development
+Enable write access to external NTFS drives on your Mac. **0.2.6 is a development
 update, pending actual macOS/NTFS drive validation.** It includes a native menu bar
 app and a rewritten standalone script. It is not yet a notarized public app release.
 
@@ -43,7 +43,7 @@ Requires macOS 13+ and Xcode command line tools. From the checkout:
 
 ```bash
 bash scripts/build-app.sh
-open dist/mouNTFS-0.2.5.app
+open dist/mouNTFS-0.2.6.app
 ```
 
 Successful macOS CI runs also provide a `mouNTFS-development-app` download artifact
@@ -123,7 +123,8 @@ safety reviews are welcome. Original collaborators: Claude 3.5 Sonnet, GPT-4o an
 MIT License © 2024-2026 Quan Guo.
 
 Development build archives, application bundles and Actions artifacts include
-version numbers. 0.2.5 packages mouNTFS-0.2.5.app inside a versioned archive.
-Identity failures now identify the read/validation stage; Show Details includes
-operation output and read-only diagnostics. NTFS drives without UUID metadata
-use a boot-record fingerprint; the reader uses aligned, read-only dd I/O.
+version numbers. 0.2.6 packages mouNTFS-0.2.6.app inside a versioned archive.
+Show Details includes each write-verification condition and filesystem errors.
+The bundled helper reads IOMedia connection identities and the kernel mount table,
+so FUSE write verification does not depend on diskutil recognizing the filesystem.
+Standalone shell use without the helper retains the boot-record identity fallback.

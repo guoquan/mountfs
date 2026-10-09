@@ -14,15 +14,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Shell syntax and regression simulations
         run: |
-          for script in mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh; do bash -n "$script"; done
+          for script in mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/mount_state_tests.sh; do bash -n "$script"; done
           bash tests/core_tests.sh
           bash tests/ntfs_identity_tests.sh
           bash tests/media_identity_tests.sh
+          bash tests/mount_state_tests.sh
           bash mountfs.sh --help
-          test "$(bash mountfs.sh --version)" = 0.2.5
+          test "$(bash mountfs.sh --version)" = 0.2.6
       - name: ShellCheck
         if: runner.os == 'Linux'
-        run: shellcheck mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh
+        run: shellcheck mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/mount_state_tests.sh
       - name: Check actual macOS plist schema and Swift metadata tests
         if: runner.os == 'macOS'
         run: |
