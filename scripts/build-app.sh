@@ -12,6 +12,11 @@ APP="$PROJECT_ROOT/dist/mouNTFS.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/MountFS" "$APP/Contents/MacOS/mouNTFS"
 cp mountfs.sh "$APP/Contents/Resources/mountfs.sh"
+ICON_WORK=$(mktemp -d "${TMPDIR:-/tmp}/mountfs-icons.XXXXXXXX")
+trap 'rm -rf "$ICON_WORK"' EXIT
+swiftc Sources/MountFSApp/BrandIcon.swift scripts/generate-icons.swift -o "$ICON_WORK/generate-icons"
+"$ICON_WORK/generate-icons" "$ICON_WORK/AppIcon.iconset"
+/usr/bin/iconutil -c icns "$ICON_WORK/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
 cp scripts/Info.plist "$APP/Contents/Info.plist"
 # Ad-hoc signing is for local development only. Public distribution requires
 # a Developer ID signature and Apple notarization.

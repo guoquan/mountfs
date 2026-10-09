@@ -39,3 +39,16 @@ load_volume disk4s1
 load_volume disk4s1
 [ "$MOUNTED" = true ] && [ "$READ_ONLY" = false ]
 printf 'PASS actual PlistBuddy NTFS state parsing\n'
+
+# Some NTFS disks expose only a GPT partition UUID. This must also survive a
+# filesystem driver changing the VolumeUUID visibility after remount.
+/usr/libexec/PlistBuddy -c 'Delete :VolumeUUID' "$SESSION_DIR/ntfs.plist"
+/usr/libexec/PlistBuddy -c 'Add :DiskUUID string GPT-456' "$SESSION_DIR/ntfs.plist"
+load_volume disk4s1
+[ "$VOLUME_UUID" = partition:GPT-456 ]
+same_volume disk4s1 partition:GPT-456
+/usr/libexec/PlistBuddy -c 'Set :DiskUUID REPLACEMENT' "$SESSION_DIR/ntfs.plist"
+if same_volume disk4s1 partition:GPT-456; then exit 1; fi
+/usr/libexec/PlistBuddy -c 'Delete :DiskUUID' "$SESSION_DIR/ntfs.plist"
+if load_volume disk4s1 2>/dev/null; then exit 1; fi
+printf 'PASS partition identity fallback and replacement refusal\n'

@@ -3,7 +3,7 @@
 # See LICENSE for the full license text.
 # Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-MOUNTFS_VERSION=0.2.1
+MOUNTFS_VERSION=0.2.2
 GUI=1
 BACKEND=kernel
 DRIVER=
@@ -50,12 +50,23 @@ load_volume() {
     [ "$whole" = false ] || return 1
     INTERNAL=$(plist_value "$info" Internal) || return 1
     [ "$INTERNAL" = false ] || { fail "Internal disks are not supported in this release."; return 1; }
-    VOLUME_UUID=$(plist_value "$info" VolumeUUID) || {
-        fail "Cannot establish a stable volume identity."; return 1;
+    # GPT partition UUID survives filesystem-driver changes. Never fall back to
+    # a device number, volume name or mount path: those can match a replacement.
+    VOLUME_UUID=$(volume_identity "$info") || {
+        fail "Cannot establish a stable volume identity for $DEVICE: diskutil returned neither DiskUUID nor VolumeUUID. Operation stopped to avoid targeting a different drive. Open Show Disk Scan Report and report the identity fields; do not reformat the drive."
+        return 1
     }
-    [ -n "$VOLUME_UUID" ] || return 1
     VOLUME_NAME=$(plist_value "$info" VolumeName) || VOLUME_NAME="$DEVICE"
     load_mount_state "$info"
+}
+
+volume_identity() {
+    local info="$1" value
+    value=$(plist_value "$info" DiskUUID) || value=
+    if [ -n "$value" ]; then printf 'partition:%s\n' "$value"; return 0; fi
+    value=$(plist_value "$info" VolumeUUID) || value=
+    if [ -n "$value" ]; then printf 'volume:%s\n' "$value"; return 0; fi
+    return 1
 }
 
 load_mount_state() {

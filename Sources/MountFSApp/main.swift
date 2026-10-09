@@ -65,7 +65,7 @@ struct ScanResult {
 func scanVolumes() -> ScanResult? {
     guard let list = diskDictionary(["list", "-plist"]), let disks = list["AllDisks"] as? [String]
     else { return nil }
-    var report = ["mouNTFS 0.2.1 — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
+    var report = ["mouNTFS 0.2.2 — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
     let volumes: [Volume] = disks.compactMap { device in
         guard let info = diskDictionary(["info", "-plist", device]) else {
             report.append("\(device): cannot read or parse diskutil info")
@@ -73,7 +73,9 @@ func scanVolumes() -> ScanResult? {
         }
         let disk = DiskMetadata(info)
         // Reports remain local and omit names, paths and UUIDs.
-        report.append("\(device): \(disk.exclusionReason); mounted=\(disk.isMounted); readOnly=\(disk.readOnly)")
+        let partitionID = (info["DiskUUID"] as? String).map { !$0.isEmpty } ?? false
+        let volumeID = (info["VolumeUUID"] as? String).map { !$0.isEmpty } ?? false
+        report.append("\(device): \(disk.exclusionReason); mounted=\(disk.isMounted); readOnly=\(disk.readOnly); DiskUUID=\(partitionID ? "present" : "missing"); VolumeUUID=\(volumeID ? "present" : "missing")")
         guard disk.isExternalNTFSPartition else { return nil }
         return Volume(device: device, name: disk.name, mountPoint: disk.mountPoint, readOnly: disk.readOnly)
     }
@@ -95,7 +97,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "externaldrive", accessibilityDescription: "mouNTFS")
+        statusItem.button?.image = brandImage(size: 22, template: true)
+        statusItem.button?.image?.accessibilityDescription = "mouNTFS"
         rebuildMenu()
         refresh()
         let poll = Timer(timeInterval: 5, repeats: true) { [weak self] _ in self?.refresh() }
@@ -119,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.delegate = self
         menu.autoenablesItems = false
-        menu.addItem(item("mouNTFS 0.2.1"))
+        menu.addItem(item("mouNTFS 0.2.2"))
         menu.addItem(item(status))
         menu.addItem(item("Select a drive below to enable writing"))
         menu.addItem(.separator())
@@ -219,7 +222,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.busy = false
                 self.status = result.status == 0 ? "Completed" : (result.status == 2 ? "Cancelled" : "Operation failed")
                 self.rebuildMenu()
-                if result.status != 2 { self.showOutput(title: self.status, text: result.text) }
+                if result.status != 0 && result.status != 2 {
+                    NSApp.activate(ignoringOtherApps: true)
+                    let alert = NSAlert()
+                    alert.messageText = "The operation could not be completed"
+                    alert.informativeText = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "OK")
+                    alert.addButton(withTitle: "Show Details")
+                    if alert.runModal() == .alertSecondButtonReturn {
+                        self.showOutput(title: self.status, text: result.text)
+                    }
+                } else if result.status == 0 {
+                    self.showOutput(title: self.status, text: result.text)
+                }
                 self.refresh()
             }
         }

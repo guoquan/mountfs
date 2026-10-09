@@ -113,13 +113,14 @@ passed=$((passed + 1))
     . "$ROOT/mountfs.sh"
     SESSION_DIR="$FIXTURE"
     diskutil_cmd() { :; }
-    kind=ntfs; is_internal=false; identity=ABC-123; identifier=disk4s1
+    kind=ntfs; is_internal=false; identity=ABC-123; partition_identity=; identifier=disk4s1
     plist_value() {
         case "$2" in
             DeviceIdentifier) printf '%s\n' "$identifier" ;;
             FilesystemType) printf '%s\n' "$kind" ;;
             WholeDisk) printf 'false\n' ;;
             Internal) printf '%s\n' "$is_internal" ;;
+            DiskUUID) [ -n "$partition_identity" ] && printf '%s\n' "$partition_identity" ;;
             VolumeUUID) [ -n "$identity" ] && printf '%s\n' "$identity" ;;
             VolumeName) printf "Bill's disk\n" ;;
             MountPoint) printf "/Volumes/Bill's disk\n" ;;
@@ -134,10 +135,17 @@ passed=$((passed + 1))
     if load_volume disk4s1 2>/dev/null; then exit 1; fi
     is_internal=false; identity=
     if load_volume disk4s1 2>/dev/null; then exit 1; fi
+    partition_identity=GPT-456
+    load_volume disk4s1
+    [ "$VOLUME_UUID" = partition:GPT-456 ]
+    same_volume disk4s1 partition:GPT-456
+    partition_identity=REPLACEMENT
+    if same_volume disk4s1 partition:GPT-456; then exit 1; fi
+    partition_identity=
     identity=ABC-123; identifier='disk4s1;touch bad'
     if load_volume disk4s1 2>/dev/null; then exit 1; fi
     identifier=disk4s1; kind=fusefs
-    same_volume disk4s1 ABC-123
+    same_volume disk4s1 volume:ABC-123
     if same_volume disk4s1 DIFFERENT; then exit 1; fi
 )
 printf 'PASS metadata, external-disk and identity validation\n'
