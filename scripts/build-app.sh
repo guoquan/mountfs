@@ -8,7 +8,8 @@ if [ "$(uname -s)" != Darwin ]; then
 fi
 swift build -c release
 BIN_DIR=$(swift build -c release --show-bin-path)
-APP="$PROJECT_ROOT/dist/mouNTFS.app"
+VERSION=$(bash mountfs.sh --version)
+APP="$PROJECT_ROOT/dist/mouNTFS-$VERSION.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/MountFS" "$APP/Contents/MacOS/mouNTFS"
 cp mountfs.sh "$APP/Contents/Resources/mountfs.sh"
@@ -22,3 +23,4 @@ cp scripts/Info.plist "$APP/Contents/Info.plist"
 # a Developer ID signature and Apple notarization.
 /usr/bin/codesign --force --deep --sign - "$APP"
 printf 'Built local development app: %s\n' "$APP"
+/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP" "$PROJECT_ROOT/dist/mouNTFS-$VERSION-dev-$(uname -m).zip"

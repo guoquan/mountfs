@@ -18,7 +18,7 @@ jobs:
           bash tests/core_tests.sh
           bash tests/ntfs_identity_tests.sh
           bash mountfs.sh --help
-          test "$(bash mountfs.sh --version)" = 0.2.3
+          test "$(bash mountfs.sh --version)" = 0.2.4
       - name: ShellCheck
         if: runner.os == 'Linux'
         run: shellcheck mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh
@@ -31,14 +31,15 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           bash scripts/build-app.sh
-          codesign --verify --deep --strict dist/mouNTFS.app
-          test -f dist/mouNTFS.app/Contents/Resources/mountfs.sh
-          test -s dist/mouNTFS.app/Contents/Resources/AppIcon.icns
-          ditto -c -k --sequesterRsrc --keepParent dist/mouNTFS.app dist/mouNTFS-dev.zip
+          VERSION=$(bash mountfs.sh --version)
+          codesign --verify --deep --strict "dist/mouNTFS-$VERSION.app"
+          test -f "dist/mouNTFS-$VERSION.app/Contents/Resources/mountfs.sh"
+          test -s "dist/mouNTFS-$VERSION.app/Contents/Resources/AppIcon.icns"
+          echo "MOUNTFS_VERSION=$VERSION" >> "$GITHUB_ENV"
       - name: Upload development app
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
-          name: mouNTFS-development-app
-          path: dist/mouNTFS-dev.zip
+          name: mouNTFS-${{ env.MOUNTFS_VERSION }}-development-app
+          path: dist/mouNTFS-*-dev-*.zip
           retention-days: 14

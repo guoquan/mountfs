@@ -11,7 +11,7 @@ valid="${zeroes:0:6}4e54465320202020000201${zeroes:28:52}0100000000000000${zeroe
 [ "${#valid}" -eq 1024 ]
 fixture="$valid"
 raw_read_command() {
-    [ "$*" = '-An -v -tx1 -N512 /dev/rdisk4s1' ] || return 1
+    [ "$1" = /dev/rdisk4s1 ] || return 1
     printf '%s\n' "$fixture"
 }
 run_privileged() { printf 'Unexpected authorization\n' >&2; return 99; }
@@ -40,7 +40,9 @@ DEVICE=disk4s1
 printf 'PASS invalid, truncated and unsafe device inputs rejected\n'
 raw_read_command() { return 1; }
 run_privileged() {
-    [ "$*" = '/usr/bin/od -An -v -tx1 -N512 /dev/rdisk4s1' ] || return 99
+    [ "$1" = /bin/bash ] && [ "$2" = -o ] && [ "$3" = pipefail ] &&
+        [ "$4" = -c ] && [ "$5" = "$BOOT_READ_SCRIPT" ] &&
+        [ "$6" = mountfs-read ] && [ "$7" = /dev/rdisk4s1 ] || return 99
     printf '%s\n' "$fixture"
 }
 [ "$(ntfs_boot_identity)" = "$original" ]
@@ -64,3 +66,18 @@ same_volume disk4s1 "$original"
 fixture="${valid:0:144}fedcba9876543210${valid:160}"
 if same_volume disk4s1 "$original"; then exit 1; fi
 printf 'PASS same_volume rejects UUID-less replacement device\n'
+
+# Exercise the real dd/od pipeline on a regular fixture, including pipefail.
+# No physical device is opened. Also catches macOS/GNU utility differences.
+(
+    . "$ROOT/mountfs.sh"
+    fixture_file="$SESSION_DIR/boot.bin"
+    /usr/bin/perl -e 'print pack("H*", $ARGV[0])' "$valid" > "$fixture_file"
+    aligned=$(raw_read_command "$fixture_file" 2>/dev/null | tr -d '[:space:]')
+    [ "$aligned" = "$valid" ]
+    if raw_read_command "$SESSION_DIR/missing" >/dev/null 2>&1; then exit 1; fi
+)
+fixture="$valid$(printf '%07168d' 0)"
+raw_read_command() { printf '%s\n' "$fixture" | tr 'a-f' 'A-F'; }
+[ "$(ntfs_boot_identity)" = "$original" ]
+printf 'PASS actual aligned dd/od reader, full-block normalization and pipeline failure propagation\n'

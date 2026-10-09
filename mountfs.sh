@@ -3,7 +3,7 @@
 # See LICENSE for the full license text.
 # Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-MOUNTFS_VERSION=0.2.3
+MOUNTFS_VERSION=0.2.4
 GUI=1
 BACKEND=kernel
 DRIVER=
@@ -52,30 +52,35 @@ load_volume() {
     [ "$INTERNAL" = false ] || { fail "Internal disks are not supported in this release."; return 1; }
     # GPT partition UUID survives filesystem-driver changes. Never fall back to
     # a device number, volume name or mount path: those can match a replacement.
-    VOLUME_UUID=$(volume_identity "$info" "$expected_identity") || {
-        fail "Cannot verify the identity of $DEVICE. No usable UUID or readable, valid NTFS boot record was found. If macOS requested disk access, allow mouNTFS access and retry. Keep the drive connected; inspect Disk Utility if the error persists."
-        return 1
-    }
+    VOLUME_UUID=$(volume_identity "$info" "$expected_identity") || return 1
     VOLUME_NAME=$(plist_value "$info" VolumeName) || VOLUME_NAME="$DEVICE"
     load_mount_state "$info"
 }
 
-# od only reads the first 512 bytes; it does not open the device for writing.
-# Use a fixed executable and validated raw partition path, without a shell pipe
-# inside the privileged command. Binary data is converted to text for AppleScript.
-raw_read_command() { /usr/bin/od "$@"; }
+# Raw devices can require sector-aligned reads. Read one 4096-byte block with
+# dd, convert it to text with od, then inspect only the first 512 bytes. This
+# fixed shell source has no interpolated device/name/path; the validated device
+# is passed as $1. pipefail preserves a failed dd even when od exits successfully.
+BOOT_READ_SCRIPT='/bin/dd if="$1" bs=4096 count=1 | /usr/bin/od -An -v -tx1'
+raw_read_command() { /bin/bash -o pipefail -c "$BOOT_READ_SCRIPT" mountfs-read "$1"; }
 read_ntfs_boot_hex() {
     local device="$1" raw hex
-    [[ "$device" =~ ^disk[0-9]+s[0-9]+(s[0-9]+)?$ ]] || return 1
+    [[ "$device" =~ ^disk[0-9]+s[0-9]+(s[0-9]+)?$ ]] || { fail "Invalid raw partition identifier."; return 1; }
     raw="/dev/r$device"
-    hex=$(raw_read_command -An -v -tx1 -N512 "$raw" 2>/dev/null) || {
-        message "Reading the NTFS identity requires macOS authorization (read-only, 512 bytes)."
-        hex=$(run_privileged /usr/bin/od -An -v -tx1 -N512 "$raw") || return 1
+    hex=$(raw_read_command "$raw" 2>/dev/null) || {
+        message "Reading the NTFS identity requires macOS authorization (read-only, one 4096-byte block)."
+        hex=$(run_privileged /bin/bash -o pipefail -c "$BOOT_READ_SCRIPT" mountfs-read "$raw") || {
+            fail "NTFS identity read failed for $device: macOS authorization or raw-device read failed. Show Details includes the macOS error; if access was denied, allow mouNTFS disk access and retry."
+            return 1
+        }
     }
-    hex=$(printf '%s' "$hex" | tr -d '[:space:]')
-    [ "${#hex}" -eq 1024 ] || return 1
-    case "$hex" in *[!0-9a-f]*) return 1 ;; esac
-    printf '%s\n' "$hex"
+    hex=$(printf '%s' "$hex" | tr -d '[:space:]' | tr 'A-F' 'a-f')
+    [ "${#hex}" -ge 1024 ] && [ "${#hex}" -le 8192 ] || {
+        fail "NTFS identity read returned an unexpected length (${#hex} hex characters; at least 1024 required)."
+        return 1
+    }
+    case "$hex" in *[!0-9a-f]*) fail "NTFS identity read returned invalid hex output."; return 1 ;; esac
+    printf '%s\n' "${hex:0:1024}"
 }
 
 ntfs_boot_identity() {
@@ -83,13 +88,13 @@ ntfs_boot_identity() {
     hex=$(read_ntfs_boot_hex "$DEVICE") || return 1
     # NTFS OEM signature, sector trailer, supported sector and cluster sizes.
     # Layout: linux fs/ntfs3/ntfs.h struct NTFS_BOOT (serial at offset 0x48).
-    [ "${hex:6:16}" = 4e54465320202020 ] || return 1
-    [ "${hex:1020:4}" = 55aa ] || return 1
-    case "${hex:22:4}" in 0002|0004|0008|0010) ;; *) return 1 ;; esac
-    case "${hex:26:2}" in 01|02|04|08|10|20|40|80) ;; *) return 1 ;; esac
+    [ "${hex:6:16}" = 4e54465320202020 ] || { fail "NTFS identity validation failed: missing NTFS OEM signature."; return 1; }
+    [ "${hex:1020:4}" = 55aa ] || { fail "NTFS identity validation failed: missing boot-sector trailer."; return 1; }
+    case "${hex:22:4}" in 0002|0004|0008|0010) ;; *) fail "NTFS identity validation failed: unsupported sector size."; return 1 ;; esac
+    case "${hex:26:2}" in 01|02|04|08|10|20|40|80) ;; *) fail "NTFS identity validation failed: unsupported cluster size."; return 1 ;; esac
     serial=${hex:144:16}
-    case "$serial" in 0000000000000000|ffffffffffffffff) return 1 ;; esac
-    [ "${hex:80:16}" != 0000000000000000 ] || return 1
+    case "$serial" in 0000000000000000|ffffffffffffffff) fail "NTFS identity validation failed: empty or reserved volume serial."; return 1 ;; esac
+    [ "${hex:80:16}" != 0000000000000000 ] || { fail "NTFS identity validation failed: empty volume geometry."; return 1; }
     # Fingerprint the entire boot record, including serial and geometry. Never
     # identify a drive using diskNsM, its label or its mount path alone.
     digest=$(printf '%s' "$hex" | /usr/bin/shasum -a 256) || return 1

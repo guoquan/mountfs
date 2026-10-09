@@ -60,3 +60,12 @@ Validate MBR/GPT USB drives with no UUID before/after unmount and FUSE mounting,
 macOS disk-access permissions, authorization cancellation and unplug/replacement.
 A byte-identical cloned volume shares this fingerprint, as cloned UUIDs do; this
 is accidental replacement protection, not hardware authentication.
+
+0.2.4 replaces direct raw-device od reads with one aligned 4096-byte dd read.
+The constant pipeline runs with pipefail and passes the validated device as an
+argument, not interpolated source. od converts all bytes and only the first 512
+are validated/hashed. Errors identify authorization/read failure, output length,
+OEM signature, trailer, sector/cluster sizes, serial or geometry. A real dd/od
+regular-file fixture runs on both CI platforms, including read-failure handling;
+physical-device alignment and permissions still require user testing.
+Build bundles/archives and Actions artifact names now include the version.

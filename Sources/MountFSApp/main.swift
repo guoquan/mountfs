@@ -65,7 +65,7 @@ struct ScanResult {
 func scanVolumes() -> ScanResult? {
     guard let list = diskDictionary(["list", "-plist"]), let disks = list["AllDisks"] as? [String]
     else { return nil }
-    var report = ["mouNTFS 0.2.3 — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
+    var report = ["mouNTFS 0.2.4 — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
     let volumes: [Volume] = disks.compactMap { device in
         guard let info = diskDictionary(["info", "-plist", device]) else {
             report.append("\(device): cannot read or parse diskutil info")
@@ -122,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.delegate = self
         menu.autoenablesItems = false
-        menu.addItem(item("mouNTFS 0.2.3"))
+        menu.addItem(item("mouNTFS 0.2.4"))
         menu.addItem(item(status))
         menu.addItem(item("Select a drive below to enable writing"))
         menu.addItem(.separator())

@@ -1,6 +1,6 @@
 # *mouNT*FS
 
-Enable write access to external NTFS drives on your Mac. **0.2.1 is a development
+Enable write access to external NTFS drives on your Mac. **0.2.4 is a development
 update, pending actual macOS/NTFS drive validation.** It includes a native menu bar
 app and a rewritten standalone script. It is not yet a notarized public app release.
 
@@ -43,7 +43,7 @@ Requires macOS 13+ and Xcode command line tools. From the checkout:
 
 ```bash
 bash scripts/build-app.sh
-open dist/mouNTFS.app
+open dist/mouNTFS-0.2.4.app
 ```
 
 Successful macOS CI runs also provide a `mouNTFS-development-app` download artifact
@@ -121,3 +121,9 @@ AI writes code while humans direct design and review. Contributions, testing and
 safety reviews are welcome. Original collaborators: Claude 3.5 Sonnet, GPT-4o and
 [guoquan](https://guoquan.net). The 0.2.0 development update was prepared with Codex.
 MIT License © 2024-2026 Quan Guo.
+
+Development build archives, application bundles and Actions artifacts include
+version numbers. 0.2.4 packages mouNTFS-0.2.4.app inside a versioned archive.
+Identity failures now identify the read/validation stage; Show Details includes
+operation output and read-only diagnostics. NTFS drives without UUID metadata
+use a boot-record fingerprint; the reader uses aligned, read-only dd I/O.
