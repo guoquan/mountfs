@@ -3,7 +3,7 @@
 # See LICENSE for the full license text.
 # Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-MOUNTFS_VERSION=0.2.0
+MOUNTFS_VERSION=0.2.1
 GUI=1
 BACKEND=kernel
 DRIVER=
@@ -46,7 +46,7 @@ load_volume() {
         fs=$(plist_value "$info" FilesystemType) || return 1
         [ "$fs" = ntfs ] || { fail "Selected partition is not NTFS ($fs)."; return 1; }
     fi
-    whole=$(plist_value "$info" Whole) || return 1
+    whole=$(plist_value "$info" WholeDisk) || return 1
     [ "$whole" = false ] || return 1
     INTERNAL=$(plist_value "$info" Internal) || return 1
     [ "$INTERNAL" = false ] || { fail "Internal disks are not supported in this release."; return 1; }
@@ -55,9 +55,18 @@ load_volume() {
     }
     [ -n "$VOLUME_UUID" ] || return 1
     VOLUME_NAME=$(plist_value "$info" VolumeName) || VOLUME_NAME="$DEVICE"
-    MOUNTED=$(plist_value "$info" Mounted) || return 1
+    load_mount_state "$info"
+}
+
+load_mount_state() {
+    local info="$1" writable
     MOUNT_POINT=$(plist_value "$info" MountPoint) || MOUNT_POINT=
-    READ_ONLY=$(plist_value "$info" ReadOnlyVolume) || READ_ONLY=true
+    # diskutil reports mounting through MountPoint, not a Mounted boolean.
+    MOUNTED=false
+    [ -z "$MOUNT_POINT" ] || MOUNTED=true
+    READ_ONLY=true
+    writable=$(plist_value "$info" WritableVolume) || writable=false
+    [ "$writable" != true ] || READ_ONLY=false
 }
 
 find_driver() {

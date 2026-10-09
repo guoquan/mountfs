@@ -5,5 +5,9 @@ let package = Package(
     name: "MountFS",
     platforms: [.macOS(.v13)],
     products: [.executable(name: "MountFS", targets: ["MountFSApp"])],
-    targets: [.executableTarget(name: "MountFSApp", path: "Sources/MountFSApp")]
+    targets: [
+        .target(name: "MountFSCore"),
+        .executableTarget(name: "MountFSApp", dependencies: ["MountFSCore"], path: "Sources/MountFSApp"),
+        .testTarget(name: "MountFSCoreTests", dependencies: ["MountFSCore"])
+    ]
 )

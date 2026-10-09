@@ -118,13 +118,12 @@ passed=$((passed + 1))
         case "$2" in
             DeviceIdentifier) printf '%s\n' "$identifier" ;;
             FilesystemType) printf '%s\n' "$kind" ;;
-            Whole) printf 'false\n' ;;
+            WholeDisk) printf 'false\n' ;;
             Internal) printf '%s\n' "$is_internal" ;;
             VolumeUUID) [ -n "$identity" ] && printf '%s\n' "$identity" ;;
             VolumeName) printf "Bill's disk\n" ;;
-            Mounted) printf 'true\n' ;;
             MountPoint) printf "/Volumes/Bill's disk\n" ;;
-            ReadOnlyVolume) printf 'true\n' ;;
+            WritableVolume) printf 'false\n' ;;
         esac
     }
     load_volume disk4s1

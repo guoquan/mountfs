@@ -1,8 +1,14 @@
 # *mouNT*FS
 
-Enable write access to external NTFS drives on your Mac. **0.2.0 is a development
+Enable write access to external NTFS drives on your Mac. **0.2.1 is a development
 update, pending actual macOS/NTFS drive validation.** It includes a native menu bar
 app and a rewritten standalone script. It is not yet a notarized public app release.
+
+0.2.1 fixes volume detection by using macOS's actual `WholeDisk`, `WritableVolume`
+and `MountPoint` plist fields. It adds live macOS schema checks, mount/unmount
+refresh, a detected-volume count beside the menu icon, and a local **Show Disk Scan
+Report…** command. Inserting a disk updates the menu; select the drive and choose
+**Enable Write Access…** to mount it writable. Insertion does not mount automatically.
 
 ## Features
 

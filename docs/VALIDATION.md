@@ -4,6 +4,10 @@ Status: **not yet validated on actual macOS disks**. Use disposable test drives.
 Record macOS build, architecture, macFUSE/ntfs-3g versions, backend, UUID behavior,
 authorization behavior and result for every run.
 
+0.2.1 adds CI checks against the runner's real `diskutil info -plist /` output,
+plus a modeled NTFS plist exercised with the actual PlistBuddy. This checks field
+names and state parsing, but is not a physical NTFS USB drive mount test.
+
 | Scenario | Expected result | Actual |
 |---|---|---|
 | Clean NTFS, kernel, Intel and Apple Silicon | Verified write and Finder access | Pending |

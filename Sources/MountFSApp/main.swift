@@ -1,6 +1,7 @@
 import AppKit
+import MountFSCore
 
-struct Volume {
+struct Volume: Equatable {
     let device: String
     let name: String
     let mountPoint: String?
@@ -13,18 +14,35 @@ struct CommandResult {
     var text: String { String(decoding: output, as: UTF8.self) }
 }
 
+private final class ErrorCapture {
+    private let lock = NSLock()
+    private var data = Data()
+    func set(_ value: Data) { lock.lock(); data = value; lock.unlock() }
+    func get() -> Data { lock.lock(); defer { lock.unlock() }; return data }
+}
+
 // All commands use Process arguments; volume names are never evaluated as code.
-func runCommand(_ executable: String, _ arguments: [String]) -> CommandResult {
+func runCommand(_ executable: String, _ arguments: [String], mergeErrors: Bool = true) -> CommandResult {
     let process = Process()
     let pipe = Pipe()
+    let errorPipe = Pipe()
+    let errors = ErrorCapture()
+    let group = DispatchGroup()
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = arguments
     process.standardOutput = pipe
-    process.standardError = pipe
+    process.standardError = errorPipe
     do {
         try process.run()
-        let output = pipe.fileHandleForReading.readDataToEndOfFile()
+        group.enter()
+        DispatchQueue.global(qos: .utility).async {
+            errors.set(errorPipe.fileHandleForReading.readDataToEndOfFile())
+            group.leave()
+        }
+        var output = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
+        group.wait()
+        if mergeErrors || process.terminationStatus != 0 { output.append(errors.get()) }
         return CommandResult(status: process.terminationStatus, output: output)
     } catch {
         return CommandResult(status: 1, output: Data(error.localizedDescription.utf8))
@@ -32,28 +50,38 @@ func runCommand(_ executable: String, _ arguments: [String]) -> CommandResult {
 }
 
 func diskDictionary(_ arguments: [String]) -> [String: Any]? {
-    let result = runCommand("/usr/sbin/diskutil", arguments)
+    let result = runCommand("/usr/sbin/diskutil", arguments, mergeErrors: false)
     guard result.status == 0,
           let object = try? PropertyListSerialization.propertyList(from: result.output, format: nil)
     else { return nil }
     return object as? [String: Any]
 }
 
-func scanVolumes() -> [Volume]? {
-    guard let list = diskDictionary(["list", "-plist"]), let disks = list["AllDisks"] as? [String]
-    else { return nil }
-    return disks.compactMap { device in
-        guard let info = diskDictionary(["info", "-plist", device]),
-              info["FilesystemType"] as? String == "ntfs",
-              info["Internal"] as? Bool == false,
-              info["Whole"] as? Bool == false else { return nil }
-        return Volume(device: device, name: info["VolumeName"] as? String ?? device,
-                      mountPoint: info["MountPoint"] as? String,
-                      readOnly: info["ReadOnlyVolume"] as? Bool ?? true)
-    }
+struct ScanResult {
+    let volumes: [Volume]
+    let report: String
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+func scanVolumes() -> ScanResult? {
+    guard let list = diskDictionary(["list", "-plist"]), let disks = list["AllDisks"] as? [String]
+    else { return nil }
+    var report = ["mouNTFS 0.2.1 — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
+    let volumes: [Volume] = disks.compactMap { device in
+        guard let info = diskDictionary(["info", "-plist", device]) else {
+            report.append("\(device): cannot read or parse diskutil info")
+            return nil
+        }
+        let disk = DiskMetadata(info)
+        // Reports remain local and omit names, paths and UUIDs.
+        report.append("\(device): \(disk.exclusionReason); mounted=\(disk.isMounted); readOnly=\(disk.readOnly)")
+        guard disk.isExternalNTFSPartition else { return nil }
+        return Volume(device: device, name: disk.name, mountPoint: disk.mountPoint, readOnly: disk.readOnly)
+    }
+    report.append("Included \(volumes.count) external NTFS partition(s).")
+    return ScanResult(volumes: volumes, report: report.joined(separator: "\n"))
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var volumes: [Volume] = []
     private var busy = false
@@ -62,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var backend = "kernel"
     private var timer: Timer?
     private var outputWindow: NSWindow?
+    private var scanReport = "No scan has completed yet."
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -69,7 +98,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.image = NSImage(systemSymbolName: "externaldrive", accessibilityDescription: "mouNTFS")
         rebuildMenu()
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.refresh() }
+        let poll = Timer(timeInterval: 5, repeats: true) { [weak self] _ in self?.refresh() }
+        RunLoop.main.add(poll, forMode: .common)
+        timer = poll
+        let center = NSWorkspace.shared.notificationCenter
+        center.addObserver(self, selector: #selector(disksChanged(_:)), name: NSWorkspace.didMountNotification, object: nil)
+        center.addObserver(self, selector: #selector(disksChanged(_:)), name: NSWorkspace.didUnmountNotification, object: nil)
     }
 
     private func item(_ title: String, action: Selector? = nil, object: Any? = nil) -> NSMenuItem {
@@ -81,10 +115,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func rebuildMenu() {
-        let menu = NSMenu()
+        let menu = statusItem.menu ?? NSMenu()
+        menu.removeAllItems()
+        menu.delegate = self
         menu.autoenablesItems = false
-        menu.addItem(item("mouNTFS 0.2.0"))
+        menu.addItem(item("mouNTFS 0.2.1"))
         menu.addItem(item(status))
+        menu.addItem(item("Select a drive below to enable writing"))
         menu.addItem(.separator())
         for volume in volumes {
             let entry = item("\(volume.name) · \(volume.readOnly ? "Read-only" : "Writable")")
@@ -114,6 +151,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let diagnostic = item("Check Installation…", action: #selector(diagnose))
         diagnostic.isEnabled = !busy
         menu.addItem(diagnostic)
+        menu.addItem(item("Show Disk Scan Report…", action: #selector(showScanReport)))
         let backendItem = item(backend == "kernel" ? "Use Experimental FSKit Backend" : "Use Kernel Backend",
                                action: #selector(toggleBackend))
         backendItem.isEnabled = !busy
@@ -125,6 +163,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func refreshAction() { refresh() }
+    @objc private func disksChanged(_ notification: Notification) {
+        DispatchQueue.main.async { self.refresh() }
+    }
+    func menuWillOpen(_ menu: NSMenu) { refresh() }
+    @objc private func showScanReport() { showOutput(title: "Disk Scan Report", text: scanReport) }
 
     private func refresh() {
         guard !busy, !scanning else { return }
@@ -134,14 +177,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 self.scanning = false
                 guard !self.busy else { return }
+                let oldVolumes = self.volumes
+                let oldStatus = self.status
                 if let result = result {
-                    self.volumes = result
-                    self.status = "\(result.count) external NTFS volume(s)"
+                    self.volumes = result.volumes
+                    self.scanReport = result.report
+                    self.status = "\(result.volumes.count) external NTFS volume(s)"
                 } else {
                     self.volumes = []
                     self.status = "Cannot read disk information — retry Refresh"
+                    self.scanReport = "diskutil list failed or returned an unreadable plist. Check Disk Utility and retry Refresh."
                 }
-                self.rebuildMenu()
+                self.statusItem.button?.title = self.volumes.isEmpty ? "" : " \(self.volumes.count)"
+                self.statusItem.button?.toolTip = "mouNTFS — \(self.status)"
+                if oldVolumes != self.volumes || oldStatus != self.status { self.rebuildMenu() }
             }
         }
     }
