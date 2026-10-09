@@ -70,12 +70,13 @@ printf 'PASS same_volume rejects UUID-less replacement device\n'
 # Exercise the real dd/od pipeline on a regular fixture, including pipefail.
 # No physical device is opened. Also catches macOS/GNU utility differences.
 (
+    reader_fixture_dir="$SESSION_DIR"
     . "$ROOT/mountfs.sh"
-    fixture_file="$SESSION_DIR/boot.bin"
+    fixture_file="$reader_fixture_dir/boot.bin"
     /usr/bin/perl -e 'print pack("H*", $ARGV[0])' "$valid" > "$fixture_file"
     aligned=$(raw_read_command "$fixture_file" 2>/dev/null | tr -d '[:space:]')
     [ "$aligned" = "$valid" ]
-    if raw_read_command "$SESSION_DIR/missing" >/dev/null 2>&1; then exit 1; fi
+    if raw_read_command "$reader_fixture_dir/missing" >/dev/null 2>&1; then exit 1; fi
 )
 fixture="$valid$(printf '%07168d' 0)"
 raw_read_command() { printf '%s\n' "$fixture" | tr 'a-f' 'A-F'; }
