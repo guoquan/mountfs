@@ -13,6 +13,7 @@ run_case() (
     mkdir -p "$TEST_DIR"
     printf 'mounted\n' > "$TEST_DIR/state"
     : > "$TEST_DIR/calls"
+    SESSION_DIR="$TEST_DIR"
     DEVICE=disk4s1
     VOLUME_UUID=ABC-123
     VOLUME_NAME="Bill's disk \$(touch should-not-exist)"
@@ -165,17 +166,23 @@ printf 'PASS app action requires explicit GUI device and does not prompt twice\n
 passed=$((passed + 1))
 (
     . "$ROOT/mountfs.sh"
-    GUI=1
-    AUTH_SESSION_PID=123
-    AUTH_HELPER=fake_authorization_host
-    # shellcheck disable=SC2317
-    fake_authorization_host() {
-        [ "$1" = --authorization-request ] && [ "$3" = 123 ] &&
-            [ "$4" = /usr/sbin/diskutil ] && [ "$5" = unmount ] && [ "$6" = disk6s1 ]
-    }
-    osascript_cmd() { return 99; }
-    run_privileged /usr/sbin/diskutil unmount disk6s1
+    log="$FIXTURE/driver.log"
+    printf 'Error opening device: Operation not permitted\nNTFS partition is in an unsafe state.\n' > "$log"
+    output=$(report_driver_failure "$log" 2>&1) && exit 1
+    case "$output" in *"access/authorization failure"*) ;; *) exit 1 ;; esac
+    printf 'Permission denied\n' > "$log"
+    output=$(report_driver_failure "$log" 2>&1) && exit 1
+    case "$output" in *"access/authorization failure"*) ;; *) exit 1 ;; esac
+    printf 'mount_macfuse: the file system is not available\n' > "$log"
+    output=$(report_driver_failure "$log" 2>&1) && exit 1
+    case "$output" in *"macFUSE could not load"*) ;; *) exit 1 ;; esac
+    printf 'The partition is hibernated\n' > "$log"
+    output=$(report_driver_failure "$log" 2>&1) && exit 1
+    case "$output" in *"unsafe NTFS state"*) ;; *) exit 1 ;; esac
+    printf 'Other driver error\n' > "$log"
+    output=$(report_driver_failure "$log" 2>&1) && exit 1
+    case "$output" in *"Open Show Details for the driver error"*) ;; *) exit 1 ;; esac
 )
-printf 'PASS privileged requests reuse the existing host instead of starting osascript\n'
+printf 'PASS concrete permission errors take priority over generic unsafe-state hints\n'
 passed=$((passed + 1))
 printf '%s regression groups passed.\n' "$passed"

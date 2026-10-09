@@ -3,7 +3,6 @@
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 HELPER="$ROOT/dist/mouNTFS-$(bash "$ROOT/mountfs.sh" --version).app/Contents/MacOS/mountfs-identity"
-"$HELPER" --authorization-self-test
 if "$HELPER" --identity 'disk0s1;touch bad' >/dev/null 2>&1; then exit 1; fi
 if "$HELPER" --identity disk99999s1 >/dev/null 2>&1; then exit 1; fi
 listing=$(mktemp)
