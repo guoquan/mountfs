@@ -233,6 +233,8 @@ func authorizationSelfTest() -> Int32 {
         let result = host.execute(["/usr/bin/printf", "%s", value])
         guard result.0 == 0, result.1 == value else { return 1 }
     }
+    // AppleScript must preserve the lock-retaining status from the root tool.
+    guard host.execute(["/bin/sh", "-c", "exit 125"]).0 == 125 else { return 1 }
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent("mountfs-auth-test-" + UUID().uuidString).path
     do { try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700]) }
     catch { return 1 }
