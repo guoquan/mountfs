@@ -1,0 +1,41 @@
+name: Homepage preview checks
+on:
+  push:
+    branches: [feat/gh-pages/native-app-home]
+  pull_request:
+    branches: [gh-pages]
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify generated language editions
+        run: |
+          python3 scripts/build-site.py
+          git diff --exit-code -- index.html zh-CN.html
+          node --check assets/site.js
+      - name: Prepare browser QA
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          if command -v google-chrome >/dev/null; then
+            echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            ./node_modules/.bin/playwright install --with-deps chromium
+          fi
+      - name: Check responsive pages and interactions
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 &
+          node scripts/check-site.mjs
+      - name: Upload rendered previews and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homepage-preview
+          path: qa-output/
+          if-no-files-found: ignore
+          retention-days: 14
