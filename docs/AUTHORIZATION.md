@@ -274,7 +274,10 @@ The daemon distinguishes a committed mount from an acknowledged commit: disconne
 and session expiry cannot release a committed transaction's lock until the shell
 confirms it received the success reply. The acknowledgement request releases the lock synchronously before replying;
 release errors reach shell cleanup and prevent reporting overall success. Disconnect
-does not retry a failed committed-lock release. Repeated acknowledgements on the same
+does not retry a failed committed-lock release. Closing a transaction retires its
+in-memory active marker even if the persistent lock remains; subsequent begin
+requests must still acquire the persistent lock, so administrator cleanup can
+restore availability without restarting the daemon. Repeated acknowledgements on the same
 transaction do not release another lease. Loss of the acknowledgement reply leaves
 completion uncertain without undoing the known commit. CI simulates release failure,
 idempotent acknowledgement and missing commit replies, and exercises these lease states

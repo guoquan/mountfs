@@ -186,9 +186,12 @@ private final class ClientService: NSObject, MountHelperProtocol {
         if transaction.mayReleaseLock {
             do {
                 try transaction.releaseLock()
-                lockedDevices.remove(transaction.device)
             } catch { helperLog.error("System-wide device lock retained after release failure") }
         }
+        // This set tracks live transactions, not persistent stale locks.
+        // A future begin still acquires the token-owned system lock and cannot
+        // proceed until an administrator safely resolves any retained lease.
+        lockedDevices.remove(transaction.device)
         self.transaction = nil
     }
     func disconnected() { work.async { self.close() } }
