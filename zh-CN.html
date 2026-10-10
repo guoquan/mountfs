@@ -46,7 +46,7 @@
 brew install gromgit/fuse/ntfs-3g-mac</code></pre></div><p id="copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
       <p>按 macFUSE 安装指南完成批准和重启。默认内核后端在 Apple Silicon 上可能需要调整启动安全策略。</p><div class="actions"><a class="text-link" href="https://github.com/macfuse/macfuse/wiki/Getting-Started">macFUSE 安装指南 ↗</a></div>
     </article>
-    <article class="install-card"><span class="label">02 · 下载开发构建</span><h3>将 mouNTFS 放入 Applications</h3><p>目前通过 GitHub Actions 提供开发构建，尚未作为已公证的正式版本发布。</p><ol><li>打开 Checks，选择原生应用开发分支中成功的构建。</li><li>登录 GitHub，下载 development-app artifact。解压外层 ZIP，再解压内部带版本号的下载包。</li><li>更新时先退出旧应用，再将 mouNTFS.app 放入 Applications。打开应用，连接磁盘。</li></ol>
+    <article class="install-card"><span class="label">02 · 下载开发构建</span><h3>将 mouNTFS 放入 Applications</h3><p>目前通过 GitHub Actions 提供开发构建，尚未作为已公证的正式版本发布。</p><ol><li>打开 Checks，选择含 development-app artifact 的成功构建。</li><li>登录 GitHub，下载 development-app artifact。解压外层 ZIP，再解压内部带版本号的下载包。</li><li>更新时先退出旧应用，再将 mouNTFS.app 放入 Applications。打开应用，连接磁盘。</li></ol>
       <div class="actions"><a class="button primary" href="https://github.com/guoquan/mountfs/actions/workflows/checks.yml?query=branch%3Amain">查看应用构建 ↗</a><a class="text-link" href="https://github.com/guoquan/mountfs/blob/main/docs/USAGE.zh-CN.md">完整安装说明 ↗</a></div>
     </article>
   </div><p class="notice">设备访问被拒绝？核对实际 ntfs-3g 可执行文件的完全磁盘权限。管理员授权是另一项权限，使用说明中有对应处理步骤。</p>
