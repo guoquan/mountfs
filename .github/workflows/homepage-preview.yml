@@ -17,6 +17,7 @@ jobs:
       - name: Verify generated language editions
         run: |
           CONTENT_REF=main python3 scripts/build-site.py
+          git diff --exit-code -- index.html zh-CN.html
           env -u CONTENT_REF python3 scripts/build-site.py
           git diff --exit-code -- index.html zh-CN.html
           node --check assets/site.js
