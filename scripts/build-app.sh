@@ -25,15 +25,15 @@ cleanup_build() {
     rm -rf "$ICON_WORK"
 }
 trap cleanup_build EXIT
-printf 'let allowedHelperClient = "cdhash %s"\n' "$CLIENT_HASH" > Sources/MountFSHelper/ClientIdentity.swift
+printf 'let allowedHelperClient = #"cdhash H"%s""#\n' "$CLIENT_HASH" > Sources/MountFSHelper/ClientIdentity.swift
 swift build -c release --product MountFSHelper
 cp "$BIN_DIR/MountFSHelper" "$APP/Contents/MacOS/mountfs-helper"
 /usr/bin/codesign --force --options runtime --identifier net.guoquan.mountfs.helper --sign - "$APP/Contents/MacOS/mountfs-helper"
 SERVER_HASH=$(/usr/bin/codesign -d --verbose=4 "$APP/Contents/MacOS/mountfs-helper" 2>&1 | sed -n 's/^CDHash=//p')
 [[ "$SERVER_HASH" =~ ^[0-9a-f]{40}$ ]] || { printf 'Cannot pin service signature.\n' >&2; exit 1; }
 /usr/bin/plutil -create xml1 "$APP/Contents/Resources/HelperPeers.plist"
-/usr/bin/plutil -insert server -string "cdhash $SERVER_HASH" "$APP/Contents/Resources/HelperPeers.plist"
-/usr/bin/plutil -insert client -string "cdhash $CLIENT_HASH" "$APP/Contents/Resources/HelperPeers.plist"
+/usr/bin/plutil -insert server -string "cdhash H\"$SERVER_HASH\"" "$APP/Contents/Resources/HelperPeers.plist"
+/usr/bin/plutil -insert client -string "cdhash H\"$CLIENT_HASH\"" "$APP/Contents/Resources/HelperPeers.plist"
 mkdir -p "$APP/Contents/Library/LaunchDaemons"
 cp scripts/net.guoquan.mountfs.helper.plist "$APP/Contents/Library/LaunchDaemons/"
 swiftc Sources/MountFSApp/BrandIcon.swift scripts/generate-icons.swift -o "$ICON_WORK/generate-icons"

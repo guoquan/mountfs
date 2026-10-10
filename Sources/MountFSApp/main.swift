@@ -519,7 +519,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if helperReady && UserDefaults.standard.bool(forKey: "touchIDForHelper") {
             let context = LAContext()
             var error: NSError?
-            if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            let biometricAvailable = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+            // Lockout / a closed lid must use the native password fallback,
+            // rather than silently skipping confirmation on a Touch ID Mac.
+            if biometricAvailable || context.biometryType == .touchID {
                 busy = true; status = "Waiting for Touch ID…"; rebuildMenu()
                 NSApp.activate(ignoringOtherApps: true)
                 context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "enable write access to " + (volumes.first(where: { $0.device == device })?.name ?? "the selected NTFS drive")) { success, _ in
