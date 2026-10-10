@@ -230,7 +230,7 @@ func authorizationRequest(_ args: [String], timeout: TimeInterval? = nil) -> Int
 }
 
 func authorizationSelfTest() -> Int32 {
-    guard SystemDeviceLock.selfTest() else { return 1 }
+    guard SystemDeviceLock.selfTest(), helperReplyFailureSelfTest() else { return 1 }
     var policy = SessionPolicy(device: "disk6s1", driver: "/opt/homebrew/bin/ntfs-3g", uid: "501", gid: "20")
     guard policy.allows(["/usr/bin/mktemp", "-d", "/Volumes/mountfs.disk6s1.XXXXXXXX"]),
           !policy.allows(["/bin/sh", "-c", "anything"]),

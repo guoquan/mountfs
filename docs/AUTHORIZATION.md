@@ -282,3 +282,8 @@ login user's environment for the shell core and keeping stderr out of successful
 metadata output. Scans exclude candidate NTFS partitions when authoritative kernel
 mount state is unavailable. Helper-status refreshes discard obsolete completions;
 final write-state uncertainty is displayed explicitly instead of claiming success.
+
+Outstanding mutating XPC calls return status 125 on connection invalidation or
+proxy errors without a reply, through the same first-completion-wins response box.
+Read-only status failures remain ordinary failures; late invalidation cannot
+overwrite an already received success. CI exercises these completion states.

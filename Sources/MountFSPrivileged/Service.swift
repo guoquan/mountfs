@@ -21,6 +21,9 @@ private final class ReplyBox {
     private let lock = NSLock()
     private var value: HelperReply?
     private let ready = DispatchSemaphore(value: 0)
+    private let uncertain: Bool
+    init(uncertain: Bool) { self.uncertain = uncertain }
+    func failed(_ message: String) { set(HelperReply(uncertain ? 125 : 1, message)) }
     func set(_ reply: HelperReply) {
         lock.lock()
         if value == nil { value = reply; ready.signal() }
@@ -59,21 +62,21 @@ public final class MountHelperClient {
     deinit { connection.invalidate() }
     private func broken() {
         pendingLock.lock(); disconnected = true; let box = pending; pendingLock.unlock()
-        box?.set(HelperReply(1, "Helper connection ended. No fallback mount was started."))
+        box?.failed("Helper connection ended before a reply. No fallback mount was started.")
     }
-    private func call(timeout: TimeInterval? = nil, _ body: (MountHelperProtocol, ReplyBox) -> Void) -> HelperReply {
-        let box = ReplyBox()
+    private func call(readOnly: Bool = false, timeout: TimeInterval? = nil, _ body: (MountHelperProtocol, ReplyBox) -> Void) -> HelperReply {
+        let box = ReplyBox(uncertain: !readOnly)
         pendingLock.lock()
         guard !disconnected, pending == nil else { pendingLock.unlock(); return HelperReply(1, "Helper connection is unavailable or busy.") }
         pending = box; pendingLock.unlock()
         defer { pendingLock.lock(); pending = nil; pendingLock.unlock() }
         guard let proxy = connection.remoteObjectProxyWithErrorHandler({ error in
-            box.set(HelperReply(1, "Helper connection failed: " + "\((error as NSError).domain) / \((error as NSError).code): " + error.localizedDescription))
+            box.failed("Helper connection failed before a reply: " + "\((error as NSError).domain) / \((error as NSError).code): " + error.localizedDescription)
         }) as? MountHelperProtocol else { return HelperReply(1, "Helper proxy unavailable.") }
         body(proxy, box)
         return box.wait(timeout: timeout)
     }
-    public func status() -> HelperReply { call(timeout: 5) { service, box in service.status { box.set(HelperReply(0, $0)) } } }
+    public func status() -> HelperReply { call(readOnly: true, timeout: 5) { service, box in service.status { box.set(HelperReply(0, $0)) } } }
     public func configure(driver: String, authorization: Data) -> HelperReply {
         call { service, box in service.configure(driver, authorization: authorization) { box.set(HelperReply($0, $1)) } }
     }
@@ -83,6 +86,20 @@ public final class MountHelperClient {
     public func perform(_ operation: String) -> HelperReply {
         call { service, box in service.perform(operation) { box.set(HelperReply($0, $1)) } }
     }
+}
+
+// Exercise the same completion box used by invalidation and proxy-error handlers.
+public func helperReplyFailureSelfTest() -> Bool {
+    let uncertain = ReplyBox(uncertain: true)
+    uncertain.failed("lost mutating reply")
+    guard uncertain.wait(timeout: 0.1).status == 125 else { return false }
+    let readOnly = ReplyBox(uncertain: false)
+    readOnly.failed("lost status reply")
+    guard readOnly.wait(timeout: 0.1).status == 1 else { return false }
+    let completed = ReplyBox(uncertain: true)
+    completed.set(HelperReply(0, "received"))
+    completed.failed("late invalidation")
+    return completed.wait(timeout: 0.1).status == 0
 }
 
 public enum HelperError: Error {
