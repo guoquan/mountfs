@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 import Darwin
 import MountFSPrivileged
 
@@ -151,9 +152,15 @@ private final class ClientService: NSObject, MountHelperProtocol {
     func disconnected() { work.async { self.close() } }
 }
 
+private let helperLog = Logger(subsystem: helperServiceName, category: "service")
+
 private final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection connection: NSXPCConnection) -> Bool {
-        guard connection.effectiveUserIdentifier > 0 else { return false }
+        guard connection.effectiveUserIdentifier > 0 else {
+            helperLog.error("Rejected a root client connection")
+            return false
+        }
+        helperLog.info("Accepted authenticated client connection")
         connection.setCodeSigningRequirement(allowedHelperClient)
         let service = ClientService(uid: connection.effectiveUserIdentifier, gid: connection.effectiveGroupIdentifier)
         connection.exportedInterface = NSXPCInterface(with: MountHelperProtocol.self)
@@ -188,10 +195,17 @@ if CommandLine.arguments.contains("--self-test") {
     print("PASS helper rejects writable storage, fake authorization, unknown operations and missing media before mutation")
     exit(0)
 }
-guard geteuid() == 0, allowedHelperClient.hasPrefix("cdhash ") else { exit(1) }
+guard geteuid() == 0, allowedHelperClient.hasPrefix("cdhash ") else {
+    helperLog.error("Helper startup rejected: requires root and a built client identity")
+    exit(1)
+}
 let listener = NSXPCListener(machServiceName: helperServiceName)
 private let delegate = ListenerDelegate()
 listener.delegate = delegate
 listener.setConnectionCodeSigningRequirement(allowedHelperClient)
 listener.resume()
-RunLoop.main.run()
+helperLog.info("Helper listener started")
+// A bare Foundation run loop has no guaranteed input source. It can return
+// immediately even while an XPC listener is active on its own dispatch queue.
+// Keep the launchd daemon alive independently of run-loop sources.
+dispatchMain()

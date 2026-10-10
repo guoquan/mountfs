@@ -94,3 +94,12 @@ a root daemon or access an external NTFS drive.
 - [Authorization Services](https://developer.apple.com/documentation/security/authorization-services)
 - [SMAppService](https://developer.apple.com/documentation/servicemanagement/smappservice)
 - [XPC peer signing requirements](https://developer.apple.com/documentation/foundation/nsxpcconnection/setcodesigningrequirement%28_%3A%29)
+
+0.3.2 uses `dispatchMain()` to keep the daemon alive after its listener resumes,
+instead of relying on an otherwise empty Foundation run loop. Disposable macOS
+CI bootstraps the production helper as root with an explicit Program path and
+queries its status three times through the signed production XPC client. This
+checks launchd startup, process lifetime, live peer pins and replies without
+authorizing setup or touching a disk. It does not validate SMAppService approval
+on a user's Mac. Helper startup/connection events are logged under
+`net.guoquan.mountfs.helper` in Console.

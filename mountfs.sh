@@ -3,7 +3,7 @@
 # See LICENSE for the full license text.
 # Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-MOUNTFS_VERSION=0.3.1
+MOUNTFS_VERSION=0.3.2
 GUI=1
 APP_ACTION=0
 AUTH_SESSION_PID=

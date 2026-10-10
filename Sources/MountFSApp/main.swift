@@ -5,7 +5,7 @@ import MountFSPrivileged
 import ServiceManagement
 import LocalAuthentication
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.1"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.2"
 
 func helperResult(_ option: String, device: String) -> CommandResult? {
     let candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,

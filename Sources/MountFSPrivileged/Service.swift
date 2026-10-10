@@ -28,7 +28,7 @@ private final class ReplyBox {
     }
     func wait(timeout: TimeInterval?) -> HelperReply {
         if let timeout {
-            guard ready.wait(timeout: .now() + timeout) == .success else { return HelperReply(1, "Helper status check timed out.") }
+            guard ready.wait(timeout: .now() + timeout) == .success else { return HelperReply(1, "Helper status check timed out. The daemon did not reply; this does not establish a disk-access failure.") }
         } else { ready.wait() }
         lock.lock(); defer { lock.unlock() }
         return value ?? HelperReply(1, "Helper response unavailable.")
@@ -68,7 +68,7 @@ public final class MountHelperClient {
         pending = box; pendingLock.unlock()
         defer { pendingLock.lock(); pending = nil; pendingLock.unlock() }
         guard let proxy = connection.remoteObjectProxyWithErrorHandler({ error in
-            box.set(HelperReply(1, "Helper connection failed: " + error.localizedDescription))
+            box.set(HelperReply(1, "Helper connection failed: " + "\((error as NSError).domain) / \((error as NSError).code): " + error.localizedDescription))
         }) as? MountHelperProtocol else { return HelperReply(1, "Helper proxy unavailable.") }
         body(proxy, box)
         return box.wait(timeout: timeout)
