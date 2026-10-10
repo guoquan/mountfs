@@ -26,7 +26,7 @@ run_case() (
     GUI=1
     scenario="$1"
     case "$scenario" in
-        helper-success|helper-commit-failure)
+        helper-success|helper-commit-failure|helper-commit-uncertain)
             AUTH_PRIVILEGED=1
             AUTH_HELPER=fake_commit
             AUTH_SESSION_PID=123
@@ -36,6 +36,7 @@ run_case() (
                 [ "$1" = --authorization-request ] && [ "$4" = --helper-commit ] || return 1
                 [ "$(cat "$TEST_DIR/state")" = driver-mounted ] || return 1
                 printf 'commit\n' >> "$TEST_DIR/calls"
+                [ "$scenario" != helper-commit-uncertain ] || return 125
                 [ "$scenario" != helper-commit-failure ]
             } ;;
     esac
@@ -58,6 +59,7 @@ run_case() (
     run_privileged() {
         printf '%s\n' "$*" >> "$TEST_DIR/calls"
         case "$1" in
+            --helper-commit) request_authorized "$@" ;;
             /usr/bin/mktemp) printf '/Volumes/mountfs.disk4s1.ABC123\n' ;;
             /usr/sbin/diskutil)
                 if [ "$2" = unmount ]; then
@@ -90,15 +92,16 @@ run_case() (
     }
     mount_volume >/dev/null 2>&1
     result=$?
-    if [ "$scenario" = driver-unconfirmed ]; then
+    if [ "$scenario" = driver-unconfirmed ] || [ "$scenario" = helper-commit-uncertain ]; then
         LOCK_DIR=retained-token
         SESSION_DIR=
+        AUTH_SESSION_PID=
         cleanup >/dev/null 2>&1
         [ "$?" -eq 125 ] || exit 1
     elif [ "$RECOVERY_NEEDED" -eq 1 ]; then recover_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" >/dev/null 2>&1; fi
     case "$scenario" in
         success|helper-success) [ "$result" -eq 0 ] && [ "$RECOVERY_NEEDED" -eq 0 ] && [ "$(cat "$TEST_DIR/state")" = driver-mounted ] ;;
-        driver-unconfirmed) [ "$result" -eq 125 ] && [ "$DRIVER_TERMINATION_UNCONFIRMED" -eq 1 ] && [ "$LOCK_DIR" = retained-token ] && ! grep -Eq "mount readOnly|rmdir|system-device-lock release" "$TEST_DIR/calls" ;;
+        driver-unconfirmed|helper-commit-uncertain) [ "$result" -eq 125 ] && [ "$DRIVER_TERMINATION_UNCONFIRMED" -eq 1 ] && [ "$LOCK_DIR" = retained-token ] && ! grep -Eq "mount readOnly|rmdir|system-device-lock release" "$TEST_DIR/calls" ;;
         cancel) [ "$result" -eq 2 ] && [ ! -s "$TEST_DIR/calls" ] ;;
         busy) [ "$result" -eq 1 ] && [ "$(cat "$TEST_DIR/state")" = mounted ] && ! grep -q '/opt/homebrew/bin/ntfs-3g' "$TEST_DIR/calls" ;;
         driver-failure|readonly-success|probe-failure|helper-commit-failure)
@@ -108,7 +111,7 @@ run_case() (
     esac
 )
 
-for scenario in success helper-success helper-commit-failure cancel busy driver-failure driver-unconfirmed readonly-success probe-failure unplug replaced; do
+for scenario in success helper-success helper-commit-failure helper-commit-uncertain cancel busy driver-failure driver-unconfirmed readonly-success probe-failure unplug replaced; do
     if run_case "$scenario"; then
         printf 'PASS %s\n' "$scenario"
         passed=$((passed + 1))

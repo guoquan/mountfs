@@ -27,6 +27,8 @@ private final class Transaction {
     var driverUsed = false
     var touched = false
     var committed = false
+    var commitAcknowledged = false
+    var mayReleaseLock: Bool { !terminationUnconfirmed && (!committed || commitAcknowledged) }
     var terminationUnconfirmed = false
     init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t) {
         self.device = device; self.identity = identity; originalPoint = original
@@ -42,6 +44,13 @@ private final class Transaction {
         return result
     }
     func perform(_ operation: String) -> HelperReply {
+        if operation == "acknowledge" {
+            guard committed, !terminationUnconfirmed, ProcessInfo.processInfo.systemUptime < deadline else {
+                return HelperReply(1, "No confirmed commit to acknowledge.")
+            }
+            commitAcknowledged = true
+            return HelperReply(0, "Caller acknowledged the committed mount.")
+        }
         guard ["prepare", "unmount", "mount-kernel", "mount-fskit", "recover", "cleanup", "commit"].contains(operation),
               ProcessInfo.processInfo.systemUptime < deadline, let state = current() else {
             return HelperReply(1, "Helper refused an invalid, expired or replaced-device transaction.")
@@ -91,7 +100,7 @@ private final class Transaction {
         }
     }
     // Connection loss/expiry never matches a new disk or unmounts another path.
-    // A successful user's probe commits the mount before closing the connection.
+    // Committed mounts survive disconnect; their lock requires caller acknowledgement.
     func abort() {
         guard !committed, let state = current() else { return }
         var mounted = state["MountPoint"] as? String ?? ""
@@ -156,7 +165,7 @@ private final class ClientService: NSObject, MountHelperProtocol {
     private func close() {
         guard let transaction else { return }
         transaction.abort()
-        if !transaction.terminationUnconfirmed {
+        if transaction.mayReleaseLock {
             do {
                 try SystemDeviceLock.perform("release", device: transaction.device, token: transaction.lockToken)
                 lockedDevices.remove(transaction.device)
@@ -195,6 +204,13 @@ if CommandLine.arguments.contains("--self-test") {
     for operation in ["force", "arbitrary-command", "mount-kernel", "unmount", "recover", "commit"] {
         guard transaction.perform(operation).status != 0 else { exit(1) }
     }
+    guard transaction.mayReleaseLock else { exit(1) }
+    transaction.committed = true
+    guard !transaction.mayReleaseLock else { exit(1) }
+    guard transaction.perform("acknowledge").status == 0, transaction.mayReleaseLock else { exit(1) }
+    transaction.terminationUnconfirmed = true
+    guard !transaction.mayReleaseLock else { exit(1) }
+    print("PASS committed helper lock survives missing acknowledgement and disconnect; confirmed caller completion permits release")
     let cache = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Caches/mountfs-helper-test-" + UUID().uuidString)
     guard cache.path.hasPrefix("/Users/") else { exit(1) }
     do {

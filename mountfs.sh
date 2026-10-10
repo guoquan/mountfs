@@ -10,6 +10,7 @@ EXPECTED_IDENTITY=
 AUTH_SESSION_PID=
 AUTH_HELPER=
 AUTH_PRIVILEGED=0
+HELPER_COMMIT_CONFIRMED=0
 BACKEND=kernel
 DRIVER=
 SESSION_DIR=
@@ -223,11 +224,7 @@ run_privileged() {
             /usr/bin/sudo -- "$@"
         fi
     elif [ -n "$AUTH_SESSION_PID" ]; then
-        local auth_status=0
-        "$AUTH_HELPER" --authorization-request "$SESSION_DIR" "$AUTH_SESSION_PID" "$@" || auth_status=$?
-        if [ "$auth_status" -eq 125 ]; then DRIVER_TERMINATION_UNCONFIRMED=1; fi
-        if [ "$auth_status" -ne 0 ]; then cat "$SESSION_DIR/authorization-host.log" >&2; fi
-        return "$auth_status"
+        request_authorized "$@"
     else
         osascript_cmd - "$@" <<'APPLESCRIPT'
 on run argv
@@ -239,6 +236,15 @@ on run argv
 end run
 APPLESCRIPT
     fi
+}
+
+# Preserve uncertain accepted requests for every helper transaction operation.
+request_authorized() {
+    local auth_status=0
+    "$AUTH_HELPER" --authorization-request "$SESSION_DIR" "$AUTH_SESSION_PID" "$@" || auth_status=$?
+    if [ "$auth_status" -eq 125 ]; then DRIVER_TERMINATION_UNCONFIRMED=1; fi
+    if [ "$auth_status" -ne 0 ]; then cat "$SESSION_DIR/authorization-host.log" >&2; fi
+    return "$auth_status"
 }
 
 select_volume() {
@@ -379,6 +385,10 @@ cleanup() {
             run_privileged "$lock_helper" --system-device-lock release "$TRANSACTION_DEVICE" "$LOCK_DIR" || status=1
         fi
     fi
+    if [ "$AUTH_PRIVILEGED" -eq 1 ] && [ "$HELPER_COMMIT_CONFIRMED" -eq 1 ] && [ "$DRIVER_TERMINATION_UNCONFIRMED" -eq 0 ]; then
+        # Sent only after the shell received the commit reply and verified success.
+        run_privileged --helper-finish || status=1
+    fi
     if [ -n "$AUTH_SESSION_PID" ]; then
         kill "$AUTH_SESSION_PID" 2>/dev/null || true
         wait "$AUTH_SESSION_PID" 2>/dev/null || true
@@ -463,7 +473,8 @@ mount_volume() {
         message "Verification attempt $attempt/3"
         if verify_write "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" "$NEW_MOUNT_POINT"; then
             if [ "$AUTH_PRIVILEGED" -eq 1 ]; then
-                "$AUTH_HELPER" --authorization-request "$SESSION_DIR" "$AUTH_SESSION_PID" --helper-commit || return 1
+                run_privileged --helper-commit || return "$?"
+                HELPER_COMMIT_CONFIRMED=1
             fi
             RECOVERY_NEEDED=0
             message "Write access verified: $NEW_MOUNT_POINT"

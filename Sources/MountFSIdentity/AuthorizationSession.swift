@@ -50,6 +50,7 @@ private final class AuthorizationHost {
             else if arguments.first == "/bin/rmdir" { operation = "cleanup" }
             else if arguments.first == driver { operation = arguments.last?.hasSuffix("backend=fskit") == true ? "mount-fskit" : "mount-kernel" }
             else if arguments == ["--helper-commit"] { operation = "commit" }
+            else if arguments == ["--helper-finish"] { operation = "acknowledge" }
             else { return (1, "Helper refused an unknown operation.") }
             let result = client.perform(operation)
             return (Int(result.status), result.output)
@@ -174,6 +175,9 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
         var result = (1, "Authorization session refused an invalid command or changed device.")
         if terminationUnconfirmed {
             result = (125, "Earlier operation termination is unconfirmed; device lock retained and further mutation refused.")
+        } else if privileged, policy.driverUsed, command == ["--helper-finish"] {
+            // Acknowledgement changes no disk state and survives hot unplug.
+            result = host.execute(command)
         } else if !privileged, policy.allows(command), command.dropFirst().first == "--system-device-lock" {
             // Lock release changes no disk state and must work after hot unplug.
             result = host.execute(command)

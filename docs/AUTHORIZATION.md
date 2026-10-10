@@ -59,7 +59,7 @@ The existing shell core verifies the writable kernel mount and performs an
 exclusive create/write/remove probe as the login user. Only then does it commit
 the helper transaction. An uncommitted disconnect/expiry attempts same-identity
 read-only recovery, leaves unrelated mounts alone, and removes only its empty
-controlled directory. A committed disconnect leaves the successful mount intact.
+controlled directory. A committed disconnect leaves the successful mount intact. The device lock is released only after the originating shell acknowledges receiving the commit response; a missing acknowledgement retains the root-owned lock for inspected administrator cleanup.
 
 Helper absence selects the existing AppleScript path before starting a transaction.
 Once helper execution starts, it does not silently retry the disk operation via
@@ -267,3 +267,12 @@ code injection into the originating shell or its trusted descendants.
 macOS CI exercises real direct/nested child processes, an unrelated same-UID
 requester, wrong ancestor birth time, status-125 propagation and a silent peer.
 These are IPC simulations, not disk mounts or biometric approval tests.
+
+Helper commit replies preserve status 125 through the shared shell request handler.
+Uncertain commit results suppress recovery, directory cleanup and lock release.
+The daemon distinguishes a committed mount from an acknowledged commit: disconnect
+and session expiry cannot release a committed transaction's lock until the shell
+confirms it received the success reply. An acknowledged commit may release its lock
+when closing; loss of that acknowledgement's reply does not undo the already known
+commit result. CI simulates missing commit replies and exercises these lease states
+without mounting a physical disk.
