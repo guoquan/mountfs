@@ -18,7 +18,7 @@ func authorizationIPCSelfTest() -> Bool {
     DispatchQueue.global().async {
         defer { group.leave() }
         var index = 0
-        let deadline = ProcessInfo.processInfo.systemUptime + 10
+        let deadline = ProcessInfo.processInfo.systemUptime + 45
         while index < 4 && ProcessInfo.processInfo.systemUptime < deadline {
             let fd = mountfs_auth_accept(listener)
             if fd < 0 { Thread.sleep(forTimeInterval: 0.01); continue }
@@ -27,7 +27,7 @@ func authorizationIPCSelfTest() -> Bool {
             // First connection is a detached same-UID process, not a shell descendant.
             guard index == 4 || (mountfs_auth_peer(fd, 0, parent, birth) != 0 &&
                   mountfs_auth_peer(fd, 0, parent, birth + 1) == 0),
-                  readConnection(fd, timeout: 1) != nil else { continue }
+                  readConnection(fd, timeout: 5) != nil else { continue }
             if index == 4 { Thread.sleep(forTimeInterval: 0.3); continue }
             _ = writeConnection(["status": index == 2 ? 125 : 0, "output": "Authenticated round trip"], fd)
         }
@@ -48,7 +48,7 @@ while os.getppid() != 1 and time.monotonic() < deadline:
     time.sleep(.01)
 assert os.getppid() == 1
 client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-client.settimeout(1)
+client.settimeout(5)
 client.connect(sys.argv[1] + '/s')
 packet = plistlib.dumps({'arguments': ['/usr/bin/true'], 'claimedParent': int(sys.argv[2])})
 try:
@@ -60,19 +60,24 @@ open(sys.argv[1] + '/rogue-result', 'w').write('rejected' if refused else 'accep
 client.close()
 os._exit(0)
 """#
-    let rogueResult = boundedTool("/usr/bin/python3", ["-c", rogue, directory, String(parent)], timeout: 3)
+    let rogueResult = boundedTool("/usr/bin/python3", ["-c", rogue, directory, String(parent)], timeout: 10)
     let rejected = rogueResult.0 == 0 && (try? String(contentsOfFile: directory + "/rogue-result", encoding: .utf8)) == "rejected"
     let client = CommandLine.arguments[0]
-    let reply = boundedTool(client, ["--authorization-request"] + args, timeout: 3)
+    let reply = boundedTool(client, ["--authorization-request"] + args, timeout: 10)
     let accepted = reply.0 == 125 && String(data: reply.1, encoding: .utf8)?.contains("Authenticated round trip") == true
     func quote(_ value: String) -> String { "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'" }
     // Command substitution creates a legitimate nested shell in production.
     let command = ([client, "--authorization-request"] + args).map(quote).joined(separator: " ") + "; result=$?; exit $result"
-    let nested = boundedTool("/bin/sh", ["-c", command], timeout: 3).0 == 0
+    let nested = boundedTool("/bin/sh", ["-c", command], timeout: 10).0 == 0
     let start = ProcessInfo.processInfo.systemUptime
     let timeout = authorizationRequest(args, timeout: 0.1) != 0
     group.wait()
-    guard rejected, accepted, nested, timeout, ProcessInfo.processInfo.systemUptime - start < 2 else { return false }
+    guard rejected, accepted, nested, timeout, ProcessInfo.processInfo.systemUptime - start < 2 else {
+        print("IPC regression state: rejected=\(rejected), accepted=\(accepted), nested=\(nested), timeout=\(timeout); rogueStatus=\(rogueResult.0), replyStatus=\(reply.0)")
+        print("Rogue output: " + String(decoding: rogueResult.1, as: UTF8.self))
+        print("Reply output: " + String(decoding: reply.1, as: UTF8.self))
+        return false
+    }
     print("PASS same-UID unrelated requester and wrong ancestor birth rejected; direct and nested shell children accepted")
     print("PASS authenticated socket round trip preserves 125; silent connection fails within deadline")
     return true

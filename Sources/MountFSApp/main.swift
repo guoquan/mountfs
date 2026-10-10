@@ -547,7 +547,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             if result.status != 0 && result.status != 2 && arguments.contains("--device") {
                 let scan = scanVolumes(verifiedIdentities: identities)?.report ?? "Disk scan unavailable."
-                let diagnosis = runCommand(executable, [arguments[0], "--diagnose"]).text
+                let backendIndex = arguments.firstIndex(of: "--backend")
+                let backend = backendIndex.flatMap { arguments.indices.contains($0 + 1) ? arguments[$0 + 1] : nil } ?? "kernel"
+                let diagnosis = runCommand(executable, [arguments[0], "--diagnose", "--backend", backend]).text
                 details += "\n\n--- Read-only disk scan ---\n" + scan
                 details += "\n\n--- Installation diagnosis ---\n" + diagnosis
             }

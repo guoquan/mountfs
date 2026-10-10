@@ -287,3 +287,11 @@ Outstanding mutating XPC calls return status 125 on connection invalidation or
 proxy errors without a reply, through the same first-completion-wins response box.
 Read-only status failures remain ordinary failures; late invalidation cannot
 overwrite an already received success. CI exercises these completion states.
+
+The local authorization socket is published before privileged helper initialization.
+If helper begin has an uncertain XPC reply, the first authenticated shell request
+receives status 125 through this startup handshake; the host cannot silently
+collapse it into an ordinary initialization error. Failure diagnostics preserve
+the operation's selected backend, including experimental FSKit. CI allows longer
+process-launch time for IPC fixture children; the silent-peer deadline remains
+short and independent.

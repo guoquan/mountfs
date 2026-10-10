@@ -19,7 +19,7 @@ private final class AuthorizationHost {
             let client = try MountHelperClient()
             let result = client.begin(device: device, identity: identity)
             guard result.status == 0 else {
-                FileHandle.standardError.write(Data((result.output + "\n").utf8)); throw SessionError.invalid
+                FileHandle.standardError.write(Data((result.output + "\n").utf8)); throw SessionError.operation(Int(result.status), result.output)
             }
             FileHandle.standardError.write(Data((result.output + "\n").utf8))
             privilegedClient = client; script = nil; return
@@ -80,7 +80,7 @@ private final class AuthorizationHost {
     }
 }
 
-private enum SessionError: Error { case invalid }
+private enum SessionError: Error { case invalid; case operation(Int, String) }
 
 private func privateDirectory(_ path: String) -> Bool {
     var metadata = stat()
@@ -149,8 +149,7 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
           ["/opt/homebrew/bin/ntfs-3g", "/usr/local/bin/ntfs-3g"].contains(args[2]),
           args[3] == String(geteuid()), args[4] == String(getegid()),
           let parent = Int32(args[5]), parent == getppid(),
-          externalNTFS(args[1]), let identity = mediaIdentity(args[1]), let original = mountState(args[1]),
-          let host = try? AuthorizationHost(privileged: privileged, device: args[1], driver: args[2]) else {
+          externalNTFS(args[1]), let identity = mediaIdentity(args[1]), let original = mountState(args[1]) else {
         FileHandle.standardError.write(Data("Cannot establish a safe external NTFS authorization session.\n".utf8))
         return 1
     }
@@ -160,6 +159,16 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
     let listener = mountfs_auth_listen(socketPath)
     guard birth != 0, listener >= 0 else { return 1 }
     defer { close(listener); unlink(socketPath) }
+    let host: AuthorizationHost?
+    let startupFailure: (Int, String)?
+    do {
+        host = try AuthorizationHost(privileged: privileged, device: args[1], driver: args[2])
+        startupFailure = nil
+    } catch SessionError.operation(let status, let output) {
+        host = nil; startupFailure = (status, output)
+    } catch {
+        host = nil; startupFailure = (1, "Cannot initialize authorization host: \(error)")
+    }
     var policy = SessionPolicy(device: args[1], driver: args[2], uid: args[3], gid: args[4])
     var terminationUnconfirmed = false
     let originalPoint = original["MountPoint"] as? String ?? ""
@@ -172,6 +181,11 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
               let packet = readConnection(connection, timeout: 1),
               let command = packet["arguments"] as? [String],
               mountfs_auth_peer(connection, 0, parent, birth) != 0 else { continue }
+        if let startupFailure {
+            _ = writeConnection(["status": startupFailure.0, "output": startupFailure.1], connection)
+            return Int32(startupFailure.0)
+        }
+        guard let host else { return 1 }
         var result = (1, "Authorization session refused an invalid command or changed device.")
         if terminationUnconfirmed {
             result = (125, "Earlier operation termination is unconfirmed; device lock retained and further mutation refused.")
