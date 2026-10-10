@@ -1,0 +1,56 @@
+#!/bin/bash
+# Read-only tests of real diskutil output and PlistBuddy behavior on the CI Mac.
+set -eu
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+. "$ROOT/mountfs.sh"
+    media_identity_command() { return 1; }
+SESSION_DIR=$(mktemp -d)
+ntfs_boot_identity() { return 1; }
+trap 'rm -rf "$SESSION_DIR"' EXIT
+/usr/sbin/diskutil info -plist / > "$SESSION_DIR/root.plist"
+actual="$SESSION_DIR/root.plist"
+[ "$(plist_value "$actual" WholeDisk)" = false ]
+case "$(plist_value "$actual" WritableVolume)" in true|false) ;; *) exit 1 ;; esac
+load_mount_state "$actual"
+[ "$MOUNTED" = true ]
+[ "$MOUNT_POINT" = / ]
+printf 'PASS real diskutil root metadata and mounted-state parsing\n'
+
+# NTFS fixture uses the actual plist keys, passed through the actual PlistBuddy.
+cat > "$SESSION_DIR/ntfs.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+<key>DeviceIdentifier</key><string>disk4s1</string>
+<key>FilesystemType</key><string>ntfs</string>
+<key>WholeDisk</key><false/>
+<key>Internal</key><false/>
+<key>VolumeUUID</key><string>ABC-123</string>
+<key>VolumeName</key><string>USB</string>
+<key>MountPoint</key><string>/Volumes/USB</string>
+<key>WritableVolume</key><false/>
+</dict></plist>
+PLIST
+diskutil_cmd() { cat "$SESSION_DIR/ntfs.plist"; }
+load_volume disk4s1
+[ "$MOUNTED" = true ] && [ "$READ_ONLY" = true ]
+/usr/libexec/PlistBuddy -c 'Set :MountPoint ""' "$SESSION_DIR/ntfs.plist"
+load_volume disk4s1
+[ "$MOUNTED" = false ] && [ -z "$MOUNT_POINT" ]
+/usr/libexec/PlistBuddy -c 'Set :MountPoint /Volumes/USB' "$SESSION_DIR/ntfs.plist"
+/usr/libexec/PlistBuddy -c 'Set :WritableVolume true' "$SESSION_DIR/ntfs.plist"
+load_volume disk4s1
+[ "$MOUNTED" = true ] && [ "$READ_ONLY" = false ]
+printf 'PASS actual PlistBuddy NTFS state parsing\n'
+
+# Some NTFS disks expose only a GPT partition UUID. This must also survive a
+# filesystem driver changing the VolumeUUID visibility after remount.
+/usr/libexec/PlistBuddy -c 'Delete :VolumeUUID' "$SESSION_DIR/ntfs.plist"
+/usr/libexec/PlistBuddy -c 'Add :DiskUUID string GPT-456' "$SESSION_DIR/ntfs.plist"
+load_volume disk4s1
+[ "$VOLUME_UUID" = partition:GPT-456 ]
+same_volume disk4s1 partition:GPT-456
+/usr/libexec/PlistBuddy -c 'Set :DiskUUID REPLACEMENT' "$SESSION_DIR/ntfs.plist"
+if same_volume disk4s1 partition:GPT-456; then exit 1; fi
+/usr/libexec/PlistBuddy -c 'Delete :DiskUUID' "$SESSION_DIR/ntfs.plist"
+if load_volume disk4s1 2>/dev/null; then exit 1; fi
+printf 'PASS partition identity fallback and replacement refusal\n'
