@@ -2,7 +2,7 @@ import AppKit
 import Darwin
 import MountFSCore
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.9"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.10"
 
 func helperResult(_ option: String, device: String) -> CommandResult? {
     let candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,

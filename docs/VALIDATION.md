@@ -1,6 +1,6 @@
 # Release validation
 
-Status: **not yet validated on actual macOS disks**. Use disposable test drives.
+Status: **limited user-reported physical-drive validation; full matrix pending**. Use disposable test drives.
 Record macOS build, architecture, macFUSE/ntfs-3g versions, backend, UUID behavior,
 authorization behavior and result for every run.
 
@@ -10,7 +10,7 @@ names and state parsing, but is not a physical NTFS USB drive mount test.
 
 | Scenario | Expected result | Actual |
 |---|---|---|
-| Clean NTFS, kernel, Intel and Apple Silicon | Verified write and Finder access | Pending |
+| Clean NTFS, kernel, Intel and Apple Silicon | Verified write and Finder access | User-reported write verification on one Apple Silicon NTFS drive; Intel and wider matrix pending |
 | Compatible FSKit, macOS 15.4+ | Mount, identity metadata, write and eject | Pending |
 | Unicode, quotes and spaces in volume name | Correct selection; no interpolation | Pending |
 | Missing driver / macFUSE not ready | Clear error; mount retained/restored | Pending |
@@ -83,3 +83,22 @@ Four simulated groups validate no raw reads, source pinning, replacement/parent
 changes and malformed/unavailable identity. CI queries a real IOMedia twice and
 validates invalid input/nonexistent-device rejection. Actual IOMedia stability
 across NTFS unmount/FUSE remount, TCC consent and driver raw access remain pending.
+
+## User-reported test, 2026-10-10
+
+Environment: macOS 27.0.1, arm64, kernel backend, external NTFS volume LMT,
+missing DiskUUID/VolumeUUID, Homebrew ntfs-3g at /opt/homebrew/bin/ntfs-3g.
+Exact macFUSE and ntfs-3g versions were not captured.
+
+- 0.2.6 log showed native mount visibility on the second verification attempt and
+  a successful current-user exclusive write probe.
+- 0.2.8 initially failed opening the device with EPERM, as did 0.2.9 after reverting
+  the authorization host. App Full Disk Access alone did not resolve the failure.
+- User granted ntfs-3g Full Disk Access and reported successful operation even
+  with mouNTFS Full Disk Access disabled, then confirmed 0.2.8 works on retry.
+- 0.2.10 restores that tested authorization-session implementation and combines
+  it with specific driver permission guidance and diagnostic error precedence.
+
+These are user reports, not independently reproduced lab tests. Session expiry,
+authorization cancellation, hot-plug/replacement, Intel, FSKit and broader driver
+version compatibility remain pending. Touch ID-only authorization is unimplemented.

@@ -1,6 +1,6 @@
 # *mouNT*FS
 
-Enable write access to external NTFS drives on your Mac. **0.2.9 is a development
+Enable write access to external NTFS drives on your Mac. **0.2.10 is a development
 update, pending actual macOS/NTFS drive validation.** It includes a native menu bar
 app and a rewritten standalone script. It is not yet a notarized public app release.
 
@@ -43,7 +43,7 @@ Requires macOS 13+ and Xcode command line tools. From the checkout:
 
 ```bash
 bash scripts/build-app.sh
-open dist/mouNTFS-0.2.9.app
+open dist/mouNTFS-0.2.10.app
 ```
 
 Successful macOS CI runs also provide a `mouNTFS-development-app` download artifact
@@ -128,16 +128,26 @@ safety reviews are welcome. Original collaborators: Claude 3.5 Sonnet, GPT-4o an
 MIT License © 2024-2026 Quan Guo.
 
 Development build archives, application bundles and Actions artifacts include
-version numbers. 0.2.9 packages mouNTFS-0.2.9.app inside a versioned archive.
+version numbers. 0.2.10 packages mouNTFS-0.2.10.app inside a versioned archive.
 Show Details includes each write-verification condition and filesystem errors.
 The bundled helper reads IOMedia connection identities and the kernel mount table,
 so FUSE write verification does not depend on diskutil recognizing the filesystem.
 Standalone shell use without the helper retains the boot-record identity fallback.
 
-0.2.9 restores the per-command system AppleScript authorization path used by the
-successful 0.2.6/0.2.7 drive tests. The 0.2.8 native authorization host caused a
-reported device-access regression and is removed from the build. Repeated password
-prompts remain until authorization reuse also passes physical-device privacy checks.
-Driver diagnostics distinguish device access denial, unavailable macFUSE, unsafe
-NTFS state and other failures; access denial takes priority over generic unsafe-state
-hints. Smooth UI behavior from 0.2.7 is retained.
+0.2.10 restores the bounded authorization-session implementation from 0.2.8 after
+user testing confirmed it works with Full Disk Access granted to ntfs-3g. A single
+unprivileged host owns one compiled AppleScript instance for mounting, recovery
+and directory cleanup. The command allowlist remains pinned to one connected
+partition, controlled mount directory and login uid/gid. Sessions end on cleanup,
+parent termination or a five-minute limit; no password/token is saved and no
+privileged daemon is installed. Touch ID-only administrator authorization remains
+unimplemented.
+
+Driver permissions matter separately from administrator authorization: in the
+reported macOS setup, ntfs-3g Full Disk Access was sufficient even with mouNTFS
+Full Disk Access disabled. Grant access to the actual installed ntfs-3g executable
+in System Settings → Privacy & Security → Full Disk Access. Installation diagnosis
+and access-error messages explain this requirement; the app does not claim to
+inspect or verify TCC permission status. Other macOS/driver combinations still
+require validation. Concrete device-open denial takes precedence over the driver's
+generic unsafe-state hint.
