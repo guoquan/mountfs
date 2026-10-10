@@ -108,7 +108,8 @@ def render(lang, c):
     source = f'{REPO}/tree/{REF}'
     builds = f'{REPO}/actions/workflows/checks.yml?query=branch%3A{REF.replace("/", "%2F")}'
     canonical = 'https://mountfs.sh/' + (c['file'] if zh else '')
-    benefits = ''.join(f'<div class="benefit"><span class="symbol" aria-hidden="true">{symbol}</span><div><strong>{e(title)}</strong><p>{e(body)}</p></div></div>' for symbol, (title, body) in zip(['▱', '↗', '&lt;/&gt;'], c['benefits']))
+    icons = ['<path d="M5 5h14v14H5zM8 15h.01M8 9h8"/>', '<path d="M4 7h6l2 2h8v11H4zM4 7V4h6l2 3"/>', '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/>']
+    benefits = ''.join(f'<div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{symbol}</svg></span><div><strong>{e(title)}</strong><p>{e(body)}</p></div></div>' for symbol, (title, body) in zip(icons, c['benefits']))
     steps = ''.join(f'<article class="step"><div class="number">0{i}</div><h3>{e(title)}</h3><p>{e(body)}</p></article>' for i, (title, body) in enumerate(c['steps'], 1))
     tabs = ''.join(f'<button class="tab" role="tab" id="tab-{i}" aria-controls="panel-{i}" aria-selected="{str(i == 1).lower()}" tabindex="{0 if i == 1 else -1}">{e(title)}</button>' for i, title in enumerate(c['tabs']))
     panels = ''.join(f'<div id="panel-{i}" role="tabpanel" aria-labelledby="tab-{i}" tabindex="0" {"hidden" if i != 1 else ""}><img src="assets/menu-{state}.png" alt="{e(c["alts"][i])}" width="356" height="351" loading="lazy"></div>' for i, state in enumerate(['readonly', 'writable', 'progress']))
@@ -141,10 +142,10 @@ def render(lang, c):
 </nav></header>
 <main id="main">
 <section class="hero"><div class="wrap"><div class="hero-grid">
-  <div><div class="eyebrow"><span class="dot" aria-hidden="true"></span>{e(c['eyebrow'])}</div>
+  <div class="hero-text">
     <h1>{e(c['headline'][0])}<span>{e(c['headline'][1])}</span></h1><p class="hero-copy">{e(c['hero'])}</p>
     <div class="actions"><a class="button primary" href="#get-started">{e(c['cta'])}<span aria-hidden="true">↓</span></a><a class="button" href="{source}">{e(c['source'])}<span aria-hidden="true">↗</span></a></div>
-    <p class="fine">{e(c['fine'])}</p>
+    <p class="fine">{e(c['fine'])}</p><p class="hero-signoff">{e(c['eyebrow'])}</p>
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="{e(c['heroalt'])}" width="356" height="351" fetchpriority="high"><figcaption>{e(c['caption'])}</figcaption></figure>
 </div><div class="benefits">{benefits}</div></div></section>
@@ -168,7 +169,7 @@ brew install gromgit/fuse/ntfs-3g-mac</code></pre></div><p id="copy-feedback" cl
   </div><p class="notice">{e(c['permissionnote'])}</p>
 </section>
 <section class="section wrap faq"><div class="section-head"><h2>{e(c['faqtitle'])}</h2><p>{e(c['faqintro'])}</p><div class="actions"><a class="text-link" href="{guide}">{e(c['faqguide'])}</a></div></div><div>{questions}</div></section>
-<div class="wrap"><section class="story" id="story"><div><div class="eyebrow"><span class="dot" aria-hidden="true"></span>{e(c['storylabel'])}</div><h2>{c['storytitle']}</h2></div><div><p>{e(c['story'])}</p><div class="actions"><a class="text-link" href="{REPO}/blob/{REF}/CONTRIBUTING.md">{e(c['contribute'])}</a><a class="text-link" href="https://github.com/sponsors/guoquan">{e(c['sponsor'])}</a></div></div></section></div>
+<div class="wrap"><section class="story" id="story"><div><h2>{c['storytitle']}</h2><p class="story-label">{e(c['storylabel'])}</p></div><div><p>{e(c['story'])}</p><div class="actions"><a class="text-link" href="{REPO}/blob/{REF}/CONTRIBUTING.md">{e(c['contribute'])}</a><a class="text-link" href="https://github.com/sponsors/guoquan">{e(c['sponsor'])}</a></div></div></section></div>
 </main>
 <footer class="footer"><div class="wrap footer-row"><div>{e(c['footer'])}<br>© 2024–2026 <a href="https://guoquan.net">{'郭泉' if zh else 'Quan Guo'}</a></div><div class="footer-links"><a href="{REPO}">GitHub</a><a href="{guide}">{e(c['docs'])}</a><a href="{REPO}/issues">{e(c['issues'])}</a><a href="{REPO}/blob/{REF}/ROADMAP.md">{e(c['roadmap'])}</a></div></div></footer>
 </body></html>
