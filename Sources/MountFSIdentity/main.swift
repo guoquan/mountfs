@@ -3,7 +3,14 @@ import Darwin
 import MountFSPrivileged
 
 let arguments = CommandLine.arguments
-if arguments.count == 2, arguments[1] == "--helper-status" {
+if arguments.count == 5, arguments[1] == "--system-device-lock", ["acquire", "release"].contains(arguments[2]) {
+    do {
+        try SystemDeviceLock.perform(arguments[2], device: arguments[3], token: arguments[4])
+        exit(0)
+    } catch {
+        FileHandle.standardError.write(Data(("System-wide device lock failed: \(error)\n").utf8)); exit(1)
+    }
+} else if arguments.count == 2, arguments[1] == "--helper-status" {
     do {
         let result = try MountHelperClient().status()
         print(result.output); exit(result.status)

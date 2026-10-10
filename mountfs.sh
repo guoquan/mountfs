@@ -293,16 +293,13 @@ APPLESCRIPT
 }
 
 acquire_lock() {
-    local cache="${HOME}/Library/Caches/mountfs"
-    # Lock is per login user. Never automatically break an existing lock.
-    (umask 077; mkdir -p "$cache") || return 1
-    LOCK_DIR="$cache/$DEVICE.lock"
-    if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-        LOCK_DIR=
-        fail "Another operation holds this device lock. If an earlier process crashed, inspect ~/Library/Caches/mountfs/$DEVICE.lock before removing it."
-        return 1
-    fi
-    printf '%s\n' "$$" > "$LOCK_DIR/pid"
+    # The root helper already acquired this same system-wide lock in begin().
+    [ "$AUTH_PRIVILEGED" -eq 0 ] || return 0
+    local helper token
+    helper=$(native_helper_path) || { fail "System-wide device locking requires the bundled identity tool. Build/run mouNTFS.app before enabling write access."; return 1; }
+    token=${SESSION_DIR##*/}
+    run_privileged "$helper" --system-device-lock acquire "$DEVICE" "$token" || return 1
+    LOCK_DIR="$token"
 }
 
 same_volume() {
@@ -367,8 +364,10 @@ cleanup() {
         fi
     fi
     if [ -n "$LOCK_DIR" ]; then
-        rm -f -- "$LOCK_DIR/pid"
-        rmdir "$LOCK_DIR" 2>/dev/null || true
+        local lock_helper
+        if lock_helper=$(native_helper_path); then
+            run_privileged "$lock_helper" --system-device-lock release "$TRANSACTION_DEVICE" "$LOCK_DIR" || status=1
+        fi
     fi
     if [ -n "$AUTH_SESSION_PID" ]; then
         kill "$AUTH_SESSION_PID" 2>/dev/null || true
@@ -401,7 +400,6 @@ mount_volume() {
     TRANSACTION_DEVICE="$DEVICE"
     TRANSACTION_UUID="$VOLUME_UUID"
     ORIGINAL_MOUNT_POINT="$MOUNT_POINT"
-    acquire_lock || return 1
     same_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" || return 1
     if [ "$MOUNTED" = true ] && [ "$READ_ONLY" = false ]; then
         message "Volume already reports writable; no remount performed."
@@ -411,6 +409,7 @@ mount_volume() {
     start_authorization_session || return 1
     # Acquire CLI credentials before the first disk mutation.
     if [ "$GUI" -eq 0 ]; then /usr/bin/sudo -v || return 1; fi
+    acquire_lock || return 1
     same_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" || return 1
     message "[1/4] Preparing mount directory..."
     NEW_MOUNT_POINT=$(run_privileged /usr/bin/mktemp -d "/Volumes/mountfs.$TRANSACTION_DEVICE.XXXXXXXX") || {

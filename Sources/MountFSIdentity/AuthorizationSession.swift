@@ -103,6 +103,9 @@ private struct SessionPolicy {
         value.range(of: "^/Volumes/mountfs\\.\(device.replacingOccurrences(of: ".", with: "\\."))\\.[A-Za-z0-9]+$", options: .regularExpression) != nil
     }
     func allows(_ args: [String]) -> Bool {
+        if args.count == 5, args[0] == CommandLine.arguments[0], args[1] == "--system-device-lock",
+           ["acquire", "release"].contains(args[2]), args[3] == device,
+           args[4].range(of: "^mountfs\\.[A-Za-z0-9]{8}$", options: .regularExpression) != nil { return true }
         if args == ["/usr/bin/mktemp", "-d", "/Volumes/mountfs.\(device).XXXXXXXX"] { return point == nil }
         if args == ["/usr/sbin/diskutil", "unmount", device] { return true }
         if args == ["/usr/sbin/diskutil", "mount", "readOnly", device] { return true }
@@ -154,7 +157,7 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
         try? FileManager.default.removeItem(atPath: request)
         guard let id = packet["id"] as? String, let command = packet["arguments"] as? [String] else { return 1 }
         var result = (1, "Authorization session refused an invalid command or changed device.")
-        if (policy.allows(command) || (privileged && policy.driverUsed && command == ["--helper-commit"])), mediaIdentity(policy.device) == identity, let state = mountState(policy.device) {
+        if (policy.allows(command) || (privileged && policy.driverUsed && command == ["--helper-commit"])), (command.dropFirst().first == "--system-device-lock" || mediaIdentity(policy.device) == identity), let state = mountState(policy.device) {
             let mountedPoint = state["MountPoint"] as? String ?? ""
             let unmount = command.first == "/usr/sbin/diskutil" && command.dropFirst().first == "unmount"
             let mounting = command.first == policy.driver || command == ["/usr/sbin/diskutil", "mount", "readOnly", policy.device]
@@ -201,6 +204,7 @@ func authorizationRequest(_ args: [String], timeout: TimeInterval? = nil) -> Int
 }
 
 func authorizationSelfTest() -> Int32 {
+    guard SystemDeviceLock.selfTest() else { return 1 }
     var policy = SessionPolicy(device: "disk6s1", driver: "/opt/homebrew/bin/ntfs-3g", uid: "501", gid: "20")
     guard policy.allows(["/usr/bin/mktemp", "-d", "/Volumes/mountfs.disk6s1.XXXXXXXX"]),
           !policy.allows(["/bin/sh", "-c", "anything"]),

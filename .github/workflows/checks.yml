@@ -35,7 +35,10 @@ jobs:
       - name: Build local menu bar app
         if: runner.os == 'macOS'
         run: |
+          mkdir -p dist/mouNTFS.app/Contents/Resources
+          touch dist/mouNTFS.app/Contents/Resources/stale-build-marker
           bash scripts/build-app.sh
+          test ! -e dist/mouNTFS.app/Contents/Resources/stale-build-marker
           bash tests/macos_media_identity.sh
           bash tests/macos_helper_service.sh
           VERSION=$(bash mountfs.sh --version)

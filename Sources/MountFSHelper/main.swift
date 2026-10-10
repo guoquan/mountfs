@@ -22,14 +22,16 @@ private final class Transaction {
     let uid: uid_t
     let gid: gid_t
     let deadline = ProcessInfo.processInfo.systemUptime + 300
+    let lockToken = UUID().uuidString
     var point: String?
     var driverUsed = false
     var touched = false
     var committed = false
     var terminationUnconfirmed = false
-    init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t) {
+    init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t) throws {
         self.device = device; self.identity = identity; originalPoint = original
         driver = configuration.executable; uid = configuration.uid; self.gid = gid
+        try SystemDeviceLock.perform("acquire", device: device, token: lockToken)
     }
     func current() -> [String: Any]? {
         guard !terminationUnconfirmed, mediaIdentity(device) == identity else { return nil }
@@ -133,7 +135,9 @@ private final class ClientService: NSObject, MountHelperProtocol {
                   externalNTFS(device), mediaIdentity(device) == identity, let state = mountState(device) else {
                 reply(1, "Cannot begin an authorized external NTFS helper transaction."); return
             }
-            let transaction = Transaction(device: device, identity: identity, original: state["MountPoint"] as? String ?? "", configuration: configuration, gid: self.gid)
+            let transaction: Transaction
+            do { transaction = try Transaction(device: device, identity: identity, original: state["MountPoint"] as? String ?? "", configuration: configuration, gid: self.gid) }
+            catch { reply(1, "System-wide device lock failed: \(error)"); return }
             self.transaction = transaction
             lockedDevices.insert(device)
             work.asyncAfter(deadline: .now() + 300) { [weak self, weak transaction] in
@@ -153,7 +157,12 @@ private final class ClientService: NSObject, MountHelperProtocol {
     private func close() {
         guard let transaction else { return }
         transaction.abort()
-        if !transaction.terminationUnconfirmed { lockedDevices.remove(transaction.device) }
+        if !transaction.terminationUnconfirmed {
+            do {
+                try SystemDeviceLock.perform("release", device: transaction.device, token: transaction.lockToken)
+                lockedDevices.remove(transaction.device)
+            } catch { helperLog.error("System-wide device lock retained after release failure") }
+        }
         self.transaction = nil
     }
     func disconnected() { work.async { self.close() } }
