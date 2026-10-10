@@ -16,7 +16,8 @@ jobs:
           node-version: 22
       - name: Verify generated language editions
         run: |
-          python3 scripts/build-site.py
+          CONTENT_REF=main python3 scripts/build-site.py
+          env -u CONTENT_REF python3 scripts/build-site.py
           git diff --exit-code -- index.html zh-CN.html
           node --check assets/site.js
       - name: Prepare browser QA
