@@ -106,6 +106,7 @@ on a user's Mac. Helper startup/connection events are logged under
 
 The packaged launch daemon also pins the final signed helper using a binary
 CDHash `SpawnConstraint` (enforced on macOS 14+). The disposable macOS CI test
-uses this packaged constraint for root launchd status checks, then deliberately
-changes the hash and requires a code-signing launch rejection. This remains
-separate from real SMAppService registration and system-generated BTM constraints.
+retains the packaged constraint for root launchd status checks and verifies its
+hash using positive/negative code-signing requirements. Direct bootstrap did not
+enforce the plist constraint in our test. Actual SMAppService enforcement,
+registration and system-generated BTM constraints remain untested by CI.

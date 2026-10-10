@@ -60,29 +60,21 @@ for attempt in 1 2 3; do
 done
 printf 'PASS launchd root helper stays running and answers pinned XPC status requests\n'
 
-# A wrong exact hash must be rejected by launchd, not merely by our XPC client.
-sudo /bin/launchctl bootout "system/$SERVICE"
-LOADED=0
-python3 - "$WORK/service.plist" "$WORK/rejected.plist" <<'PYREJECT'
-import plistlib, sys
+# Direct bootstrap does not exercise SMAppService's SpawnConstraint handling.
+# Check that the serialized pin selects precisely this signed helper, including
+# a negative requirement check; do not call this a system launch rejection test.
+python3 - "$WORK/service.plist" "$HELPER" <<'PYPIN'
+import plistlib, sys, subprocess
 with open(sys.argv[1], 'rb') as source:
-    service = plistlib.load(source)
-value = bytearray(service['SpawnConstraint']['cdhash'])
-value[0] ^= 0xff
-service['SpawnConstraint']['cdhash'] = bytes(value)
-with open(sys.argv[2], 'wb') as output:
-    plistlib.dump(service, output)
-PYREJECT
-sudo /usr/sbin/chown root:wheel "$WORK/rejected.plist"
-sudo /bin/chmod 644 "$WORK/rejected.plist"
-sudo /bin/launchctl bootstrap system "$WORK/rejected.plist"
-LOADED=1
-if "$CLIENT" --helper-status > "$WORK/rejected-status" 2>&1; then
-    printf 'FAIL launchd accepted a mismatched helper hash\n' >&2
-    exit 1
-fi
-# shellcheck disable=SC2024
-sudo /bin/launchctl print "system/$SERVICE" > "$WORK/rejected-state"
-cat "$WORK/rejected-state"
-grep -q 'OS_REASON_CODESIGNING' "$WORK/rejected-state"
-printf 'PASS launchd rejects a mismatched helper spawn constraint\n'
+    constraint = plistlib.load(source)['SpawnConstraint']
+value = constraint['cdhash']
+identifier = constraint['signing-identifier']
+requirement = f'identifier "{identifier}" and cdhash H"{value.hex()}"'
+subprocess.run(['/usr/bin/codesign', '--verify', '--strict', '-R', '='+requirement, sys.argv[2]], check=True)
+wrong = bytearray(value)
+wrong[0] ^= 0xff
+result = subprocess.run(['/usr/bin/codesign', '--verify', '--strict', '-R',
+                         '=cdhash H"'+wrong.hex()+'"', sys.argv[2]], capture_output=True)
+assert result.returncode != 0, 'mismatched code hash unexpectedly accepted'
+PYPIN
+printf 'PASS packaged hash matches signed helper and wrong hash fails signature requirement\n'

@@ -245,10 +245,11 @@ the value is binary data. Ordinary mounting remains available without the helper
 termination, even when local signature verification succeeds. The build now
 writes an explicit `SpawnConstraint` containing the final helper's signing
 identifier and binary CDHash before sealing the app. macOS 14 and later enforce
-this constraint; macOS 13 ignores it. CI launches the packaged constraint under
-root launchd and checks both a working XPC connection and rejection of a changed
-hash. This does not test SMAppService/BTM registration or prove recovery on an
-installed Mac. Other system launch constraints still apply; ad-hoc signing
+this constraint; macOS 13 ignores it. CI checks that the packaged hash matches the signed helper and a changed hash
+fails a code-signing requirement. It also checks a working root launchd XPC
+connection. Direct `launchctl bootstrap` did not enforce the plist constraint in
+our test; these checks do not test SMAppService/BTM enforcement or prove recovery
+on an installed Mac. Other system launch constraints still apply; ad-hoc signing
 remains a development limitation. After replacing the app, use the targeted
 registration repair above before enabling the helper again.
 
