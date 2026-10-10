@@ -95,4 +95,5 @@ independently in Disk Utility/mount queries, not just from completion text.
   deliberately; this development branch has not updated its download endpoint.
 - Review localization, first-run guidance and native visual appearance.
 
-See [authorization details](AUTHORIZATION.md) and [中文使用说明](USAGE.zh-CN.md).
+See [authorization details](AUTHORIZATION.md), the [English usage guide](USAGE.en.md)
+and the [Chinese usage guide](USAGE.zh-CN.md).

@@ -1,5 +1,7 @@
 # mouNTFS 使用与故障说明
 
+[English](USAGE.en.md) · **简体中文** · [项目介绍](../README.zh-CN.md)
+
 mouNTFS 是 macOS 菜单栏工具，调用 macFUSE 和 ntfs-3g，让外置 NTFS 分区获得读写访问。它不会在插盘后自动改成可写，也不会格式化磁盘。
 
 当前版本为 **0.3.4 开发版**，尚未公证发布。按下方步骤启用写入即可，无需配置 Settings 中的实验授权选项。后续授权体验与功能安排见 [ROADMAP](../ROADMAP.md)。
@@ -22,7 +24,11 @@ brew install gromgit/fuse/ntfs-3g-mac
 - 更新前退出旧应用，将新应用覆盖到 `/Applications/mouNTFS.app`，再从那里打开。
 - 菜单顶部显示应用版本。当前下载包使用 ad-hoc 签名，不能当作已公证的正式发行版。
 
-## 普通挂载流程
+## 启用写入与弹出
+
+![原生菜单显示只读示例磁盘](images/menu-readonly.png)
+
+*实际界面截图，使用示例磁盘数据；生成时未执行磁盘操作。*
 
 1. 插入外置 NTFS 磁盘，点菜单栏的 mouNTFS 图标。
 2. 核对分区名称和状态，点 **Enable Write Access…**。

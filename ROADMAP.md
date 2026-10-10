@@ -1,50 +1,64 @@
-# mouNTFS ROADMAP
+# mouNTFS roadmap
 
-以当前的菜单栏挂载流程为基础，后续优先减少授权干扰，再完善首次使用和发布体验。以下按阶段安排，不绑定发布日期或版本号；每个阶段完成验证后再进入面向用户的功能说明。
+Build on the current menu bar mounting flow: first consolidate everyday usability,
+then reduce authorization friction, and finally prepare a polished public release.
+Stages are ordered without promised dates or version numbers. Features enter the
+user guide after their acceptance criteria have been met.
 
-## 阶段一：巩固日常使用体验
+## Stage 1 — Everyday usability
 
-- 持续完善磁盘状态刷新、操作进度和成功反馈。
-- 优化菜单层级、图标、明暗模式及错误提示，让操作路径更清晰。
-- 将使用说明保持为安装、挂载、弹出与常见问题；开发诊断单独维护。
-- 补充常见磁盘、驱动和系统组合的实测，检查失败恢复与安全弹出。
+- Improve drive-state refresh, progress and completion feedback.
+- Refine menu hierarchy, icons, light/dark appearance and actionable errors.
+- Keep user documentation focused on setup, mounting, eject and common problems;
+  maintain English and Simplified Chinese versions together.
+- Test common drive/OS/driver combinations, failure recovery and safe eject.
 
-完成标准：已有流程在目标环境中稳定可用；用户能看清当前状态、操作结果及失败后的下一步。
+Acceptance: the existing flow works consistently in the target environments and
+users can understand the current state, result and next step after failure.
 
-## 阶段二：建立可靠的权限服务
+## Stage 2 — Reliable permission service
 
-目标：通过一次设置完成后台权限服务配置，减少挂载过程中重复输入管理员密码。
+Goal: one service setup followed by fewer administrator password requests during mounting.
 
-- 使用一致的 Apple 签发签名身份，验证应用和权限 helper 的注册、批准与启动。
-- 验证应用覆盖更新、服务重新连接、禁用和驱动更新流程。
-- 验证受保护驱动副本的权限、依赖及实际挂载行为。
-- 保留普通挂载入口，明确服务未就绪时的处理方式。
+- Use a consistent Apple-issued signing identity and validate app/helper
+  registration, background approval and startup.
+- Validate replacement updates, reconnection, disabling and driver refresh.
+- Test the protected driver's permissions, dependencies and actual mounting.
+- Retain ordinary mounting and clearly handle an unavailable service.
 
-完成标准：在真实 Mac 上完成首次设置、重启、覆盖更新和挂载验证，再将其作为推荐授权方式。
+Acceptance: first setup, restart, replacement update and mounting pass on physical
+Macs before recommending the helper as the normal authorization flow.
 
-当前定位：已有实验实现，尚未达到上述标准。后续在具备签名与实测条件时继续推进。具体诊断保留在 [验证记录](docs/VALIDATION.md) 和 [授权架构](docs/AUTHORIZATION.md)，不作为日常使用步骤。
+Status: an experimental implementation exists; acceptance criteria are not met.
+Continue when suitable signing and physical testing are available. Specific
+failures belong in the [validation record](docs/VALIDATION.md) and
+[authorization architecture](docs/AUTHORIZATION.md), not everyday usage instructions.
 
-## 阶段三：Touch ID 与授权交互
+## Stage 3 — Touch ID and authorization interaction
 
-依赖阶段二的权限服务可稳定运行。
+Depends on a reliable permission service from Stage 2.
 
-- 在支持的 Mac 上提供原生 Touch ID 操作确认。
-- 验证密码回退、用户取消以及无生物识别设备的体验。
-- 清楚区分服务安装的管理员批准与每次操作的用户确认。
-- 减少重复确认，保留可理解的设置选项。
+- Provide native Touch ID confirmation on supported Macs.
+- Validate password fallback, cancellation and devices without biometry.
+- Distinguish administrator approval for setup from user confirmation of an operation.
+- Reduce repeated confirmation while retaining understandable preferences.
 
-完成标准：完成真实设备上的成功、取消和回退测试；不把生物识别确认描述为替代所有系统权限。
+Acceptance: successful, cancelled and fallback flows pass on real devices.
+Biometric confirmation must not be described as replacing every system permission.
 
-## 阶段四：首次使用与发布准备
+## Stage 4 — First-run guidance and public release
 
-- 提供驱动、系统批准和磁盘权限的首次使用指引。
-- 完善中文界面、菜单排版和诊断报告体验。
-- 完成 Developer ID 签名、公证及干净环境下载测试。
-- 整理兼容性说明、版本化下载包和校验信息，统一网站与仓库介绍。
-- 应用保持 `mouNTFS.app` 名称，下载包继续带版本号。
+- Guide driver installation, system approval and disk privacy permission setup.
+- Complete Chinese UI localization, menu polish and diagnostic report usability.
+- Complete Developer ID signing, notarization and clean-Mac download testing.
+- Document compatibility, versioned downloads and checksums; align website and repository.
+- Keep the app named `mouNTFS.app` and include versions in download archive names.
 
-完成标准：用户能够按文档完成安装、更新与日常操作；公开介绍中的功能均有对应验证依据。
+Acceptance: users can install, update and operate the app from its documentation;
+publicly advertised features have corresponding validation evidence.
 
-## 后续探索：FSKit
+## Further exploration — FSKit
 
-在兼容的系统和驱动组合上验证 FSKit，评估它是否能提供更简洁的安装体验。完成真实磁盘的读写、身份检查、恢复和弹出验证前，继续作为实验选项，不替换当前默认后端。
+Test FSKit with compatible OS/driver combinations and evaluate its installation
+experience. Keep it experimental rather than replacing the default backend until
+real-drive writing, identity checks, recovery and eject have been validated.
