@@ -2,6 +2,14 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Built with AI](https://img.shields.io/badge/Built--with-AI-blueviolet)](#humanai-collaboration)
+[![Website](https://img.shields.io/badge/Website-mountfs.sh-blue)](https://mountfs.sh)
+
+> 🤝 An experiment in human–AI collaboration, co-developed with AI buddies.
+> 🤖 AI writes the code; 👤 humans lead design, review, testing and direction.
+> 🥳 From a shell script to a native Mac app — let's see where this ride goes.
+
 ### Your NTFS drive, from the macOS menu bar
 
 Connect an external NTFS drive, enable write access, and continue in Finder.
@@ -107,7 +115,10 @@ Download archives include a version number; the app stays **mouNTFS.app** so upd
 can replace it. Quit the old app before replacing it. The separate website download
 endpoint has not been updated by this development branch.
 
-Humans direct design, review and testing; AI assists with implementation.
+## Human–AI collaboration
+
+The collaboration is part of the project’s identity: AI writes the code while
+humans shape the product, review changes and test it in the real world.
 Original collaborators: Claude 3.5 Sonnet, GPT-4o and [guoquan](https://guoquan.net).
 The current development update was prepared with Codex. Contributions and safety
 reviews are welcome.

@@ -2,6 +2,14 @@
 
 [English](README.md) · **简体中文**
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Built with AI](https://img.shields.io/badge/Built--with-AI-blueviolet)](#人机协同开发)
+[![Website](https://img.shields.io/badge/Website-mountfs.sh-blue)](https://mountfs.sh)
+
+> 🤝 一场人机协同开发实验，和 AI 搭子一起做出来。
+> 🤖 AI 写代码；👤 人类负责设计、审查、测试与方向。
+> 🥳 从一个 Shell 脚本到原生 Mac 应用，看看这趟旅程还能走到哪里。
+
 ### 从 macOS 菜单栏管理你的 NTFS 磁盘
 
 连接外置 NTFS 磁盘，启用写入，然后继续在 Finder 中使用。mouNTFS 现在提供原生菜单栏应用，可以直接查看磁盘状态、操作进度和可复制的诊断报告；独立 Shell 脚本仍保留供命令行使用。
@@ -88,6 +96,10 @@ open dist/mouNTFS.app
 
 下载包带版本号，应用保持 **mouNTFS.app** 名称以便覆盖更新；替换前先退出旧应用。本开发分支尚未更新独立网站的下载入口。
 
-人类负责设计、审查与测试，AI 协助实现。最初协作者：Claude 3.5 Sonnet、GPT-4o 和 [guoquan](https://guoquan.net)。当前开发更新由 Codex 协助完成。欢迎贡献和安全审查。
+## 人机协同开发
+
+协作方式也是这个项目的个性：AI 写代码，人类塑造产品、审查改动，并在真实环境中测试。
+
+最初协作者：Claude 3.5 Sonnet、GPT-4o 和 [guoquan](https://guoquan.net)。当前开发更新由 Codex 协助完成。欢迎贡献和安全审查。
 
 MIT License © 2024–2026 Quan Guo.
