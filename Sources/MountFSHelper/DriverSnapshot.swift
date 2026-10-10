@@ -28,33 +28,56 @@ func secureAncestors(_ path: String) -> Bool {
     }
 }
 
-func runTool(_ path: String, _ args: [String]) -> HelperReply {
-    let process = Process()
-    let output = Pipe()
-    process.executableURL = URL(fileURLWithPath: path)
-    process.arguments = args
-    process.environment = ["PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "LANG": "C", "HOME": "/var/root"]
-    process.standardInput = FileHandle.nullDevice
-    process.standardOutput = output
-    process.standardError = output
-    do {
-        try process.run()
-        // Drain continuously even after the diagnostic output limit is reached.
-        var data = Data()
-        while true {
-            let chunk = output.fileHandleForReading.availableData
-            if chunk.isEmpty { break }
-            if data.count < 65536 { data.append(chunk.prefix(65536 - data.count)) }
-        }
-        process.waitUntilExit()
-        return HelperReply(process.terminationStatus, String(decoding: data, as: UTF8.self))
-    } catch { return HelperReply(1, error.localizedDescription) }
+func runTool(_ path: String, _ args: [String], timeout: TimeInterval = 30) -> HelperReply {
+    let (status, data) = boundedTool(path, args, timeout: timeout)
+    return HelperReply(status, String(decoding: data, as: UTF8.self))
 }
 
 func requireTool(_ path: String, _ args: [String]) throws -> String {
     let value = runTool(path, args)
     guard value.status == 0 else { throw HelperError.invalid(value.output) }
     return value.output
+}
+
+// Resolve Homebrew links before this call, then walk the resulting path through
+// directory descriptors. A replaced ancestor or leaf symlink cannot redirect a
+// privileged read; all metadata and bytes come from the same opened inode.
+func readDriverSource(_ canonical: String, limit: Int = 64 * 1024 * 1024) throws -> Data {
+    guard canonical.hasPrefix("/") else { throw HelperError.invalid("Absolute driver path required.") }
+    let parts = canonical.split(separator: "/").map(String.init)
+    guard !parts.isEmpty, !parts.contains("."), !parts.contains("..") else { throw HelperError.invalid("Invalid driver path.") }
+    var directory = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+    guard directory >= 0 else { throw HelperError.invalid("Cannot open driver root.") }
+    defer { close(directory) }
+    for part in parts.dropLast() {
+        let next = openat(directory, part, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+        guard next >= 0 else { throw HelperError.invalid("Driver ancestor changed or is a link.") }
+        close(directory); directory = next
+    }
+    let fd = openat(directory, parts.last!, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+    guard fd >= 0 else { throw HelperError.invalid("Cannot open driver without following links.") }
+    defer { close(fd) }
+    var before = stat()
+    guard fstat(fd, &before) == 0, before.st_mode & S_IFMT == S_IFREG,
+          before.st_size > 0, before.st_size <= limit else { throw HelperError.invalid("Invalid driver binary size or type.") }
+    var data = Data()
+    var chunk = [UInt8](repeating: 0, count: 65536)
+    while true {
+        let count = read(fd, &chunk, chunk.count)
+        if count < 0 { if errno == EINTR { continue }; throw HelperError.invalid("Driver read failed.") }
+        if count == 0 { break }
+        guard count <= limit - data.count else { throw HelperError.invalid("Driver grew beyond the size limit.") }
+        data.append(contentsOf: chunk.prefix(count))
+    }
+    var after = stat()
+    guard fstat(fd, &after) == 0, after.st_size == before.st_size, data.count == Int(before.st_size),
+          after.st_mtimespec.tv_sec == before.st_mtimespec.tv_sec,
+          after.st_mtimespec.tv_nsec == before.st_mtimespec.tv_nsec,
+          after.st_ctimespec.tv_sec == before.st_ctimespec.tv_sec,
+          after.st_ctimespec.tv_nsec == before.st_ctimespec.tv_nsec else {
+        throw HelperError.invalid("Driver changed while being copied.")
+    }
+    return data
 }
 
 struct DriverConfiguration {
@@ -88,7 +111,7 @@ func configureDriver(_ source: String, uid: uid_t) throws -> String {
     }
     guard rootDirectory(helperStorage) else { throw HelperError.invalid("Helper storage is not root-owned and protected.") }
     let generation = helperStorage + "/driver-" + UUID().uuidString
-    try FileManager.default.createDirectory(atPath: generation, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o755])
+    try FileManager.default.createDirectory(atPath: generation, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
     var committed = false
     defer { if !committed { try? FileManager.default.removeItem(atPath: generation) } }
     var copies: [String: String] = [:]
@@ -115,10 +138,7 @@ func configureDriver(_ source: String, uid: uid_t) throws -> String {
         let canonical = URL(fileURLWithPath: original).resolvingSymlinksInPath().path
         if let existing = copies[canonical] { return existing }
         guard allowedSource(canonical), copies.count < 64 else { throw HelperError.invalid("Unsupported driver dependency: " + canonical) }
-        var metadata = stat()
-        guard lstat(canonical, &metadata) == 0, metadata.st_mode & S_IFMT == S_IFREG,
-              metadata.st_size > 0, metadata.st_size <= 64 * 1024 * 1024 else { throw HelperError.invalid("Invalid driver binary: " + canonical) }
-        let bytes = try Data(contentsOf: URL(fileURLWithPath: canonical))
+        let bytes = try readDriverSource(canonical)
         totalBytes += bytes.count
         guard totalBytes <= 256 * 1024 * 1024 else { throw HelperError.invalid("Driver dependency size limit exceeded.") }
         let hash = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
@@ -184,6 +204,8 @@ func configureDriver(_ source: String, uid: uid_t) throws -> String {
         _ = try requireTool("/usr/bin/codesign", ["--force", "--sign", "-", destination])
         guard rootFile(destination), secureAncestors(destination) else { throw HelperError.invalid("Driver copy is not protected.") }
     }
+    // Publish only after every binary has been inspected, rewritten and signed.
+    guard chmod(generation, 0o755) == 0 else { throw HelperError.invalid("Cannot publish protected driver generation.") }
     let plist: [String: Any] = ["uid": uid, "source": source, "executable": driver]
     let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
     try data.write(to: URL(fileURLWithPath: helperStorage + "/driver.plist"), options: .atomic)

@@ -143,12 +143,13 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
         return 1
     }
     let directory = args[0]
+    defer { try? writePacket(["ended": true], directory + "/authorization-ended.plist") }
     let request = directory + "/authorization-request.plist"
     let response = directory + "/authorization-response.plist"
     var policy = SessionPolicy(device: args[1], driver: args[2], uid: args[3], gid: args[4])
     let originalPoint = original["MountPoint"] as? String ?? ""
-    let deadline = Date().addingTimeInterval(300)
-    while getppid() == parent && privateDirectory(directory) && Date() < deadline {
+    let deadline = ProcessInfo.processInfo.systemUptime + 300
+    while getppid() == parent && privateDirectory(directory) && ProcessInfo.processInfo.systemUptime < deadline {
         guard let packet = readPacket(request) else { Thread.sleep(forTimeInterval: 0.05); continue }
         try? FileManager.default.removeItem(atPath: request)
         guard let id = packet["id"] as? String, let command = packet["arguments"] as? [String] else { return 1 }
@@ -182,9 +183,10 @@ func authorizationRequest(_ args: [String], timeout: TimeInterval? = nil) -> Int
     let id = UUID().uuidString
     do { try writePacket(["id": id, "arguments": Array(args.dropFirst(2))], request) }
     catch { return 1 }
-    let deadline = timeout.map { Date().addingTimeInterval($0) }
-    while privateDirectory(args[0]) && kill(pid, 0) == 0 {
-        if let deadline, Date() >= deadline { return 1 }
+    let deadline = ProcessInfo.processInfo.systemUptime + min(timeout ?? 300, 300)
+    while privateDirectory(args[0]) && authorizationProcessIsLive(pid) {
+        if ProcessInfo.processInfo.systemUptime >= deadline ||
+           readPacket(args[0] + "/authorization-ended.plist")?["ended"] as? Bool == true { break }
         if let packet = readPacket(response), packet["id"] as? String == id,
            let status = packet["status"] as? Int, let output = packet["output"] as? String {
             if !output.isEmpty {
@@ -241,6 +243,13 @@ func authorizationSelfTest() -> Int32 {
     }
     guard authorizationRequest([directory, String(getpid()), "/usr/bin/printf", "%s", "IPC round trip"], timeout: 10) == 0 else { return 1 }
     group.wait()
+    // The portable tool test also verifies the macOS zombie-state classifier.
+    let start = ProcessInfo.processInfo.systemUptime
+    guard authorizationRequest([directory, String(getpid()), "/usr/bin/true"], timeout: 0.1) != 0 else { return 1 }
+    do { try writePacket(["ended": true], directory + "/authorization-ended.plist") } catch { return 1 }
+    guard authorizationRequest([directory, String(getpid()), "/usr/bin/true"], timeout: 10) != 0,
+          ProcessInfo.processInfo.systemUptime - start < 2 else { return 1 }
+    print("PASS silent-live-host and ended-session requests fail within a deadline")
     print("PASS private IPC packet round trip and symlink rejection")
     print("PASS authorization allowlist, one-shot driver and persistent AppleScript argument quoting (unprivileged)")
     return 0

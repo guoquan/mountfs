@@ -40,3 +40,20 @@ if media_identity; then exit 1; fi
 media_identity_command() { return 1; }
 if same_volume disk4s1 "$expected" 2>/dev/null; then exit 1; fi
 printf 'PASS invalid/missing registry identity fails closed\n'
+# The native menu's captured identity must survive into main, not be repinned to
+# whichever disk happens to occupy this identifier when the shell starts.
+(
+    . "$ROOT/mountfs.sh"
+    uname() { printf 'Darwin\n'; }
+    id() { case "$1" in -u) printf '501\n';; -g) printf '20\n';; esac; }
+    find_driver() { return 0; }
+    check_backend() { return 0; }
+    load_volume() {
+        [ "$3" = iomedia:100:50:1048576 ] || exit 90
+        VOLUME_UUID=iomedia:101:51:1048576
+    }
+    mount_volume() { printf 'MUTATION MUST NOT RUN\n'; exit 91; }
+    if main --app-action --device disk4s1 --expected-identity iomedia:100:50:1048576; then exit 1; fi
+    cleanup
+)
+printf 'PASS stale menu identity rejected before mount transaction starts\n'

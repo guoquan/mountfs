@@ -26,13 +26,19 @@ private final class Transaction {
     var driverUsed = false
     var touched = false
     var committed = false
+    var terminationUnconfirmed = false
     init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t) {
         self.device = device; self.identity = identity; originalPoint = original
         driver = configuration.executable; uid = configuration.uid; self.gid = gid
     }
     func current() -> [String: Any]? {
-        guard mediaIdentity(device) == identity else { return nil }
+        guard !terminationUnconfirmed, mediaIdentity(device) == identity else { return nil }
         return mountState(device)
+    }
+    private func tool(_ path: String, _ args: [String], timeout: TimeInterval = 30) -> HelperReply {
+        let result = runTool(path, args, timeout: timeout)
+        if result.status == 125 { terminationUnconfirmed = true }
+        return result
     }
     func perform(_ operation: String) -> HelperReply {
         guard ["prepare", "unmount", "mount-kernel", "mount-fskit", "recover", "cleanup", "commit"].contains(operation),
@@ -52,7 +58,7 @@ private final class Transaction {
                 return HelperReply(1, "Unrelated or absent mount was left unchanged.")
             }
             touched = true
-            return runTool("/usr/sbin/diskutil", ["unmount", device])
+            return tool("/usr/sbin/diskutil", ["unmount", device])
         case "mount-kernel", "mount-fskit":
             guard !committed, !driverUsed, mounted.isEmpty, let point,
                   rootDirectory(point), secureAncestors(point), rootFile(driver), secureAncestors(driver) else {
@@ -66,14 +72,15 @@ private final class Transaction {
             // ntfs-3g can dlopen external reparse plugins as well as its linked
             // libraries. Prevent a persistent root driver from reading code or
             // plugins out of mutable Homebrew/user directories after setup.
-            return runTool("/usr/bin/sandbox-exec", ["-p", driverSandboxProfile, driver, "/dev/" + device, point, "-o",
-                "rw,norecover,allow_other,default_permissions,uid=\(uid),gid=\(gid),umask=077," + backend])
+            return tool("/usr/bin/sandbox-exec", ["-p", driverSandboxProfile, driver, "/dev/" + device, point, "-o",
+                "rw,norecover,allow_other,default_permissions,uid=\(uid),gid=\(gid),umask=077," + backend],
+                timeout: min(60, max(1, deadline - ProcessInfo.processInfo.systemUptime)))
         case "recover":
             guard !committed, mounted.isEmpty else { return HelperReply(1, "Recovery requires an unmounted selected device.") }
-            return runTool("/usr/sbin/diskutil", ["mount", "readOnly", device])
+            return tool("/usr/sbin/diskutil", ["mount", "readOnly", device])
         case "cleanup":
             guard let point, mounted != point else { return HelperReply(1, "Active mount directory retained.") }
-            return runTool("/bin/rmdir", [point])
+            return tool("/bin/rmdir", [point])
         case "commit":
             guard !committed, driverUsed, let point, mounted == point,
                   state["WritableVolume"] as? Bool == true else { return HelperReply(1, "Cannot commit an unverified mount.") }
@@ -88,13 +95,13 @@ private final class Transaction {
         guard !committed, let state = current() else { return }
         var mounted = state["MountPoint"] as? String ?? ""
         if touched, let point, mounted == point {
-            guard runTool("/usr/sbin/diskutil", ["unmount", device]).status == 0,
+            guard tool("/usr/sbin/diskutil", ["unmount", device]).status == 0,
                   let fresh = current() else { return }
             mounted = fresh["MountPoint"] as? String ?? ""
         }
-        if touched, mounted.isEmpty, current() != nil { _ = runTool("/usr/sbin/diskutil", ["mount", "readOnly", device]) }
+        if touched, mounted.isEmpty, current() != nil { _ = tool("/usr/sbin/diskutil", ["mount", "readOnly", device]) }
         if let point, let fresh = current(), fresh["MountPoint"] as? String != point {
-            _ = runTool("/bin/rmdir", [point])
+            _ = tool("/bin/rmdir", [point])
         }
     }
 }
@@ -146,7 +153,7 @@ private final class ClientService: NSObject, MountHelperProtocol {
     private func close() {
         guard let transaction else { return }
         transaction.abort()
-        lockedDevices.remove(transaction.device)
+        if !transaction.terminationUnconfirmed { lockedDevices.remove(transaction.device) }
         self.transaction = nil
     }
     func disconnected() { work.async { self.close() } }
@@ -185,6 +192,21 @@ if CommandLine.arguments.contains("--self-test") {
     do {
         try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: cache) }
+        let source = cache.appendingPathComponent("source")
+        try Data("safe binary bytes".utf8).write(to: source)
+        let canonical = source.resolvingSymlinksInPath().path
+        guard try readDriverSource(canonical) == Data("safe binary bytes".utf8) else { exit(1) }
+        let link = cache.appendingPathComponent("source-link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: source)
+        do { _ = try readDriverSource(link.path); exit(1) } catch {}
+        let ancestor = cache.appendingPathComponent("ancestor-link")
+        try FileManager.default.createSymbolicLink(at: ancestor, withDestinationURL: cache)
+        do { _ = try readDriverSource(ancestor.path + "/source"); exit(1) } catch {}
+        do { _ = try readDriverSource(canonical, limit: 4); exit(1) } catch {}
+        let timed = runTool("/bin/sh", ["-c", "trap '' TERM; sleep 30 & echo $!; wait"], timeout: 0.2)
+        guard timed.status == 124, let child = Int32(timed.output.components(separatedBy: .newlines)[0]),
+              !authorizationProcessIsLive(child) else { exit(1) }
+        print("PASS descriptor driver reads reject leaf/ancestor links and oversize files; timed-out child is stopped")
         let plugin = cache.appendingPathComponent("untrusted-plugin")
         try Data("untrusted".utf8).write(to: plugin)
         guard runTool("/bin/cat", [plugin.path]).status == 0,

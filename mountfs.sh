@@ -6,6 +6,7 @@
 MOUNTFS_VERSION=0.3.4
 GUI=1
 APP_ACTION=0
+EXPECTED_IDENTITY=
 AUTH_SESSION_PID=
 AUTH_HELPER=
 AUTH_PRIVILEGED=0
@@ -506,9 +507,11 @@ main() {
             --app-action) APP_ACTION=1 ;;
             --list) action=list; GUI=0 ;;
             --diagnose) action=diagnose ;;
-            --device|--backend)
+            --device|--backend|--expected-identity)
                 [ "$#" -ge 2 ] || { usage >&2; return 2; }
-                if [ "$1" = --device ]; then target="$2"; else BACKEND="$2"; fi
+                if [ "$1" = --device ]; then target="$2"
+                elif [ "$1" = --expected-identity ]; then EXPECTED_IDENTITY="$2"
+                else BACKEND="$2"; fi
                 shift ;;
             *) fail "Unknown argument: $1"; return 2 ;;
         esac
@@ -516,6 +519,12 @@ main() {
     done
     if [ "$APP_ACTION" -eq 1 ] && { [ "$GUI" -ne 1 ] || [ -z "$target" ] || [ "$action" != mount ]; }; then
         fail "App actions require an explicitly selected GUI volume."; return 2
+    fi
+    if [ "$APP_ACTION" -eq 1 ] && ! [[ "$EXPECTED_IDENTITY" =~ ^iomedia:[0-9]+:[0-9]+:[0-9]+$ ]]; then
+        fail "App actions require the identity captured by the selected menu item."; return 2
+    fi
+    if [ -n "$EXPECTED_IDENTITY" ] && ! [[ "$EXPECTED_IDENTITY" =~ ^iomedia:[0-9]+:[0-9]+:[0-9]+$ ]]; then
+        fail "Invalid expected media identity."; return 2
     fi
     [ "$(uname -s)" = Darwin ] || { fail "mouNTFS requires macOS."; return 1; }
     [ "$(id -u)" -ne 0 ] || { fail "Run as your normal user, not with sudo."; return 1; }
@@ -534,7 +543,10 @@ main() {
         target=$(select_volume); rc=$?
         [ "$rc" -eq 0 ] || return "$rc"
     fi
-    load_volume "$target" || return 1
+    load_volume "$target" ntfs "$EXPECTED_IDENTITY" || return 1
+    if [ -n "$EXPECTED_IDENTITY" ] && [ "$VOLUME_UUID" != "$EXPECTED_IDENTITY" ]; then
+        fail "The selected drive disconnected or was replaced; no mount was started."; return 1
+    fi
     mount_volume
 }
 

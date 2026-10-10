@@ -9,7 +9,8 @@ let package = Package(
                .executable(name: "MountFSHelper", targets: ["MountFSHelper"])],
     targets: [
         .target(name: "MountFSCore"),
-        .target(name: "MountFSPrivileged"),
+        .target(name: "MountFSSystemTools"),
+        .target(name: "MountFSPrivileged", dependencies: ["MountFSSystemTools"]),
         .executableTarget(name: "MountFSHelper", dependencies: ["MountFSPrivileged"]),
         .executableTarget(name: "MountFSIdentity", dependencies: ["MountFSPrivileged"], path: "Sources/MountFSIdentity"),
         .executableTarget(name: "MountFSApp", dependencies: ["MountFSCore", "MountFSPrivileged"], path: "Sources/MountFSApp"),

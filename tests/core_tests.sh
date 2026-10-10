@@ -174,6 +174,8 @@ passed=$((passed + 1))
     APP_ACTION=1
     GUI=1
     confirm_mount
+    if main --app-action --device disk4s1 >/dev/null 2>&1; then exit 1; fi
+    if main --app-action --expected-identity bad --device disk4s1 >/dev/null 2>&1; then exit 1; fi
     if main --app-action --cli --device disk4s1 >/dev/null 2>&1; then exit 1; fi
     if main --app-action >/dev/null 2>&1; then exit 1; fi
 )

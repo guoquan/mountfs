@@ -20,6 +20,8 @@ jobs:
           bash tests/ntfs_identity_tests.sh
           bash tests/media_identity_tests.sh
           bash tests/mount_state_tests.sh
+          cc -Wall -Wextra -Werror -I Sources/MountFSSystemTools/include Sources/MountFSSystemTools/Tools.c tests/tool_runner_tests.c -o /tmp/mountfs-tool-tests
+          /tmp/mountfs-tool-tests
           bash mountfs.sh --help
           test "$(bash mountfs.sh --version)" = 0.3.4
       - name: ShellCheck

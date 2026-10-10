@@ -6,7 +6,7 @@ import ServiceManagement
 import LocalAuthentication
 import CoreServices
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.3"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.4"
 
 func helperResult(_ option: String, device: String) -> CommandResult? {
     let candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,
@@ -34,6 +34,7 @@ func currentMountState(_ device: String) -> [String: Any]? {
 
 struct Volume: Equatable {
     let device: String
+    let mediaIdentity: String?
     let name: String
     let mountPoint: String?
     let readOnly: Bool
@@ -99,6 +100,7 @@ func scanVolumes(verifiedIdentities: [String: String] = [:]) -> ScanResult? {
     else { return nil }
     var report = ["mouNTFS \(appVersion) — read-only disk scan", "Scanned \(disks.count) disk identifiers."]
     let volumes: [Volume] = disks.compactMap { device in
+        let scannedIdentity = currentIdentity(device)
         guard let info = diskDictionary(["info", "-plist", device]) else {
             report.append("\(device): cannot read or parse diskutil info")
             return nil
@@ -112,7 +114,8 @@ func scanVolumes(verifiedIdentities: [String: String] = [:]) -> ScanResult? {
         let volumeID = (info["VolumeUUID"] as? String).map { !$0.isEmpty } ?? false
         report.append("\(device): \(disk.exclusionReason); mounted=\(disk.isMounted); readOnly=\(disk.readOnly); DiskUUID=\(partitionID ? "present" : "missing"); VolumeUUID=\(volumeID ? "present" : "missing")")
         guard disk.isExternalNTFSPartition else { return nil }
-        return Volume(device: device, name: disk.name, mountPoint: disk.mountPoint, readOnly: disk.readOnly)
+        let identity = scannedIdentity != nil && currentIdentity(device) == scannedIdentity ? scannedIdentity : nil
+        return Volume(device: device, mediaIdentity: identity, name: disk.name, mountPoint: disk.mountPoint, readOnly: disk.readOnly)
     }
     report.append("Included \(volumes.count) external NTFS partition(s).")
     return ScanResult(volumes: volumes, report: report.joined(separator: "\n"))
@@ -190,9 +193,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             entry.attributedTitle = title
             entry.image = menuSymbol("externaldrive", description: state)
             menu.addItem(entry)
-            let mount = item(volume.readOnly ? "Enable Write Access…" : "Write Access Enabled", action: #selector(mountVolume(_:)), object: volume.device)
+            let mount = item(volume.readOnly ? "Enable Write Access…" : "Write Access Enabled", action: #selector(mountVolume(_:)), object: volume)
             mount.image = menuSymbol(volume.readOnly ? "lock.open" : "checkmark.circle.fill", description: mount.title)
-            mount.isEnabled = !busy && volume.readOnly
+            mount.isEnabled = !busy && volume.readOnly && volume.mediaIdentity != nil
             mount.indentationLevel = 1
             menu.addItem(mount)
             if let point = volume.mountPoint {
@@ -202,9 +205,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 open.indentationLevel = 1
                 menu.addItem(open)
             }
-            let eject = item("Safely Eject…", action: #selector(ejectVolume(_:)), object: volume.device)
+            let eject = item("Safely Eject…", action: #selector(ejectVolume(_:)), object: volume)
             eject.image = menuSymbol("eject", description: eject.title)
-            eject.isEnabled = !busy
+            eject.isEnabled = !busy && volume.mediaIdentity != nil
             eject.indentationLevel = 1
             menu.addItem(eject)
             menu.addItem(.separator())
@@ -523,7 +526,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return nil
     }
 
-    private func execute(_ title: String, executable: String, arguments: [String], showSuccessOutput: Bool = false, mountDevice: String? = nil) {
+    private func execute(_ title: String, executable: String, arguments: [String], showSuccessOutput: Bool = false, mountDevice: String? = nil, selectedVolume: Volume? = nil) {
         guard !busy else { return }
         busy = true
         scanGeneration += 1
@@ -539,12 +542,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let operationEnvironment = environment
         rebuildMenu()
         DispatchQueue.global(qos: .userInitiated).async {
-            let identity = mountDevice.flatMap { currentIdentity($0) }
+            let identity = selectedVolume?.mediaIdentity ?? mountDevice.flatMap { currentIdentity($0) }
             if let device = mountDevice, let info = diskDictionary(["info", "-plist", device]),
                let point = DiskMetadata(info).mountPoint, let directory = opendir(point) {
                 closedir(directory)
             }
-            let result = runCommand(executable, arguments, environment: operationEnvironment)
+            let result: CommandResult
+            if let selected = selectedVolume, selected.mediaIdentity == nil || currentIdentity(selected.device) != selected.mediaIdentity {
+                result = CommandResult(status: 1, output: Data("Error: The selected drive disconnected or was replaced. Refresh the menu and select the drive again; no operation was started.\n".utf8))
+            } else {
+                result = runCommand(executable, arguments, environment: operationEnvironment)
+            }
             var details = result.text
             if result.status != 0 && arguments.first == "--helper-configure" {
                 details += "\n\n--- Helper launch state (read-only) ---\n"
@@ -614,10 +622,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func mountVolume(_ sender: NSMenuItem) {
-        guard let device = sender.representedObject as? String else { return }
+        guard !busy, let selected = sender.representedObject as? Volume, let identity = selected.mediaIdentity else { return }
+        let device = selected.device
         guard let script = scriptPath() else { showOutput(title: "Installation incomplete", text: "Bundled mountfs.sh was not found. Rebuild the app with scripts/build-app.sh."); return }
         let performMount = { [weak self] in
-            self?.execute("Enabling write access…", executable: "/bin/bash", arguments: [script, "--device", device, "--backend", self?.backend ?? "kernel", "--app-action"], mountDevice: device)
+            self?.execute("Enabling write access…", executable: "/bin/bash", arguments: [script, "--device", device, "--backend", self?.backend ?? "kernel", "--app-action", "--expected-identity", identity], mountDevice: device, selectedVolume: selected)
         }
         if helperReady && UserDefaults.standard.bool(forKey: "touchIDForHelper") {
             let context = LAContext()
@@ -628,7 +637,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if biometricAvailable || context.biometryType == .touchID {
                 busy = true; status = "Waiting for Touch ID…"; rebuildMenu()
                 NSApp.activate(ignoringOtherApps: true)
-                context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "enable write access to " + (volumes.first(where: { $0.device == device })?.name ?? "the selected NTFS drive")) { success, _ in
+                context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "enable write access to " + selected.name) { success, _ in
                     DispatchQueue.main.async {
                         self.busy = false
                         if success { performMount() }
@@ -647,7 +656,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func ejectVolume(_ sender: NSMenuItem) {
-        guard !busy, let device = sender.representedObject as? String else { return }
+        guard !busy, let selected = sender.representedObject as? Volume, selected.mediaIdentity != nil else { return }
+        let device = selected.device
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Safely eject this drive?"
@@ -655,7 +665,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.addButton(withTitle: "Eject")
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        execute("Ejecting…", executable: "/usr/sbin/diskutil", arguments: ["eject", device])
+        execute("Ejecting…", executable: "/usr/sbin/diskutil", arguments: ["eject", device], selectedVolume: selected)
     }
 
     @objc private func diagnose() {

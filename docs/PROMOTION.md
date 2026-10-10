@@ -48,7 +48,7 @@ without reformatting the drive. Free and open source.
 Install macFUSE and ntfs-3g and complete macOS permissions first.
 Current downloads are ad-hoc signed development builds, not notarized releases.
 
-Setup: https://github.com/guoquan/mountfs/blob/feat/mountfs-safe-core/docs/USAGE.en.md
+Setup: https://github.com/guoquan/mountfs/blob/main/docs/USAGE.en.md
 
 ### Simplified Chinese
 
@@ -60,7 +60,7 @@ mouNTFS 让你从 Mac 菜单栏启用写入，继续在 Finder 中使用，无�
 首次使用需先安装 macFUSE 和 ntfs-3g，并完成 macOS 权限配置。
 当前提供开发构建，使用 ad-hoc 签名，尚未公证。
 
-使用说明：https://github.com/guoquan/mountfs/blob/feat/mountfs-safe-core/docs/USAGE.zh-CN.md
+使用说明：https://github.com/guoquan/mountfs/blob/main/docs/USAGE.zh-CN.md
 
 ## Human–AI project story
 

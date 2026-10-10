@@ -179,3 +179,30 @@ Additional primary references:
 - [Getting Started with SMAppService](https://developer.apple.com/forums/thread/802443)
 - [Environment constraints](https://developer.apple.com/videos/play/wwdc2023/10266/)
 - [Personal Team and developer account overview](https://developer.apple.com/help/account/basics/about-your-developer-account)
+
+## Review hardening: bounded tools and protected reads
+
+Menu actions retain the IOMedia connection identity observed during the scan.
+Mounts carry that identity into the shell core; mounts and ejection recheck it
+immediately before launch, including after authorization or confirmation UI.
+Missing or replaced media disable/refuse these actions rather than selecting a
+new disk with a reused BSD identifier. This is a userspace check, not an atomic
+kernel reservation against hot unplug during a system command.
+
+Helper tools start in a dedicated process group with capped diagnostic output
+and a monotonic deadline (normally 30 seconds; the driver gets up to 60 seconds,
+bounded by the remaining transaction lifetime). Timeouts terminate the group,
+escalate to SIGKILL and bound the reap wait. This lets serialized recovery and
+expiry resume. Recovery can take additional bounded tool time after expiry.
+If a kernel-stuck process cannot be reaped, the transaction refuses further
+mutation and its device lock is retained until the daemon is restarted. Detached
+processes and actual kernel/driver timeout behavior still require physical-Mac
+validation; successfully committed FUSE daemons are intentionally kept running.
+
+Driver sources are opened by a no-follow descriptor walk and checked with fstat;
+size is bounded while reading and metadata is rechecked afterward. A new driver
+generation remains mode 0700 until dependency inspection, rewriting and signing
+complete. Homebrew source content is still explicitly trusted by administrator
+setup; this protects privileged reads and publication, not driver authenticity.
+Authorization IPC requests have a five-minute maximum, an ended-session sentinel
+and a macOS process-state query that rejects an unreaped zombie.
