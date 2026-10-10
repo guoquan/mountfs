@@ -30,7 +30,6 @@ run_case() (
             AUTH_PRIVILEGED=1
             AUTH_HELPER=fake_commit
             AUTH_SESSION_PID=123
-            start_authorization_session() { return 0; }
             # Called indirectly through AUTH_HELPER.
             # shellcheck disable=SC2317
             fake_commit() {
