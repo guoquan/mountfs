@@ -12,7 +12,7 @@ let package = Package(
         .target(name: "MountFSSystemTools"),
         .target(name: "MountFSPrivileged", dependencies: ["MountFSSystemTools"]),
         .executableTarget(name: "MountFSHelper", dependencies: ["MountFSPrivileged"]),
-        .executableTarget(name: "MountFSIdentity", dependencies: ["MountFSPrivileged"], path: "Sources/MountFSIdentity"),
+        .executableTarget(name: "MountFSIdentity", dependencies: ["MountFSPrivileged", "MountFSSystemTools"], path: "Sources/MountFSIdentity"),
         .executableTarget(name: "MountFSApp", dependencies: ["MountFSCore", "MountFSPrivileged"], path: "Sources/MountFSApp"),
         .testTarget(name: "MountFSCoreTests", dependencies: ["MountFSCore"])
     ]

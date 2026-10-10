@@ -15,6 +15,10 @@
 #include <string.h>
 #ifdef __APPLE__
 #include <libproc.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <sys/un.h>
+#include <sys/stat.h>
 #include <sys/proc.h>
 #endif
 
@@ -138,5 +142,135 @@ int mountfs_self_cdhash(unsigned char hash[20]) {
     return csops(getpid(), 5, hash, 20) == 0;
 #else
     (void)hash; return 0;
+#endif
+}
+
+uint64_t mountfs_process_birth(int32_t pid) {
+#ifdef __APPLE__
+    struct proc_bsdinfo info;
+    if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) != (int)sizeof(info) || info.pbi_status == SZOMB) return 0;
+    return info.pbi_start_tvsec * 1000000 + info.pbi_start_tvusec;
+#else
+    (void)pid; return 0;
+#endif
+}
+
+/* The PID comes from the kernel socket credential, never the request packet.
+ * Only children/descendants of the original, still-live shell may send requests.
+ * Birth time pins that shell across PID reuse. No same-UID sibling is accepted. */
+int mountfs_auth_peer(int fd, int32_t expected_pid, int32_t ancestor, uint64_t birth) {
+#ifdef __APPLE__
+    pid_t peer = 0; socklen_t size = sizeof(peer);
+    uid_t uid; gid_t gid;
+    if (getpeereid(fd, &uid, &gid) || uid != geteuid() ||
+        getsockopt(fd, SOL_LOCAL, LOCAL_PEERPID, &peer, &size) || size != sizeof(peer) || peer <= 1) return 0;
+    if (expected_pid > 0) return peer == expected_pid;
+    if (!birth || mountfs_process_birth(ancestor) != birth) return 0;
+    uint64_t peer_birth = mountfs_process_birth(peer);
+    if (!peer_birth) return 0;
+    pid_t current = peer;
+    for (int depth = 0; depth < 16; depth++) {
+        struct proc_bsdinfo info;
+        if (proc_pidinfo(current, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) != (int)sizeof(info) ||
+            info.pbi_status == SZOMB || info.pbi_uid != geteuid()) return 0;
+        current = (pid_t)info.pbi_ppid;
+        if (current == ancestor) return mountfs_process_birth(ancestor) == birth && mountfs_process_birth(peer) == peer_birth;
+        if (current <= 1 || current == peer) return 0;
+    }
+    return 0;
+#else
+    (void)fd; (void)expected_pid; (void)ancestor; (void)birth; return 0;
+#endif
+}
+
+#ifdef __APPLE__
+static int auth_socket(void) {
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return -1;
+    int one = 1;
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) || fcntl(fd, F_SETFL, O_NONBLOCK) ||
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one))) { close(fd); return -1; }
+    return fd;
+}
+static int auth_address(const char *path, struct sockaddr_un *address) {
+    memset(address, 0, sizeof(*address));
+    if (strlen(path) >= sizeof(address->sun_path)) return 0;
+    address->sun_family = AF_UNIX; address->sun_len = sizeof(*address);
+    strcpy(address->sun_path, path); return 1;
+}
+static int auth_transfer(int fd, char *buffer, size_t length, int writing, double deadline) {
+    size_t offset = 0;
+    while (offset < length) {
+        double remaining = deadline - now();
+        if (remaining <= 0) return 0;
+        struct pollfd pfd = {fd, writing ? POLLOUT : POLLIN, 0};
+        int ready = poll(&pfd, 1, (int)(remaining * 1000) + 1);
+        if (ready < 0 && errno == EINTR) continue;
+        if (ready <= 0) return 0;
+        ssize_t count = writing ? send(fd, buffer + offset, length - offset, 0) : recv(fd, buffer + offset, length - offset, 0);
+        if (count < 0 && (errno == EINTR || errno == EAGAIN)) continue;
+        if (count <= 0) return 0;
+        offset += (size_t)count;
+    }
+    return 1;
+}
+#endif
+int mountfs_auth_listen(const char *path) {
+#ifdef __APPLE__
+    struct sockaddr_un address;
+    if (!auth_address(path, &address)) return -1;
+    int fd = auth_socket();
+    if (fd < 0) return -1;
+    if (bind(fd, (struct sockaddr *)&address, sizeof(address)) || chmod(path, 0600) || listen(fd, 8)) { close(fd); return -1; }
+    return fd;
+#else
+    (void)path; return -1;
+#endif
+}
+int mountfs_auth_connect(const char *path) {
+#ifdef __APPLE__
+    struct sockaddr_un address;
+    if (!auth_address(path, &address)) return -1;
+    int fd = auth_socket();
+    if (fd < 0) return -1;
+    if (connect(fd, (struct sockaddr *)&address, sizeof(address))) { close(fd); return -1; }
+    return fd;
+#else
+    (void)path; return -1;
+#endif
+}
+int mountfs_auth_accept(int listener) {
+#ifdef __APPLE__
+    int fd = accept(listener, NULL, NULL);
+    if (fd < 0) return -1;
+    int one = 1;
+    if (fcntl(fd, F_SETFD, FD_CLOEXEC) || fcntl(fd, F_SETFL, O_NONBLOCK) ||
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one))) { close(fd); return -1; }
+    return fd;
+#else
+    (void)listener; return -1;
+#endif
+}
+int mountfs_auth_read(int fd, char *buffer, size_t capacity, size_t *length, uint32_t timeout_ms) {
+#ifdef __APPLE__
+    double deadline = now() + timeout_ms / 1000.0;
+    uint32_t header;
+    if (!auth_transfer(fd, (char *)&header, sizeof(header), 0, deadline)) return 0;
+    size_t count = ntohl(header);
+    if (!count || count > capacity || !auth_transfer(fd, buffer, count, 0, deadline)) return 0;
+    *length = count; return 1;
+#else
+    (void)fd; (void)buffer; (void)capacity; (void)length; (void)timeout_ms; return 0;
+#endif
+}
+int mountfs_auth_write(int fd, const char *buffer, size_t length, uint32_t timeout_ms) {
+#ifdef __APPLE__
+    if (!length || length > 262144) return 0;
+    double deadline = now() + timeout_ms / 1000.0;
+    uint32_t header = htonl((uint32_t)length);
+    return auth_transfer(fd, (char *)&header, sizeof(header), 1, deadline) &&
+        auth_transfer(fd, (char *)buffer, length, 1, deadline);
+#else
+    (void)fd; (void)buffer; (void)length; (void)timeout_ms; return 0;
 #endif
 }

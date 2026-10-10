@@ -225,6 +225,7 @@ run_privileged() {
     elif [ -n "$AUTH_SESSION_PID" ]; then
         local auth_status=0
         "$AUTH_HELPER" --authorization-request "$SESSION_DIR" "$AUTH_SESSION_PID" "$@" || auth_status=$?
+        if [ "$auth_status" -eq 125 ]; then DRIVER_TERMINATION_UNCONFIRMED=1; fi
         if [ "$auth_status" -ne 0 ]; then cat "$SESSION_DIR/authorization-host.log" >&2; fi
         return "$auth_status"
     else
@@ -423,6 +424,7 @@ mount_volume() {
     message "[1/4] Preparing mount directory..."
     NEW_MOUNT_POINT=$(run_privileged /usr/bin/mktemp -d "/Volumes/mountfs.$TRANSACTION_DEVICE.XXXXXXXX") || {
         rc=$?
+        if [ "$rc" -eq 125 ]; then DRIVER_TERMINATION_UNCONFIRMED=1; return 125; fi
         if [ "$rc" -eq 2 ]; then message "Authorization cancelled; the drive was not changed."; return 2; fi
         return 1
     }
@@ -543,7 +545,7 @@ main() {
     [ "$(id -u)" -ne 0 ] || { fail "Run as your normal user, not with sudo."; return 1; }
     USER_ID=$(id -u); GROUP_ID=$(id -g)
     umask 077
-    SESSION_DIR=$(mktemp -d "${TMPDIR:-/tmp}/mountfs.XXXXXXXX") || return 1
+    SESSION_DIR=$(mktemp -d "/tmp/mountfs.XXXXXXXX") || return 1
     trap 'cleanup; exit $?' EXIT
     trap 'exit 130' INT TERM HUP
     case "$action" in

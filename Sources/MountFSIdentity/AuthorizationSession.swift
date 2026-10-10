@@ -2,6 +2,7 @@ import Foundation
 import Darwin
 import Carbon
 import MountFSPrivileged
+import MountFSSystemTools
 
 // This host stays UNPRIVILEGED. One NSAppleScript instance owns the OS-managed
 // authorization cache. Requests are bounded to this one partition/transaction.
@@ -86,17 +87,17 @@ private func privateDirectory(_ path: String) -> Bool {
     return metadata.st_mode & S_IFMT == S_IFDIR && metadata.st_uid == geteuid() && metadata.st_mode & 0o777 == 0o700
 }
 
-private func readPacket(_ path: String) -> [String: Any]? {
-    var metadata = stat()
-    guard lstat(path, &metadata) == 0, metadata.st_mode & S_IFMT == S_IFREG,
-          metadata.st_uid == geteuid(), metadata.st_nlink == 1, metadata.st_size < 262144,
-          let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
-    return (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any]
+func readConnection(_ fd: Int32, timeout: TimeInterval) -> [String: Any]? {
+    var bytes = [CChar](repeating: 0, count: 262144)
+    var count = 0
+    guard mountfs_auth_read(fd, &bytes, bytes.count, &count, UInt32(max(1, min(timeout, 300) * 1000))) != 0 else { return nil }
+    return (try? PropertyListSerialization.propertyList(from: Data(bytes: bytes, count: count), format: nil)) as? [String: Any]
 }
-
-private func writePacket(_ value: [String: Any], _ path: String) throws {
-    let data = try PropertyListSerialization.data(fromPropertyList: value, format: .xml, options: 0)
-    try data.write(to: URL(fileURLWithPath: path), options: .atomic)
+func writeConnection(_ value: [String: Any], _ fd: Int32) -> Bool {
+    guard let data = try? PropertyListSerialization.data(fromPropertyList: value, format: .binary, options: 0) else { return false }
+    return data.withUnsafeBytes { bytes in
+        mountfs_auth_write(fd, bytes.bindMemory(to: CChar.self).baseAddress, data.count, 1000) != 0
+    }
 }
 
 private struct SessionPolicy {
@@ -153,18 +154,27 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
         return 1
     }
     let directory = args[0]
-    defer { try? writePacket(["ended": true], directory + "/authorization-ended.plist") }
-    let request = directory + "/authorization-request.plist"
-    let response = directory + "/authorization-response.plist"
+    let birth = mountfs_process_birth(parent)
+    let socketPath = directory + "/s"
+    let listener = mountfs_auth_listen(socketPath)
+    guard birth != 0, listener >= 0 else { return 1 }
+    defer { close(listener); unlink(socketPath) }
     var policy = SessionPolicy(device: args[1], driver: args[2], uid: args[3], gid: args[4])
+    var terminationUnconfirmed = false
     let originalPoint = original["MountPoint"] as? String ?? ""
     let deadline = ProcessInfo.processInfo.systemUptime + 300
     while getppid() == parent && privateDirectory(directory) && ProcessInfo.processInfo.systemUptime < deadline {
-        guard let packet = readPacket(request) else { Thread.sleep(forTimeInterval: 0.05); continue }
-        try? FileManager.default.removeItem(atPath: request)
-        guard let id = packet["id"] as? String, let command = packet["arguments"] as? [String] else { return 1 }
+        let connection = mountfs_auth_accept(listener)
+        guard connection >= 0 else { Thread.sleep(forTimeInterval: 0.05); continue }
+        defer { close(connection) }
+        guard mountfs_auth_peer(connection, 0, parent, birth) != 0,
+              let packet = readConnection(connection, timeout: 1),
+              let command = packet["arguments"] as? [String],
+              mountfs_auth_peer(connection, 0, parent, birth) != 0 else { continue }
         var result = (1, "Authorization session refused an invalid command or changed device.")
-        if !privileged, policy.allows(command), command.dropFirst().first == "--system-device-lock" {
+        if terminationUnconfirmed {
+            result = (125, "Earlier operation termination is unconfirmed; device lock retained and further mutation refused.")
+        } else if !privileged, policy.allows(command), command.dropFirst().first == "--system-device-lock" {
             // Lock release changes no disk state and must work after hot unplug.
             result = host.execute(command)
         } else if (policy.allows(command) || (privileged && policy.driverUsed && command == ["--helper-commit"])), mediaIdentity(policy.device) == identity, let state = mountState(policy.device) {
@@ -183,34 +193,36 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
                 }
             }
         }
-        do { try writePacket(["id": id, "status": result.0, "output": String(result.1.prefix(16000))], response) }
-        catch { return 1 }
+        // A disconnected requester never changes the transport into a reusable file.
+        if result.0 == 125 { terminationUnconfirmed = true }
+        if !writeConnection(["status": result.0, "output": String(result.1.prefix(16000))], connection) { terminationUnconfirmed = true }
     }
     return 0
 }
 
 func authorizationRequest(_ args: [String], timeout: TimeInterval? = nil) -> Int32 {
     guard args.count >= 3, privateDirectory(args[0]), let pid = Int32(args[1]), pid > 1 else { return 1 }
-    let request = args[0] + "/authorization-request.plist"
-    let response = args[0] + "/authorization-response.plist"
-    let id = UUID().uuidString
-    do { try writePacket(["id": id, "arguments": Array(args.dropFirst(2))], request) }
-    catch { return 1 }
     let deadline = ProcessInfo.processInfo.systemUptime + min(timeout ?? 300, 300)
-    while privateDirectory(args[0]) && authorizationProcessIsLive(pid) {
-        if ProcessInfo.processInfo.systemUptime >= deadline ||
-           readPacket(args[0] + "/authorization-ended.plist")?["ended"] as? Bool == true { break }
-        if let packet = readPacket(response), packet["id"] as? String == id,
-           let status = packet["status"] as? Int, let output = packet["output"] as? String {
-            if !output.isEmpty {
-                (status == 0 ? FileHandle.standardOutput : FileHandle.standardError).write(Data((output + "\n").utf8))
-            }
-            return Int32(status)
-        }
+    var connection: Int32 = -1
+    while privateDirectory(args[0]) && authorizationProcessIsLive(pid) && ProcessInfo.processInfo.systemUptime < deadline {
+        connection = mountfs_auth_connect(args[0] + "/s")
+        if connection >= 0 { break }
         Thread.sleep(forTimeInterval: 0.05)
     }
-    FileHandle.standardError.write(Data("Authorization session ended; no new authorization session was started.\n".utf8))
-    return 1
+    guard connection >= 0 else { return 1 }
+    defer { close(connection) }
+    guard mountfs_auth_peer(connection, pid, 0, 0) != 0,
+          writeConnection(["arguments": Array(args.dropFirst(2))], connection),
+          let packet = readConnection(connection, timeout: max(0, deadline - ProcessInfo.processInfo.systemUptime)),
+          let status = packet["status"] as? Int, let output = packet["output"] as? String else {
+        FileHandle.standardError.write(Data("Authorization connection ended or timed out; no new authorization session was started.\n".utf8))
+        // The peer might still be executing an already accepted request.
+        return 125
+    }
+    if !output.isEmpty {
+        (status == 0 ? FileHandle.standardOutput : FileHandle.standardError).write(Data((output + "\n").utf8))
+    }
+    return Int32(status)
 }
 
 func authorizationSelfTest() -> Int32 {
@@ -235,38 +247,7 @@ func authorizationSelfTest() -> Int32 {
     }
     // AppleScript must preserve the lock-retaining status from the root tool.
     guard host.execute(["/bin/sh", "-c", "exit 125"]).0 == 125 else { return 1 }
-    let directory = FileManager.default.temporaryDirectory.appendingPathComponent("mountfs-auth-test-" + UUID().uuidString).path
-    do { try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700]) }
-    catch { return 1 }
-    defer { try? FileManager.default.removeItem(atPath: directory) }
-    guard privateDirectory(directory) else { return 1 }
-    let symlink = directory + "/symlink"
-    do { try FileManager.default.createSymbolicLink(atPath: symlink, withDestinationPath: "/etc/hosts") }
-    catch { return 1 }
-    guard readPacket(symlink) == nil else { return 1 }
-    let group = DispatchGroup()
-    group.enter()
-    DispatchQueue.global().async {
-        defer { group.leave() }
-        let deadline = Date().addingTimeInterval(10)
-        while Date() < deadline {
-            if let request = readPacket(directory + "/authorization-request.plist"), let id = request["id"] as? String {
-                try? writePacket(["id": id, "status": 0, "output": "IPC round trip"], directory + "/authorization-response.plist")
-                return
-            }
-            Thread.sleep(forTimeInterval: 0.01)
-        }
-    }
-    guard authorizationRequest([directory, String(getpid()), "/usr/bin/printf", "%s", "IPC round trip"], timeout: 10) == 0 else { return 1 }
-    group.wait()
-    // The portable tool test also verifies the macOS zombie-state classifier.
-    let start = ProcessInfo.processInfo.systemUptime
-    guard authorizationRequest([directory, String(getpid()), "/usr/bin/true"], timeout: 0.1) != 0 else { return 1 }
-    do { try writePacket(["ended": true], directory + "/authorization-ended.plist") } catch { return 1 }
-    guard authorizationRequest([directory, String(getpid()), "/usr/bin/true"], timeout: 10) != 0,
-          ProcessInfo.processInfo.systemUptime - start < 2 else { return 1 }
-    print("PASS silent-live-host and ended-session requests fail within a deadline")
-    print("PASS private IPC packet round trip and symlink rejection")
+    guard authorizationIPCSelfTest() else { return 1 }
     print("PASS authorization allowlist, one-shot driver and persistent AppleScript argument quoting (unprivileged)")
     return 0
 }

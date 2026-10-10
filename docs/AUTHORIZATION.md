@@ -52,7 +52,7 @@ point, caller uid/gid and protected driver. The daemon serializes requests, hold
 a device lock, bounds sessions to five minutes, invokes the driver once and fixes
 `rw,norecover,allow_other,default_permissions,uid,gid,umask` and backend options.
 
-A connection-scoped client bridges the existing private plist request channel.
+A connection-scoped client bridges the peer-authenticated local socket request channel.
 Both the unprivileged bridge and the daemon validate identity/state. No mutation
 uses a timeout followed by fallback; a broken connection fails the operation.
 The existing shell core verifies the writable kernel mount and performs an
@@ -204,7 +204,7 @@ size is bounded while reading and metadata is rechecked afterward. A new driver
 generation remains mode 0700 until dependency inspection, rewriting and signing
 complete. Homebrew source content is still explicitly trusted by administrator
 setup; this protects privileged reads and publication, not driver authenticity.
-Authorization IPC requests have a five-minute maximum, an ended-session sentinel
+Authorization IPC requests have a five-minute maximum and connection-close detection
 and a macOS process-state query that rejects an unreaped zombie.
 
 
@@ -250,3 +250,20 @@ driver/dependency replacement and protected-copy reuse. They do not establish
 real NTFS mounting or privacy-approval behavior on a physical Mac. Kernel-stuck
 copy operations and exact OS authorization-cache behavior also require physical
 validation.
+
+### Requester authentication
+
+Authorization requests and replies travel over a bounded, length-prefixed local
+socket, not owner-only request files. The host obtains the connecting PID and UID
+from macOS kernel socket credentials and accepts only live descendants of the
+originating transaction shell. The original shell is pinned by PID and process
+birth time; legitimate command-substitution shells are supported. Learning the
+session directory and host PID does not authorize a same-user sibling process.
+The client also verifies the kernel-reported server PID before sending arguments.
+Connection failure after acceptance returns the conservative lock-retaining status
+125 because the operation may still be executing. This does not protect against
+code injection into the originating shell or its trusted descendants.
+
+macOS CI exercises real direct/nested child processes, an unrelated same-UID
+requester, wrong ancestor birth time, status-125 propagation and a silent peer.
+These are IPC simulations, not disk mounts or biometric approval tests.
