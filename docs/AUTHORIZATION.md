@@ -103,3 +103,9 @@ checks launchd startup, process lifetime, live peer pins and replies without
 authorizing setup or touching a disk. It does not validate SMAppService approval
 on a user's Mac. Helper startup/connection events are logged under
 `net.guoquan.mountfs.helper` in Console.
+
+The packaged launch daemon also pins the final signed helper using a binary
+CDHash `SpawnConstraint` (enforced on macOS 14+). The disposable macOS CI test
+uses this packaged constraint for root launchd status checks, then deliberately
+changes the hash and requires a code-signing launch rejection. This remains
+separate from real SMAppService registration and system-generated BTM constraints.

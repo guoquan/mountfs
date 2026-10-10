@@ -238,3 +238,18 @@ diagnostics. A disk-valid signature does not establish that SMAppService can
 resolve and start the installed bundle. An unreadable cdhash value in
 `launchctl print` alone is insufficient to prove an empty constraint, because
 the value is binary data. Ordinary mounting remains available without the helper.
+
+### Helper code-signing termination (0.3.4 development build)
+
+`last exit reason = OS_REASON_CODESIGNING` establishes a signing-related launch
+termination, even when local signature verification succeeds. The build now
+writes an explicit `SpawnConstraint` containing the final helper's signing
+identifier and binary CDHash before sealing the app. macOS 14 and later enforce
+this constraint; macOS 13 ignores it. CI launches the packaged constraint under
+root launchd and checks both a working XPC connection and rejection of a changed
+hash. This does not test SMAppService/BTM registration or prove recovery on an
+installed Mac. Other system launch constraints still apply; ad-hoc signing
+remains a development limitation. After replacing the app, use the targeted
+registration repair above before enabling the helper again.
+
+Reference: [Apple launch-environment constraints](https://developer.apple.com/videos/play/wwdc2023/10266/).

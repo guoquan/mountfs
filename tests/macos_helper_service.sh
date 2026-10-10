@@ -19,13 +19,21 @@ cleanup() {
     rm -rf "$WORK"
 }
 trap cleanup EXIT
-python3 - "$WORK/service.plist" "$HELPER" "$SERVICE" "$WORK" <<'PYPLIST'
-import plistlib,sys
-with open(sys.argv[1], 'wb') as f:
-    plistlib.dump({'Label': sys.argv[3], 'Program': sys.argv[2], 'ProgramArguments': [sys.argv[2]],
-                  'MachServices': {sys.argv[3]: True},
-                  'StandardErrorPath': sys.argv[4]+'/stderr',
-                  'StandardOutPath': sys.argv[4]+'/stdout'}, f)
+# Exercise the actual packaged constraint, changing only path resolution/logs.
+python3 - "$ROOT/dist/mouNTFS.app/Contents/Library/LaunchDaemons/$SERVICE.plist" "$WORK/service.plist" "$HELPER" "$WORK" <<'PYPLIST'
+import plistlib, sys, subprocess, re
+with open(sys.argv[1], 'rb') as source:
+    service = plistlib.load(source)
+signature = subprocess.run(['/usr/bin/codesign', '-d', '--verbose=4', sys.argv[3]],
+                           capture_output=True, text=True, check=True).stderr
+expected = bytes.fromhex(re.search(r'^CDHash=([0-9a-f]{40})$', signature, re.M)[1])
+assert service['SpawnConstraint'] == {
+    'signing-identifier': 'net.guoquan.mountfs.helper', 'cdhash': expected}
+assert service.pop('BundleProgram') == 'Contents/MacOS/mountfs-helper'
+service.update(Program=sys.argv[3], ProgramArguments=[sys.argv[3]],
+               StandardErrorPath=sys.argv[4]+'/stderr', StandardOutPath=sys.argv[4]+'/stdout')
+with open(sys.argv[2], 'wb') as output:
+    plistlib.dump(service, output)
 PYPLIST
 sudo /usr/sbin/chown root:wheel "$WORK/service.plist"
 sudo /bin/chmod 644 "$WORK/service.plist"
@@ -51,3 +59,30 @@ for attempt in 1 2 3; do
     sleep 1
 done
 printf 'PASS launchd root helper stays running and answers pinned XPC status requests\n'
+
+# A wrong exact hash must be rejected by launchd, not merely by our XPC client.
+sudo /bin/launchctl bootout "system/$SERVICE"
+LOADED=0
+python3 - "$WORK/service.plist" "$WORK/rejected.plist" <<'PYREJECT'
+import plistlib, sys
+with open(sys.argv[1], 'rb') as source:
+    service = plistlib.load(source)
+value = bytearray(service['SpawnConstraint']['cdhash'])
+value[0] ^= 0xff
+service['SpawnConstraint']['cdhash'] = bytes(value)
+with open(sys.argv[2], 'wb') as output:
+    plistlib.dump(service, output)
+PYREJECT
+sudo /usr/sbin/chown root:wheel "$WORK/rejected.plist"
+sudo /bin/chmod 644 "$WORK/rejected.plist"
+sudo /bin/launchctl bootstrap system "$WORK/rejected.plist"
+LOADED=1
+if "$CLIENT" --helper-status > "$WORK/rejected-status" 2>&1; then
+    printf 'FAIL launchd accepted a mismatched helper hash\n' >&2
+    exit 1
+fi
+# shellcheck disable=SC2024
+sudo /bin/launchctl print "system/$SERVICE" > "$WORK/rejected-state"
+cat "$WORK/rejected-state"
+grep -q 'OS_REASON_CODESIGNING' "$WORK/rejected-state"
+printf 'PASS launchd rejects a mismatched helper spawn constraint\n'

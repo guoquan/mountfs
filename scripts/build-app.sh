@@ -36,7 +36,19 @@ SERVER_HASH=$(/usr/bin/codesign -d --verbose=4 "$APP/Contents/MacOS/mountfs-help
 /usr/bin/plutil -insert server -string "cdhash H\"$SERVER_HASH\"" "$APP/Contents/Resources/HelperPeers.plist"
 /usr/bin/plutil -insert client -string "cdhash H\"$CLIENT_HASH\"" "$APP/Contents/Resources/HelperPeers.plist"
 mkdir -p "$APP/Contents/Library/LaunchDaemons"
-cp scripts/net.guoquan.mountfs.helper.plist "$APP/Contents/Library/LaunchDaemons/"
+# Bind launchd's spawn constraint to the final signed helper, before sealing
+# the app. CDHash is plist Data (20 bytes), not its hexadecimal text spelling.
+python3 - scripts/net.guoquan.mountfs.helper.plist "$APP/Contents/Library/LaunchDaemons/net.guoquan.mountfs.helper.plist" "$SERVER_HASH" <<'PYCONSTRAINT'
+import plistlib, sys
+with open(sys.argv[1], 'rb') as source:
+    service = plistlib.load(source)
+service['SpawnConstraint'] = {
+    'signing-identifier': 'net.guoquan.mountfs.helper',
+    'cdhash': bytes.fromhex(sys.argv[3]),
+}
+with open(sys.argv[2], 'wb') as output:
+    plistlib.dump(service, output)
+PYCONSTRAINT
 swiftc Sources/MountFSApp/BrandIcon.swift scripts/generate-icons.swift -o "$ICON_WORK/generate-icons"
 "$ICON_WORK/generate-icons" "$ICON_WORK/AppIcon.iconset"
 /usr/bin/iconutil -c icns "$ICON_WORK/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
