@@ -21,6 +21,9 @@ jobs:
           node --check assets/site.js
       - name: Prepare browser QA
         run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          fc-cache -f
           npm install --no-save --package-lock=false playwright@1.62.1
           if command -v google-chrome >/dev/null; then
             echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
