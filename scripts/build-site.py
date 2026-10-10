@@ -110,6 +110,8 @@ def render(lang, c):
     canonical = 'https://mountfs.sh/' + (c['file'] if zh else '')
     icons = ['<path d="M5 5h14v14H5zM8 15h.01M8 9h8"/>', '<path d="M4 7h6l2 2h8v11H4zM4 7V4h6l2 3"/>', '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/>']
     benefits = ''.join(f'<div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{symbol}</svg></span><div><strong>{e(title)}</strong><p>{e(body)}</p></div></div>' for symbol, (title, body) in zip(icons, c['benefits']))
+    workflow_heading = e(c['workflowtitle']).replace('，', '，<br class="mobile-break">', 1) if zh else e(c['workflowtitle'])
+    install_heading = e(c['installtitle']).replace('，', '，<br class="mobile-break">', 1) if zh else e(c['installtitle'])
     steps = ''.join(f'<article class="step"><div class="number">0{i}</div><h3>{e(title)}</h3><p>{e(body)}</p></article>' for i, (title, body) in enumerate(c['steps'], 1))
     tabs = ''.join(f'<button class="tab" role="tab" id="tab-{i}" aria-controls="panel-{i}" aria-selected="{str(i == 1).lower()}" tabindex="{0 if i == 1 else -1}">{e(title)}</button>' for i, title in enumerate(c['tabs']))
     panels = ''.join(f'<div id="panel-{i}" role="tabpanel" aria-labelledby="tab-{i}" tabindex="0" {"hidden" if i != 1 else ""}><img src="assets/menu-{state}.png" alt="{e(c["alts"][i])}" width="356" height="351" loading="lazy"></div>' for i, state in enumerate(['readonly', 'writable', 'progress']))
@@ -149,14 +151,14 @@ def render(lang, c):
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="{e(c['heroalt'])}" width="356" height="351" fetchpriority="high"><figcaption>{e(c['caption'])}</figcaption></figure>
 </div><div class="benefits">{benefits}</div></div></section>
-<section id="app" class="section wrap"><div class="section-head"><h2>{e(c['workflowtitle'])}</h2><p>{e(c['workflowintro'])}</p></div>
+<section id="app" class="section wrap"><div class="section-head"><h2>{workflow_heading}</h2><p>{e(c['workflowintro'])}</p></div>
   <div class="steps">{steps}</div>
   <div class="showcase"><div><h3>{e(c['showtitle'])}</h3><p>{e(c['showintro'])}</p>
     <div class="tabs" role="tablist" aria-label="{e(c['tablabel'])}" data-tabs>{tabs}</div>
     <noscript><p class="no-js">{e(c['nojs'])}</p></noscript>
   </div><figure class="preview">{panels}<figcaption>{e(c['sample'])}</figcaption></figure></div>
 </section>
-<section id="get-started" class="section wrap"><div class="section-head"><h2>{e(c['installtitle'])}</h2><p>{e(c['installintro'])}</p></div>
+<section id="get-started" class="section wrap"><div class="section-head"><h2>{install_heading}</h2><p>{e(c['installintro'])}</p></div>
   <div class="install-grid">
     <article class="install-card"><span class="label">{e(c['driverlabel'])}</span><h3>{e(c['drivertitle'])}</h3><p>{e(c['driverintro'])}</p>
       <div class="command"><button class="copy" data-copy="driver-commands" data-success="{e(c['copied'])}" data-fallback="{e(c['fallback'])}">{e(c['copy'])}</button><pre><code id="driver-commands">brew install --cask macfuse
