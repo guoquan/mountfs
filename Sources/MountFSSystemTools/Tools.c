@@ -108,7 +108,7 @@ int mountfs_process_live(int32_t pid) {
 #ifdef __APPLE__
     struct proc_bsdinfo info;
     memset(&info, 0, sizeof(info));
-    return proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) == sizeof(info)
+    return proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, sizeof(info)) == (int)sizeof(info)
         && info.pbi_status != SZOMB;
 #else
     /* This branch is used only by portable runner tests, not the macOS app. */

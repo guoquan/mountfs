@@ -58,7 +58,7 @@ func readDriverSource(_ canonical: String, limit: Int = 64 * 1024 * 1024) throws
     guard fd >= 0 else { throw HelperError.invalid("Cannot open driver without following links.") }
     defer { close(fd) }
     var before = stat()
-    guard fstat(fd, &before) == 0, before.st_mode & S_IFMT == S_IFREG,
+    guard fstat(fd, &before) == 0, before.st_mode & S_IFMT == S_IFREG, before.st_nlink == 1,
           before.st_size > 0, before.st_size <= limit else { throw HelperError.invalid("Invalid driver binary size or type.") }
     var data = Data()
     var chunk = [UInt8](repeating: 0, count: 65536)
