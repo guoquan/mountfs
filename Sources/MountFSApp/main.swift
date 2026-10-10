@@ -2,7 +2,7 @@ import AppKit
 import Darwin
 import MountFSCore
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.10"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.11"
 
 func helperResult(_ option: String, device: String) -> CommandResult? {
     let candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,
@@ -117,6 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var timer: Timer?
     private var outputWindow: NSWindow?
     private var verifiedIdentities: [String: String] = [:]
+    private var displayedReport = ""
     private var lastOutput: String?
     private var operationStatus: String?
     private var menuTracking = false
@@ -129,7 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = brandImage(size: 22, template: true)
         statusItem.button?.image?.accessibilityDescription = "mouNTFS"
-        UserDefaults.standard.register(defaults: ["openFinderAfterMount": true])
+        UserDefaults.standard.register(defaults: ["openFinderAfterMount": true, "showVolumeCount": false])
         progress.style = .spinning
         progress.controlSize = .small
         progress.isIndeterminate = true
@@ -160,36 +161,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.delegate = self
         menu.autoenablesItems = false
-        menu.addItem(item("mouNTFS \(appVersion)"))
-        menu.addItem(item(status))
+        let header = item("mouNTFS")
+        header.view = MenuHeaderView(status: status, version: appVersion)
+        menu.addItem(header)
         menu.addItem(.separator())
         for volume in volumes {
-            let entry = item("\(volume.name) · \(volume.readOnly ? "Read-only" : "Writable")")
-            entry.isEnabled = true
-            let actions = NSMenu()
-            actions.autoenablesItems = false
-            let mount = item("Enable Write Access…", action: #selector(mountVolume(_:)), object: volume.device)
+            let entry = item(volume.name)
+            let state = volume.mountPoint == nil ? "Unmounted" : (volume.readOnly ? "Read-only" : "Writable")
+            let color: NSColor = volume.mountPoint == nil ? .secondaryLabelColor : (volume.readOnly ? .secondaryLabelColor : .systemGreen)
+            let title = NSMutableAttributedString(string: volume.name, attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .semibold), .foregroundColor: NSColor.labelColor])
+            title.append(NSAttributedString(string: "  ·  " + state, attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: color]))
+            entry.attributedTitle = title
+            entry.image = menuSymbol("externaldrive", description: state)
+            menu.addItem(entry)
+            let mount = item(volume.readOnly ? "Enable Write Access…" : "Write Access Enabled", action: #selector(mountVolume(_:)), object: volume.device)
+            mount.image = menuSymbol(volume.readOnly ? "lock.open" : "checkmark.circle.fill", description: mount.title)
             mount.isEnabled = !busy && volume.readOnly
-            actions.addItem(mount)
+            mount.indentationLevel = 1
+            menu.addItem(mount)
             if let point = volume.mountPoint {
                 let open = item("Open in Finder", action: #selector(openVolume(_:)), object: point)
+                open.image = menuSymbol("folder", description: open.title)
                 open.isEnabled = !busy
-                actions.addItem(open)
+                open.indentationLevel = 1
+                menu.addItem(open)
             }
             let eject = item("Safely Eject…", action: #selector(ejectVolume(_:)), object: volume.device)
+            eject.image = menuSymbol("eject", description: eject.title)
             eject.isEnabled = !busy
-            actions.addItem(eject)
-            entry.submenu = actions
-            menu.addItem(entry)
+            eject.indentationLevel = 1
+            menu.addItem(eject)
+            menu.addItem(.separator())
         }
-        if volumes.isEmpty { menu.addItem(item("No external NTFS volumes")) }
-        menu.addItem(.separator())
-        let refreshItem = item("Refresh", action: #selector(refreshAction))
+        if volumes.isEmpty {
+            menu.addItem(item("Connect an external NTFS drive"))
+            menu.addItem(.separator())
+        }
+        let refreshItem = item("Refresh Volumes", action: #selector(refreshAction))
+        refreshItem.image = menuSymbol("arrow.clockwise", description: refreshItem.title)
         refreshItem.isEnabled = !busy
         menu.addItem(refreshItem)
+        let settings = NSMenu()
+        settings.autoenablesItems = false
         let finder = item("Open Finder after enabling writing", action: #selector(toggleOpenFinder))
         finder.state = UserDefaults.standard.bool(forKey: "openFinderAfterMount") ? .on : .off
-        menu.addItem(finder)
+        settings.addItem(finder)
+        let count = item("Show volume count in menu bar", action: #selector(toggleVolumeCount))
+        count.state = UserDefaults.standard.bool(forKey: "showVolumeCount") ? .on : .off
+        settings.addItem(count)
+        settings.addItem(.separator())
+        settings.addItem(item("NTFS Driver Permissions…", action: #selector(showPermissionHelp)))
+        let preferences = item("Settings")
+        preferences.isEnabled = true
+        preferences.image = menuSymbol("gearshape", description: preferences.title)
+        preferences.submenu = settings
+        menu.addItem(preferences)
         let diagnostics = NSMenu()
         diagnostics.autoenablesItems = false
         let last = item("Show Last Operation…", action: #selector(showLastOperation))
@@ -205,17 +231,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         diagnostics.addItem(backendItem)
         let advanced = item("Diagnostics")
         advanced.isEnabled = true
+        advanced.image = menuSymbol("stethoscope", description: advanced.title)
         advanced.submenu = diagnostics
         menu.addItem(advanced)
         let quit = item("Quit mouNTFS", action: #selector(quitApp))
         quit.isEnabled = !busy
+        menu.addItem(.separator())
         menu.addItem(quit)
         statusItem.menu = menu
     }
 
-    @objc private func refreshAction() { refresh() }
+    private var menuBarTitle: String {
+        UserDefaults.standard.bool(forKey: "showVolumeCount") && !volumes.isEmpty ? " \(volumes.count)" : ""
+    }
+    @objc private func toggleVolumeCount() {
+        UserDefaults.standard.set(!UserDefaults.standard.bool(forKey: "showVolumeCount"), forKey: "showVolumeCount")
+        statusItem.button?.title = menuBarTitle
+        rebuildMenu()
+    }
+    @objc private func refreshAction() { operationStatus = nil; refresh() }
+    @objc private func showPermissionHelp() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Allow the NTFS driver to access your drive"
+        alert.informativeText = "In System Settings → Privacy & Security → Full Disk Access, add the actual ntfs-3g executable. Check Installation shows its installed path. Granting access only to mouNTFS may not cover the driver. Administrator authorization and Full Disk Access are separate permissions."
+        alert.addButton(withTitle: "Open Full Disk Access")
+        alert.addButton(withTitle: "Check Installation")
+        alert.addButton(withTitle: "Cancel")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: openFullDiskAccess()
+        case .alertSecondButtonReturn: if !busy { diagnose() }
+        default: break
+        }
+    }
+    @objc private func openFullDiskAccess() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
+            NSWorkspace.shared.open(url)
+        }
+    }
     @objc private func disksChanged(_ notification: Notification) {
-        DispatchQueue.main.async { self.refresh() }
+        DispatchQueue.main.async { self.operationStatus = nil; self.refresh() }
     }
     func menuWillOpen(_ menu: NSMenu) { menuTracking = true; refresh() }
     func menuDidClose(_ menu: NSMenu) {
@@ -253,7 +308,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     self.status = "Cannot read disk information — retry Refresh"
                     self.scanReport = "diskutil list failed or returned an unreadable plist. Check Disk Utility and retry Refresh."
                 }
-                self.statusItem.button?.title = self.volumes.isEmpty ? "" : " \(self.volumes.count)"
+                self.statusItem.button?.title = self.menuBarTitle
                 self.statusItem.button?.toolTip = "mouNTFS — \(self.status)"
                 if oldVolumes != self.volumes || oldStatus != self.status { self.rebuildMenu() }
             }
@@ -283,6 +338,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.toolTip = title
         progress.startAnimation(nil)
         let identities = verifiedIdentities
+        let generationForStatus = scanGeneration
         rebuildMenu()
         DispatchQueue.global(qos: .userInitiated).async {
             let identity = mountDevice.flatMap { currentIdentity($0) }
@@ -308,7 +364,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.busy = false
                 self.progress.stopAnimation(nil)
                 self.statusItem.button?.image = brandImage(size: 22, template: true)
-                self.statusItem.button?.title = self.volumes.isEmpty ? "" : " \(self.volumes.count)"
+                self.statusItem.button?.title = self.menuBarTitle
                 self.lastOutput = operationDetails
                 if let device = verifiedDevice, let identity, verifiedPoint != nil {
                     self.verifiedIdentities[device] = identity
@@ -327,7 +383,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     alert.alertStyle = .warning
                     alert.addButton(withTitle: "OK")
                     alert.addButton(withTitle: "Show Details")
-                    if alert.runModal() == .alertSecondButtonReturn {
+                    let accessDenied = result.text.contains("Operation not permitted") || result.text.contains("Permission denied")
+                    if accessDenied { alert.addButton(withTitle: "Open Full Disk Access") }
+                    let choice = alert.runModal()
+                    if choice == .alertThirdButtonReturn && accessDenied { self.openFullDiskAccess() }
+                    if choice == .alertSecondButtonReturn {
                         self.showOutput(title: self.status, text: operationDetails)
                     }
                 } else if result.status == 0 && showSuccessOutput {
@@ -337,6 +397,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     NSWorkspace.shared.open(URL(fileURLWithPath: point))
                 }
                 self.refresh()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                    guard !self.busy, self.scanGeneration == generationForStatus else { return }
+                    self.operationStatus = nil
+                    self.refresh()
+                }
             }
         }
     }
@@ -387,7 +452,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let window = outputWindow ?? NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 380), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = "mouNTFS — \(title)"
-        let scroll = NSScrollView(frame: window.contentView!.bounds)
+        let content = NSView(frame: window.contentView!.bounds)
+        content.autoresizingMask = [.width, .height]
+        let copy = NSButton(title: "Copy Report", target: self, action: #selector(copyReport))
+        copy.bezelStyle = .rounded
+        copy.frame = NSRect(x: 14, y: 10, width: 116, height: 28)
+        content.addSubview(copy)
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 48, width: content.bounds.width, height: content.bounds.height - 48))
         scroll.autoresizingMask = [.width, .height]
         scroll.hasVerticalScroller = true
         let view = NSTextView(frame: scroll.bounds)
@@ -395,15 +466,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         view.isSelectable = true
         view.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         view.string = text
+        view.textContainerInset = NSSize(width: 12, height: 12)
         view.autoresizingMask = [.width]
         view.isVerticallyResizable = true
         view.textContainer?.widthTracksTextView = true
         scroll.documentView = view
-        window.contentView = scroll
+        content.addSubview(scroll)
+        displayedReport = text
+        window.contentView = content
         outputWindow = window
         window.center()
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func copyReport() {
+        let report = displayedReport
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(report, forType: .string)
     }
 
     @objc private func quitApp() { if !busy { NSApp.terminate(nil) } }

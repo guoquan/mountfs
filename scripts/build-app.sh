@@ -9,7 +9,7 @@ fi
 swift build -c release
 BIN_DIR=$(swift build -c release --show-bin-path)
 VERSION=$(bash mountfs.sh --version)
-APP="$PROJECT_ROOT/dist/mouNTFS-$VERSION.app"
+APP="$PROJECT_ROOT/dist/mouNTFS.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/MountFS" "$APP/Contents/MacOS/mouNTFS"
 cp "$BIN_DIR/MountFSIdentity" "$APP/Contents/MacOS/mountfs-identity"

@@ -1,6 +1,6 @@
 # *mouNT*FS
 
-Enable write access to external NTFS drives on your Mac. **0.2.10 is a development
+Enable write access to external NTFS drives on your Mac. **0.2.11 is a development
 update, pending actual macOS/NTFS drive validation.** It includes a native menu bar
 app and a rewritten standalone script. It is not yet a notarized public app release.
 
@@ -43,10 +43,10 @@ Requires macOS 13+ and Xcode command line tools. From the checkout:
 
 ```bash
 bash scripts/build-app.sh
-open dist/mouNTFS-0.2.10.app
+open dist/mouNTFS.app
 ```
 
-Successful macOS CI runs also provide a `mouNTFS-development-app` download artifact
+Successful macOS CI runs also provide a `mouNTFS-<version>-development-app` download artifact
 on the Actions run page. It is an ad-hoc signed development build, not notarized.
 
 Select a drive and **Enable Write Access…**. That menu action confirms the
@@ -127,8 +127,10 @@ safety reviews are welcome. Original collaborators: Claude 3.5 Sonnet, GPT-4o an
 [guoquan](https://guoquan.net). The 0.2.0 development update was prepared with Codex.
 MIT License © 2024-2026 Quan Guo.
 
-Development build archives, application bundles and Actions artifacts include
-version numbers. 0.2.10 packages mouNTFS-0.2.10.app inside a versioned archive.
+Development archives and Actions artifacts include version numbers; the bundle
+is always `mouNTFS.app`, so it can replace the installed app. Version 0.2.11 is
+shown in the menu header and the bundle metadata. Quit the old app before replacing
+it, and launch the replacement. The current build remains ad-hoc signed.
 Show Details includes each write-verification condition and filesystem errors.
 The bundled helper reads IOMedia connection identities and the kernel mount table,
 so FUSE write verification does not depend on diskutil recognizing the filesystem.
@@ -151,3 +153,21 @@ and access-error messages explain this requirement; the app does not claim to
 inspect or verify TCC permission status. Other macOS/driver combinations still
 require validation. Concrete device-open denial takes precedence over the driver's
 generic unsafe-state hint.
+
+
+## Menu and authorization roadmap
+
+0.2.11 groups each drive's status and actions directly in the main menu. Enable
+Write Access, Open in Finder and Safely Eject no longer require a drive submenu.
+The branded header, system symbols and semantic colors follow native appearance.
+Settings contains the Finder preference and an optional menu-bar volume count
+(off by default). Diagnostics has a Copy Report action. Permission errors offer
+a shortcut to Full Disk Access; this opens settings without modifying permissions.
+Completion messages return to the current volume summary after eight seconds.
+
+Touch ID administrator authorization is still not implemented. LocalAuthentication
+provides identity verification, not a root execution channel. The proposed next
+step is an opt-in SMAppService helper with authenticated clients and narrowly
+scoped mount requests; see [authorization design](docs/AUTHORIZATION.md). Adding a
+fingerprint prompt before the current AppleScript would add a prompt without
+removing the administrator password requirement.

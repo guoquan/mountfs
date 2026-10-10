@@ -20,7 +20,7 @@ jobs:
           bash tests/media_identity_tests.sh
           bash tests/mount_state_tests.sh
           bash mountfs.sh --help
-          test "$(bash mountfs.sh --version)" = 0.2.10
+          test "$(bash mountfs.sh --version)" = 0.2.11
       - name: ShellCheck
         if: runner.os == 'Linux'
         run: shellcheck mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/mount_state_tests.sh
@@ -35,9 +35,13 @@ jobs:
           bash scripts/build-app.sh
           bash tests/macos_media_identity.sh
           VERSION=$(bash mountfs.sh --version)
-          codesign --verify --deep --strict "dist/mouNTFS-$VERSION.app"
-          test -f "dist/mouNTFS-$VERSION.app/Contents/Resources/mountfs.sh"
-          test -s "dist/mouNTFS-$VERSION.app/Contents/Resources/AppIcon.icns"
+          codesign --verify --deep --strict "dist/mouNTFS.app"
+          test -f "dist/mouNTFS.app/Contents/Resources/mountfs.sh"
+          test -s "dist/mouNTFS.app/Contents/Resources/AppIcon.icns"
+          ARCHIVE="dist/mouNTFS-$VERSION-dev-$(uname -m).zip"
+          unzip -Z1 "$ARCHIVE" > /tmp/mountfs-archive-entries.txt
+          rg '^mouNTFS\.app/Contents/Info\.plist$' /tmp/mountfs-archive-entries.txt
+          ! rg '^mouNTFS-[^/]+\.app/' /tmp/mountfs-archive-entries.txt
           echo "MOUNTFS_VERSION=$VERSION" >> "$GITHUB_ENV"
       - name: Upload development app
         if: runner.os == 'macOS'
