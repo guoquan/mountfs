@@ -8,9 +8,9 @@ SERVICE="$ROOT/dist/mouNTFS.app/Contents/MacOS/mountfs-helper"
 "$SERVICE" --self-test
 CLIENT_REQUIREMENT=$(/usr/libexec/PlistBuddy -c 'Print :client' "$ROOT/dist/mouNTFS.app/Contents/Resources/HelperPeers.plist")
 SERVER_REQUIREMENT=$(/usr/libexec/PlistBuddy -c 'Print :server' "$ROOT/dist/mouNTFS.app/Contents/Resources/HelperPeers.plist")
-/usr/bin/codesign --verify --strict -R "$CLIENT_REQUIREMENT" "$HELPER"
-/usr/bin/codesign --verify --strict -R "$SERVER_REQUIREMENT" "$SERVICE"
-if /usr/bin/codesign --verify --strict -R "$CLIENT_REQUIREMENT" "$ROOT/dist/mouNTFS.app/Contents/MacOS/mouNTFS" 2>/dev/null; then exit 1; fi
+/usr/bin/codesign --verify --strict -R "=$CLIENT_REQUIREMENT" "$HELPER"
+/usr/bin/codesign --verify --strict -R "=$SERVER_REQUIREMENT" "$SERVICE"
+if /usr/bin/codesign --verify --strict -R "=$CLIENT_REQUIREMENT" "$ROOT/dist/mouNTFS.app/Contents/MacOS/mouNTFS" 2>/dev/null; then exit 1; fi
 /usr/bin/codesign -d --verbose=4 "$HELPER" 2>&1 | grep -q 'flags=.*runtime'
 printf 'PASS exact client/server signing pins reject an unrelated bundled executable\n'
 if "$HELPER" --identity 'disk0s1;touch bad' >/dev/null 2>&1; then exit 1; fi

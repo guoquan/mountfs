@@ -11,6 +11,12 @@ if arguments.count == 2, arguments[1] == "--helper-status" {
 } else if arguments.count == 3, arguments[1] == "--helper-configure" {
     do {
         let client = try MountHelperClient()
+        let readiness = client.status()
+        guard readiness.status == 0 else {
+            print(readiness.output)
+            print("If the app was replaced, disable and re-enable the permission helper in Settings before retrying setup. No setup authorization was requested.")
+            exit(1)
+        }
         guard let result = withAdministratorAuthorization({ client.configure(driver: arguments[2], authorization: $0) }) else {
             print("Helper setup authorization was cancelled or denied."); exit(2)
         }
