@@ -40,8 +40,8 @@ jobs:
           test -s "dist/mouNTFS.app/Contents/Resources/AppIcon.icns"
           ARCHIVE="dist/mouNTFS-$VERSION-dev-$(uname -m).zip"
           unzip -Z1 "$ARCHIVE" > /tmp/mountfs-archive-entries.txt
-          rg '^mouNTFS\.app/Contents/Info\.plist$' /tmp/mountfs-archive-entries.txt
-          ! rg '^mouNTFS-[^/]+\.app/' /tmp/mountfs-archive-entries.txt
+          grep -E '^mouNTFS\.app/Contents/Info\.plist$' /tmp/mountfs-archive-entries.txt
+          ! grep -E '^mouNTFS-[^/]+\.app/' /tmp/mountfs-archive-entries.txt
           echo "MOUNTFS_VERSION=$VERSION" >> "$GITHUB_ENV"
       - name: Upload development app
         if: runner.os == 'macOS'
