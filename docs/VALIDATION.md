@@ -1,111 +1,98 @@
-# Release validation
+# Validation record — 0.3.4 development build
 
-Status: **limited user-reported physical-drive validation; full matrix pending**. Use disposable test drives.
-Record macOS build, architecture, macFUSE/ntfs-3g versions, backend, UUID behavior,
-authorization behavior and result for every run.
+Status: **limited user-reported ordinary mounting success; optional helper startup
+failed on the reported Mac; wider physical-drive validation pending.** CI and user
+reports are separate evidence. Use disposable test drives for additional tests.
 
-0.2.1 adds CI checks against the runner's real `diskutil info -plist /` output,
-plus a modeled NTFS plist exercised with the actual PlistBuddy. This checks field
-names and state parsing, but is not a physical NTFS USB drive mount test.
+## Physical-Mac reports, 2026-10-10
 
-| Scenario | Expected result | Actual |
+Reported environment: macOS 27.0.1, arm64, kernel backend, external NTFS volume LMT,
+missing DiskUUID/VolumeUUID, Homebrew ntfs-3g at `/opt/homebrew/bin/ntfs-3g`.
+Exact macFUSE and ntfs-3g versions were not captured. These results were reported
+by the user and were not independently reproduced in a lab.
+
+| Observation | Evidence and limit |
+|---|---|
+| Ordinary mounting reached writable verification | Supplied log showed a writable kernel mount at the expected path on the second verification attempt and successful current-user write verification |
+| 0.2.8 ordinary authorization flow works on retry | User confirmed success after granting ntfs-3g Full Disk Access; mouNTFS Full Disk Access could be disabled |
+| App Full Disk Access alone did not solve device EPERM | Device-open denial persisted until driver permission was granted; the appended unsafe-state hint did not establish hibernation |
+| Old macFUSE rejected the OS version | Driver upgrade and restart allowed testing to proceed; exact upgraded driver version was not recorded |
+| Earlier helper launch failed | Logs showed spawn failure / EX_CONFIG and subsequently OS_REASON_CODESIGNING despite a valid on-disk signature |
+| 0.3.4 repair/setup still failed | Repair returned SMAppServiceErrorDomain / 1, service status 0 at that point; subsequent launch state showed parent build 18 and a code-signing termination |
+| Explicit 0.3.4 SpawnConstraint did not fix startup | Constraint was present in launchd state; helper still did not reply and last exit reason remained OS_REASON_CODESIGNING |
+| Signing investigation paused | App/helper were ad-hoc signed without TeamIdentifier; local identity query found no valid identities and the Mac had only Command Line Tools |
+
+The successful ordinary flow is the AppleScript authorization host, not the root
+helper. 0.2.10 restored that authorization-session implementation after the user's
+0.2.8 confirmation. Success in that earlier version does not establish a complete
+0.3.4 real-drive compatibility matrix. The root helper's protected-driver setup,
+mounting and Touch ID confirmation have not completed physical-Mac validation.
+
+## Automated checks
+
+| Check | What it establishes | What it does not establish |
 |---|---|---|
-| Clean NTFS, kernel, Intel and Apple Silicon | Verified write and Finder access | User-reported write verification on one Apple Silicon NTFS drive; Intel and wider matrix pending |
-| Compatible FSKit, macOS 15.4+ | Mount, identity metadata, write and eject | Pending |
-| Unicode, quotes and spaces in volume name | Correct selection; no interpolation | Pending |
-| Missing driver / macFUSE not ready | Clear error; mount retained/restored | Pending |
-| Cancel confirmation | No disk change | Pending |
-| Cancel authorization | No mutation or explicit recovery failure | Pending |
-| Busy unmount | No force; existing mount retained | Pending |
-| Failed driver / false-success mount / failed probe | Read-only recovery | Pending |
-| Hibernated or dirty NTFS | No forced write or hibernation removal | Pending |
-| Unplug and replace during transaction | No recovery against replacement UUID | Pending |
-| Existing `.write_test` file | Contents untouched | Pending |
-| Concurrent operations, same user | Second operation refused | Pending |
-| SIGINT/SIGTERM during operation | Best-effort recovery and cleanup | Pending |
-| Eject a multi-partition disk | Confirmed OS-managed whole-disk eject | Pending |
-| Native app launch | Menu, dialogs and output work | Pending |
+| Shell simulations | Cancellation, busy disk, driver failure, false success, probe failure, replacement/identity refusal, helper commit handling and existing-file protection in modeled cases | Actual driver/kernel behavior and hot-plug timing |
+| Boot-record fixtures | Validation, fingerprint pinning, aligned dd/od pipeline and failure propagation on regular-file fixtures | Raw-device TCC access or hardware alignment behavior |
+| IOMedia tests | Modeled replacement/source pinning plus actual repeated metadata queries on the runner | NTFS connection stability across every real mount/unplug scenario |
+| macOS plist and Swift tests | Actual diskutil schema parsing and conservative metadata handling | Driver compatibility on an external NTFS volume |
+| Kernel mount-table tests | Source/path/flags queries and missing-mount rejection on the runner | Real external-drive write access |
+| Signing/IPC tests | Exact client/server pins and unrelated-client rejection; unprivileged policy/driver snapshot tests | SMAppService approval or privileged driver setup |
+| Disposable root launchd status checks | Production helper remains alive and answers three pinned XPC requests | SMAppService/BTM registration and copied-driver mounting |
+| Packaged SpawnConstraint checks | Serialized hash matches the signed helper; a changed hash fails a code-signing requirement | OS enforcement of that plist constraint through SMAppService; direct bootstrap did not enforce it in the CI experiment |
+| App packaging | Versioned download archive, stable mouNTFS.app name, icon assets and on-disk signature verification | Finder/menu legibility, Gatekeeper acceptance or notarization |
 
-Before public distribution:
+CI temporarily bootstraps a root service only on disposable macOS Actions runners.
+It does not authorize driver setup or access an external NTFS drive. Positive
+launchctl bootstrap tests cannot be substituted for the failed real SMAppService
+registration path.
 
-- Verify driver options with pinned versions, especially FSKit permissions.
-- Confirm `diskutil info -plist <device>` exposes DiskUUID (preferred), or VolumeUUID, and MountPoint after
-  ntfs-3g mounting. The core fails closed if identity cannot be established.
-- Complete Developer ID signing/notarization; test a downloaded app on a clean Mac.
-- Publish versioned artifacts/checksums, then update the independent gh-pages website.
-- Add localization and first-run guidance after the backend compatibility matrix is known.
+## Remaining physical test matrix
 
-0.2.2 addresses missing VolumeUUID by preferring the GPT partition DiskUUID.
-Identifiers are namespaced to avoid confusing partition and filesystem UUIDs.
-0.2.3 adds a read-only NTFS boot-record fingerprint for disks exposing neither.
-Device numbers/names are not safe identity fallbacks. Real GPT and MBR NTFS drives, plus UUID visibility after FUSE mounting,
-still need validation. The local scan report records only identity availability.
+Record application commit/version, macOS build, architecture, macFUSE/ntfs-3g
+versions, backend, identity source, driver path/permissions and outcome for each run.
 
-The app now builds AppIcon.icns and a template menu bar mark from the website's
-italic m/upright N branding. CI checks icon packaging; Finder rendering and menu
-bar legibility in light/dark mode require a Mac check.
+| Scenario | Required observation | Current state |
+|---|---|---|
+| Clean NTFS, kernel, Intel/Apple Silicon | Writable mount, exclusive probe, Finder access | Limited Apple Silicon user report; Intel and broader combinations pending |
+| UUID-less MBR/GPT partitions | Stable pinned identity through unmount/remount | UUID-less user report; broader layouts pending |
+| Compatible FSKit | Mount, identity, write and eject | Pending |
+| Unicode/quotes/spaces in volume names | Correct selection and argument handling | Simulations/quoting tests only; real-drive check pending |
+| Cancel confirmation/authorization | No mutation, or explicit recovery outcome | Simulations only |
+| Busy unmount | No force; original mount retained | Simulation only |
+| Failed driver/false success/probe failure | Same-volume read-only recovery, clear failure if impossible | User logs show recovery messages; independent state confirmation and full matrix pending |
+| Hibernated/unclean NTFS | No forced write or hibernation removal | Real-drive test pending |
+| Unplug/replace during transaction | No recovery against a replacement identity | Simulation only; hardware race tests pending |
+| Existing .write_test and other files | Contents untouched; exclusive probe removed | Filesystem fixture/simulation; real-drive test pending |
+| Concurrent operations/signals | Refusal or bounded best-effort cleanup | Simulation only; process/death timing pending |
+| Multi-partition eject | Confirmed whole-disk eject, no partial/busy ambiguity | Pending |
+| Native menu/icon light and dark modes | Readable state and consistent app branding | Packaging checked; systematic visual test pending |
+| Helper registration and replacement | Service starts after approval and answers current client | Failed on reported ad-hoc builds; Apple-issued signing test pending |
+| Protected driver setup/FDA/linkage | Root-owned approved copy mounts correctly | Pending |
+| Touch ID/password/cancellation | Correct native confirmation and cancellation boundary | Pending |
+| Helper disconnect/expiry | Uncommitted same-identity recovery; committed mount retained | Policy tests only; real-drive check pending |
 
-0.2.3 reads 512 bytes from the validated raw external partition using od. It tries
-an unprivileged read, then requests OS authorization only when necessary. The
-NTFS OEM signature, sector/cluster sizes, sector trailer and nonzero serial and
-geometry must pass validation. SHA-256 covers the entire record. Once selected,
-this identity source is pinned for verification/recovery even if UUID metadata
-later appears. Read failure or a changed record stops further disk operations.
-Layout reference: https://github.com/torvalds/linux/blob/master/fs/ntfs3/ntfs.h
+## Identity and recovery limits
 
-Five simulated boot-identity groups cover absent UUIDs, metadata appearance,
-changed serial, malformed/truncated records, read authorization failure and
-replacement refusal. They do not establish actual raw-device read behavior.
-Validate MBR/GPT USB drives with no UUID before/after unmount and FUSE mounting,
-macOS disk-access permissions, authorization cancellation and unplug/replacement.
-A byte-identical cloned volume shares this fingerprint, as cloned UUIDs do; this
-is accidental replacement protection, not hardware authentication.
+Device numbers and names are not stable identity fallbacks. The app can use a live
+IOMedia connection identity (partition ID, parent media ID and size) without raw
+filesystem reads; standalone use can retain a validated boot-record fallback.
+Identity source is pinned for the transaction. A cloned UUID/boot record is not
+hardware authentication. Missing identity or a changed/disappeared device stops
+further targeting rather than switching sources.
 
-0.2.4 replaces direct raw-device od reads with one aligned 4096-byte dd read.
-The constant pipeline runs with pipefail and passes the validated device as an
-argument, not interpolated source. od converts all bytes and only the first 512
-are validated/hashed. Errors identify authorization/read failure, output length,
-OEM signature, trailer, sector/cluster sizes, serial or geometry. A real dd/od
-regular-file fixture runs on both CI platforms, including read-failure handling;
-physical-device alignment and permissions still require user testing.
-Build bundles/archives and Actions artifact names now include the version.
+Recovery is best-effort and can fail through busy mounts, cancellation or OS errors.
+Signals cannot cover SIGKILL, power loss or every hot-plug race. Test recovery state
+independently in Disk Utility/mount queries, not just from completion text.
 
-0.2.5 adds a bundled, unprivileged IOKit metadata executable for UUID-less devices.
-Identity includes the partition registry ID, parent whole-media registry ID and
-size. This connection-scoped token is never stored or reused across process/boot
-sessions. Its source is pinned during the transaction. Replacement, disappearance
-or helper failure stops operations instead of switching to an alternate source.
-It does not open /dev, request administrator access or read filesystem content.
-The GUI also opens/closes the mounted root to trigger scoped removable-volume
-consent before spawning the core. Apple's privacy UI remains user-controlled.
+## Before public distribution
 
-Four simulated groups validate no raw reads, source pinning, replacement/parent
-changes and malformed/unavailable identity. CI queries a real IOMedia twice and
-validates invalid input/nonexistent-device rejection. Actual IOMedia stability
-across NTFS unmount/FUSE remount, TCC consent and driver raw access remain pending.
+- Complete real-drive tests for the intended OS/driver/backend combinations.
+- Resolve helper signing/registration before describing it as a working feature.
+- Validate Touch ID and protected-driver Full Disk Access/linkage separately.
+- Complete Developer ID signing and notarization; test downloads on a clean Mac.
+- Establish published versioned artifacts/checksums and update the separate website
+  deliberately; this development branch has not updated its download endpoint.
+- Review localization, first-run guidance and native visual appearance.
 
-## User-reported test, 2026-10-10
-
-Environment: macOS 27.0.1, arm64, kernel backend, external NTFS volume LMT,
-missing DiskUUID/VolumeUUID, Homebrew ntfs-3g at /opt/homebrew/bin/ntfs-3g.
-Exact macFUSE and ntfs-3g versions were not captured.
-
-- 0.2.6 log showed native mount visibility on the second verification attempt and
-  a successful current-user exclusive write probe.
-- 0.2.8 initially failed opening the device with EPERM, as did 0.2.9 after reverting
-  the authorization host. App Full Disk Access alone did not resolve the failure.
-- User granted ntfs-3g Full Disk Access and reported successful operation even
-  with mouNTFS Full Disk Access disabled, then confirmed 0.2.8 works on retry.
-- 0.2.10 restores that tested authorization-session implementation and combines
-  it with specific driver permission guidance and diagnostic error precedence.
-
-These are user reports, not independently reproduced lab tests. Session expiry,
-authorization cancellation, hot-plug/replacement, Intel, FSKit and broader driver
-version compatibility remain pending. The optional helper/Touch ID flow introduced in 0.3.0 has not been physically validated.
-
-
-0.3.0 adds an opt-in SMAppService helper and native LocalAuthentication confirmation
-for configured helper mounts. Unprivileged build tests do not establish service
-registration, protected-driver linkage/FDA, real privileged operations or biometric
-behavior. See AUTHORIZATION.md for the new validation matrix. The earlier 0.2.8
-physical success applies to the AppleScript authorization host, not this daemon.
+See [authorization details](AUTHORIZATION.md) and [中文使用说明](USAGE.zh-CN.md).

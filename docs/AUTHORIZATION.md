@@ -1,7 +1,12 @@
 # Optional permission helper and Touch ID
 
-0.3.0 implements this as an opt-in development feature. Physical-Mac validation
-of registration, protected driver mounting and biometric UI is pending.
+Current version: **0.3.4 development build**. This opt-in feature is not yet a
+working user-validated authorization path. On the reported physical Mac,
+registration repair returned `SMAppServiceErrorDomain / 1`, and the daemon still
+terminated with `OS_REASON_CODESIGNING`. Its explicit spawn constraint was visible
+in launchd state but did not resolve the failure. Investigation is paused pending
+an Apple-issued signing environment. Use ordinary mounting while the helper is
+not ready. Protected-driver mounting and biometric UI remain unvalidated.
 
 ## Setup and authority
 
@@ -85,8 +90,9 @@ mount-table, private IPC and AppleScript policy tests.
 Still requires physical-Mac testing: registration/approval, copied driver linkage
 and macFUSE mount behavior, copied-driver Full Disk Access, Touch ID cancellation
 and password fallback, helper replacement/disable, late connection loss, expiry,
-hot unplug and the committed/uncommitted recovery distinction. CI does not install
-a root daemon or access an external NTFS drive.
+hot unplug and the committed/uncommitted recovery distinction. CI temporarily
+bootstraps the production helper as root on a disposable runner, but does not
+register it with SMAppService, authorize driver setup or access an external NTFS drive.
 
 ## Primary references
 
@@ -110,3 +116,66 @@ retains the packaged constraint for root launchd status checks and verifies its
 hash using positive/negative code-signing requirements. Direct bootstrap did not
 enforce the plist constraint in our test. Actual SMAppService enforcement,
 registration and system-generated BTM constraints remain untested by CI.
+
+
+## Signing and setup procedure for future testing
+
+Apple recommends signing the app and its embedded helper with the same Apple-issued
+code-signing identity. Ad-hoc signatures can cause registration/approval persistence
+problems. This is a recommended next diagnostic step, not proof of the exact failing
+constraint or a guaranteed fix for the reported Mac.
+
+Check available identities locally:
+
+```bash
+security find-identity -v -p codesigning
+```
+
+`0 valid identities found` means no usable identity was found by that query; the
+project cannot supply one. Command Line Tools can build the ad-hoc app. Certificate
+creation can be managed through a full Xcode installation and an Apple account;
+Personal Team testing is distinct from Developer ID distribution and notarization.
+Do not export or share private keys just to report identity availability.
+
+With a suitable identity already installed, build from the project checkout:
+
+```bash
+MOUNTFS_SIGNING_IDENTITY='Apple Development: Your Name (TEAMID)' bash scripts/build-app.sh
+```
+
+The script signs the client, builds/signs the helper, generates exact XPC pins and
+the binary CDHash spawn constraint, then seals the app with the selected identity.
+Re-signing a downloaded app afterward invalidates those pins. No certificate or
+notarization credentials are included in the repository.
+
+For a future controlled test, quit the old app, replace `/Applications/mouNTFS.app`,
+and open it there. Choose Settings → Enable Permission Helper. If the service
+actually reports `requiresApproval`, approve it in General → Login Items &
+Extensions and return to setup. `SMAppServiceErrorDomain / 1` alone is not proof
+that background approval is the only missing step. If no item appears or the
+service cannot launch, preserve the registration/launch diagnostics rather than
+repeatedly changing disk permissions.
+
+Repair Permission Helper Registration unregisters only this service, refreshes
+this app's Launch Services record and resubmits registration. It does not repair
+invalid trust, guarantee removal of every stale BTM state or reset the global
+background-item database. On the reported 0.3.4 build, repair did not restore a
+working helper. Full Disk Access does not fix a demonstrated signing termination.
+
+After service startup works, setup authorizes the protected driver copy. Its Full
+Disk Access is separate from the Homebrew original. Refresh Protected NTFS Driver
+imports an updated driver with administrator authorization. Disable Permission
+Helper unregisters the service but retains driver generations and committed mounts.
+
+A valid on-disk `codesign --verify --deep --strict` result does not establish that
+macOS permits daemon startup. `launchctl print` displays some binary CDHash values
+as blank text; that alone is not proof that the constraint contains an empty hash.
+A crash report or relevant AMFI log is needed to identify the specific failing
+constraint beyond the observed `OS_REASON_CODESIGNING` reason.
+
+Additional primary references:
+
+- [Apple signing guidance for SMAppService](https://developer.apple.com/forums/thread/799910)
+- [Getting Started with SMAppService](https://developer.apple.com/forums/thread/802443)
+- [Environment constraints](https://developer.apple.com/videos/play/wwdc2023/10266/)
+- [Personal Team and developer account overview](https://developer.apple.com/help/account/basics/about-your-developer-account)
