@@ -6,13 +6,11 @@ it in Finder after write access is verified. Insertion never mounts a drive writ
 on its own.
 
 **Current development version: 0.3.4.** Builds are ad-hoc signed and not notarized.
-The ordinary mounting path has limited user-reported success on an Apple Silicon
-Mac. The optional permission helper remains experimental: registration and launch
-failed on that Mac, including a code-signing termination in 0.3.4. Touch ID is
-implemented for configured helper mounts but has not been validated there. Use
-ordinary mounting for now; enabling the permission helper is not required.
+Use the mounting steps below; experimental authorization settings are not needed
+for this flow. Future authorization improvements are described in the roadmap.
 
 [中文使用与故障说明](docs/USAGE.zh-CN.md) ·
+[Roadmap](ROADMAP.md) ·
 [Authorization architecture](docs/AUTHORIZATION.md) ·
 [Validation status](docs/VALIDATION.md)
 
@@ -73,8 +71,6 @@ open dist/mouNTFS.app
 ```
 
 Command Line Tools are sufficient for this ad-hoc build and ordinary mounting.
-An Apple-issued signing identity is a separate prerequisite for the recommended
-helper signing test; see [authorization notes](docs/AUTHORIZATION.md).
 The UI is currently English; localization and a first-run setup wizard are pending.
 
 ## Use the menu
@@ -86,12 +82,11 @@ The UI is currently English; localization and a first-run setup wizard are pendi
 5. Close files using the drive before **Safely Eject…**. Ejection applies to the
    physical disk and its other partitions, as stated in the confirmation.
 
-Settings includes Finder opening, the optional volume count and experimental
-helper controls. Diagnostics includes disk scan, installation diagnosis, the last
+Settings includes Finder opening and the optional volume count. Experimental
+authorization controls are not part of the standard setup. Diagnostics includes disk scan, installation diagnosis, the last
 operation and report copying. Other disk actions and quitting are disabled while
-an operation is in progress. The ordinary authorization host has a bounded session;
-this is not a promise of exactly one password prompt on every Mac. No password or
-authorization token is saved by mouNTFS.
+an operation is in progress. macOS requests administrator authorization when needed; prompt counts can vary.
+mouNTFS does not save your password.
 
 ## Troubleshooting
 
@@ -103,26 +98,13 @@ authorization token is saved by mouNTFS.
 | Mount reports success but write verification fails | Read Show Details for mount source/path/flags and write-probe errors. Driver success alone is not proof of writable access. |
 | A confirmed hibernated/unclean NTFS error | Fully shut down or repair the volume in Windows. mouNTFS does not clear hibernation or force writing. |
 | Missing UUID | The bundled metadata tool can use a live IOMedia connection identity; missing UUID alone is not a reason to reformat. |
-| Helper times out / `OS_REASON_CODESIGNING` | The helper did not start or reply. This is not a disk-access diagnosis. Stop repeated permission changes; use the ordinary flow and consult the helper notes. |
 
-## Optional permission helper and Touch ID
+## Planned improvements
 
-The helper is intended to move limited mount commands into an approved root service
-and reduce repeated administrator prompts. Setup also prepares a protected copy of
-the installed driver and its libraries. When the helper is ready, optional native
-Touch ID/password confirmation checks user intent before mounting. It does not
-replace administrator authorization for installation or grant Full Disk Access.
-
-**This flow is not currently established as working on the reported Mac.** In 0.3.4,
-registration repair returned `SMAppServiceErrorDomain / 1`, and the registered daemon
-still exited with `OS_REASON_CODESIGNING`. The explicit launch constraint was present
-but did not resolve that failure. More Full Disk Access or repeated registration
-repair is not an established solution. Investigation is paused pending a suitable
-signing environment; ordinary mounting remains available when the helper is not ready.
-
-[Helper setup, signing, failure boundaries and test limits](docs/AUTHORIZATION.md)
-contains the development procedure. If a helper transaction has already started,
-the app does not silently retry that disk operation through the ordinary path.
+The next stages focus on fewer authorization prompts, native Touch ID confirmation,
+clearer setup guidance and a polished interface. See [ROADMAP](ROADMAP.md) for stage
+order and acceptance criteria. Planned features are not requirements for using the
+current mounting flow.
 
 ## Standalone script and recovery boundaries
 
