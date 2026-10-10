@@ -395,6 +395,11 @@ cleanup() {
         AUTH_SESSION_PID=
     fi
     [ -z "$SESSION_DIR" ] || rm -rf -- "$SESSION_DIR"
+    # A release/acknowledgement can become uncertain after the initial check.
+    if [ "$DRIVER_TERMINATION_UNCONFIRMED" -eq 1 ]; then
+        message "Error: Operation completion and device-lock state are uncertain. Inspect Show Details before retrying; no further disk changes were attempted."
+        status=125
+    fi
     return "$status"
 }
 

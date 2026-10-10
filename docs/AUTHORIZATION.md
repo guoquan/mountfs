@@ -295,3 +295,8 @@ collapse it into an ordinary initialization error. Failure diagnostics preserve
 the operation's selected backend, including experimental FSKit. CI allows longer
 process-launch time for IPC fixture children; the silent-peer deadline remains
 short and independent.
+
+Cleanup rechecks the uncertainty flag after late lock-release or commit-acknowledgement
+requests and preserves status 125 in the EXIT trap. It reports uncertain completion
+and lock state instead of claiming an ordinary failed mount or a definitely held
+lock. Both late-reply-loss paths are covered by shell simulations.

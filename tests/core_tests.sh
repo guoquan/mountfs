@@ -227,4 +227,29 @@ passed=$((passed + 1))
 )
 printf 'PASS privileged requests reuse the existing host instead of starting osascript\n'
 passed=$((passed + 1))
+for completion in release acknowledge; do
+    (
+        . "$ROOT/mountfs.sh"
+        completion_log="$FIXTURE/cleanup-$completion"
+        native_helper_path() { printf '/test/native-helper'; }
+        run_privileged() {
+            printf '%s\n' "$*" >> "$completion_log"
+            DRIVER_TERMINATION_UNCONFIRMED=1
+            return 125
+        }
+        if [ "$completion" = release ]; then
+            LOCK_DIR=test-token
+            TRANSACTION_DEVICE=disk4s1
+        else
+            AUTH_PRIVILEGED=1
+            HELPER_COMMIT_CONFIRMED=1
+        fi
+        if cleanup 2> "$completion_log.error"; then exit 1; else result=$?; fi
+        [ "$result" -eq 125 ]
+        [ "$(wc -l < "$completion_log" | tr -d ' ')" = 1 ]
+        grep -q 'device-lock state are uncertain' "$completion_log.error"
+    )
+    printf 'PASS uncertain cleanup %s preserves status 125\n' "$completion"
+    passed=$((passed + 1))
+done
 printf '%s regression groups passed.\n' "$passed"
