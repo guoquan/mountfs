@@ -153,7 +153,10 @@ func configureDriver(_ source: String, uid: uid_t) throws -> String {
             guard resolved.hasPrefix("/") else { throw HelperError.invalid("Relative driver dependency refused.") }
             resolved = URL(fileURLWithPath: resolved).resolvingSymlinksInPath().path
             if resolved == canonical { continue } // dylib's own LC_ID_DYLIB
-            if protectedSystem(resolved) { continue }
+            if protectedSystem(resolved) {
+                if dependency != resolved { changes.append((dependency, resolved)) }
+                continue
+            }
             changes.append((dependency, try copyBinary(resolved)))
         }
         edges[destination] = changes

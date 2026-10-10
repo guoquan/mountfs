@@ -59,7 +59,14 @@ private final class Transaction {
             }
             touched = true; driverUsed = true
             let backend = operation == "mount-kernel" ? "local" : "backend=fskit"
-            return runTool(driver, ["/dev/" + device, point, "-o",
+            guard FileManager.default.isExecutableFile(atPath: "/usr/bin/sandbox-exec") else {
+                return HelperReply(1, "This macOS does not provide the protected driver execution facility. Disable the helper to use the original authorization flow.")
+            }
+            // ntfs-3g can dlopen external reparse plugins as well as its linked
+            // libraries. Prevent a persistent root driver from reading code or
+            // plugins out of mutable Homebrew/user directories after setup.
+            let profile = "(version 1)(allow default)(deny file-read-data (subpath \"/opt/homebrew\") (subpath \"/usr/local\") (subpath \"/Users\"))"
+            return runTool("/usr/bin/sandbox-exec", ["-p", profile, driver, "/dev/" + device, point, "-o",
                 "rw,norecover,allow_other,default_permissions,uid=\(uid),gid=\(gid),umask=077," + backend])
         case "recover":
             guard !committed, mounted.isEmpty else { return HelperReply(1, "Recovery requires an unmounted selected device.") }

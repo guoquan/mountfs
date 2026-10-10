@@ -31,6 +31,8 @@ run_case() (
             AUTH_HELPER=fake_commit
             AUTH_SESSION_PID=123
             start_authorization_session() { return 0; }
+            # Called indirectly through AUTH_HELPER.
+            # shellcheck disable=SC2317
             fake_commit() {
                 [ "$1" = --authorization-request ] && [ "$4" = --helper-commit ] || return 1
                 [ "$(cat "$TEST_DIR/state")" = driver-mounted ] || return 1

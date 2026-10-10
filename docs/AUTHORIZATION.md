@@ -25,7 +25,10 @@ One-time administrator setup approves the selected existing Homebrew ntfs-3g.
 The daemon copies that binary and its non-system Mach-O dependencies into a new
 root-owned generation, rewrites load commands, removes resolved rpaths, and signs
 the copied binaries. System libraries and protected macFUSE libraries remain in
-place. Unsupported dependency layouts fail setup rather than running mutable
+place. The driver runs through a fixed sandbox profile that denies reads under
+Homebrew and user-home prefixes, also blocking dynamically loaded reparse plugins
+from mutable locations. If sandbox-exec is unavailable, helper mounting fails
+without falling back; the user can disable the helper for the original flow. Unsupported dependency layouts fail setup rather than running mutable
 Homebrew binaries persistently as root. Configuration and copy ancestors must
 be root-owned and not group/world writable. No caller-selected executable path
 is accepted by the mount API. Driver refresh requires administrator authorization.
