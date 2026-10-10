@@ -276,3 +276,9 @@ confirms it received the success reply. An acknowledged commit may release its l
 when closing; loss of that acknowledgement's reply does not undo the already known
 commit result. CI simulates missing commit replies and exercises these lease states
 without mounting a physical disk.
+
+App-launched commands use the same bounded process-group runner, preserving the
+login user's environment for the shell core and keeping stderr out of successful
+metadata output. Scans exclude candidate NTFS partitions when authoritative kernel
+mount state is unavailable. Helper-status refreshes discard obsolete completions;
+final write-state uncertainty is displayed explicitly instead of claiming success.

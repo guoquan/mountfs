@@ -50,40 +50,11 @@ struct CommandResult {
     var text: String { String(decoding: output, as: UTF8.self) }
 }
 
-private final class ErrorCapture {
-    private let lock = NSLock()
-    private var data = Data()
-    func set(_ value: Data) { lock.lock(); data = value; lock.unlock() }
-    func get() -> Data { lock.lock(); defer { lock.unlock() }; return data }
-}
-
-// All commands use Process arguments; volume names are never evaluated as code.
-func runCommand(_ executable: String, _ arguments: [String], mergeErrors: Bool = true, environment: [String: String]? = nil) -> CommandResult {
-    let process = Process()
-    let pipe = Pipe()
-    let errorPipe = Pipe()
-    let errors = ErrorCapture()
-    let group = DispatchGroup()
-    process.executableURL = URL(fileURLWithPath: executable)
-    process.arguments = arguments
-    if let environment { process.environment = environment }
-    process.standardOutput = pipe
-    process.standardError = errorPipe
-    do {
-        try process.run()
-        group.enter()
-        DispatchQueue.global(qos: .utility).async {
-            errors.set(errorPipe.fileHandleForReading.readDataToEndOfFile())
-            group.leave()
-        }
-        var output = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        group.wait()
-        if mergeErrors || process.terminationStatus != 0 { output.append(errors.get()) }
-        return CommandResult(status: process.terminationStatus, output: output)
-    } catch {
-        return CommandResult(status: 1, output: Data(error.localizedDescription.utf8))
-    }
+// Shared process-group runner bounds output and execution, including inherited pipes.
+func runCommand(_ executable: String, _ arguments: [String], mergeErrors: Bool = true, environment: [String: String]? = nil, timeout: TimeInterval = 30) -> CommandResult {
+    let result = boundedTool(executable, arguments, timeout: timeout,
+                             environment: environment ?? ProcessInfo.processInfo.environment, mergeErrors: mergeErrors)
+    return CommandResult(status: result.0, output: result.1)
 }
 
 func diskDictionary(_ arguments: [String]) -> [String: Any]? {
@@ -112,6 +83,10 @@ func scanVolumes(verifiedIdentities: [String: String] = [:]) -> ScanResult? {
         let externalPartition = info["Internal"] as? Bool == false && info["WholeDisk"] as? Bool == false
         let verified = externalPartition && verifiedIdentities[device] != nil && currentIdentity(device) == verifiedIdentities[device]
         let state = externalPartition && (info["FilesystemType"] as? String == "ntfs" || verified) ? currentMountState(device) : nil
+        if externalPartition && (info["FilesystemType"] as? String == "ntfs" || verified) && state == nil {
+            report.append("\(device): kernel mount state unavailable; partition excluded")
+            return nil
+        }
         let disk = DiskMetadata(info, mountState: state, verifiedNTFS: verified)
         // Reports remain local and omit names, paths and UUIDs.
         let partitionID = (info["DiskUUID"] as? String).map { !$0.isEmpty } ?? false
@@ -130,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var volumes: [Volume] = []
     private var busy = false
     private var helperReady = false
+    private var helperStatusGeneration = 0
     private var helperStatus = "Not enabled"
     private let helperService = SMAppService.daemon(plistName: helperPlistName)
     private var scanning = false
@@ -293,13 +269,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         rebuildMenu()
     }
     private func refreshHelperStatus() {
+        helperStatusGeneration += 1
+        let generation = helperStatusGeneration
         guard !busy else { return }
         switch helperService.status {
         case .enabled:
             DispatchQueue.global(qos: .utility).async {
                 let result = bundledHelperCommand(["--helper-status"])
                 DispatchQueue.main.async {
-                    guard !self.busy else { return }
+                    guard !self.busy, self.helperStatusGeneration == generation else { return }
                     self.helperReady = result.status == 0 && result.text.hasPrefix("ready\n")
                     self.helperStatus = self.helperReady ? "Ready" : "Needs setup / update"
                     self.rebuildMenu()
@@ -400,7 +378,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.addButton(withTitle: "Repair")
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        busy = true; rebuildMenu()
+        busy = true; helperStatusGeneration += 1; rebuildMenu()
         Task {
             do {
                 // Wait for the specific service's removal before submitting it again.
@@ -441,7 +419,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.addButton(withTitle: "Disable")
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        busy = true; rebuildMenu()
+        busy = true; helperStatusGeneration += 1; rebuildMenu()
         Task {
             do {
                 try await helperService.unregister()
@@ -533,6 +511,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func execute(_ title: String, executable: String, arguments: [String], showSuccessOutput: Bool = false, mountDevice: String? = nil, selectedVolume: Volume? = nil) {
         guard !busy else { return }
         busy = true
+        helperStatusGeneration += 1
         scanGeneration += 1
         status = title
         statusItem.button?.image = nil
@@ -555,7 +534,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if let selected = selectedVolume, selected.mediaIdentity == nil || currentIdentity(selected.device) != selected.mediaIdentity {
                 result = CommandResult(status: 1, output: Data("Error: The selected drive disconnected or was replaced. Refresh the menu and select the drive again; no operation was started.\n".utf8))
             } else {
-                result = runCommand(executable, arguments, environment: operationEnvironment)
+                result = runCommand(executable, arguments, environment: operationEnvironment, timeout: 300)
             }
             var details = result.text
             if result.status != 0 && arguments.first == "--helper-configure" {
@@ -572,12 +551,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 details += "\n\n--- Read-only disk scan ---\n" + scan
                 details += "\n\n--- Installation diagnosis ---\n" + diagnosis
             }
-            let operationDetails = details
             let verifiedDevice = result.status == 0 ? mountDevice : nil
             let finalIdentity = verifiedDevice.flatMap { currentIdentity($0) }
             let finalState = verifiedDevice.flatMap { currentMountState($0) }
             let verifiedPoint = identity != nil && identity == finalIdentity && finalState?["WritableVolume"] as? Bool == true
                 ? finalState?["MountPoint"] as? String : nil
+            let finalVerificationMissing = result.status == 0 && mountDevice != nil && (verifiedPoint?.isEmpty ?? true)
+            if finalVerificationMissing { details += "\nFinal drive identity/write state could not be verified. Refresh the drive list before writing; no additional disk mutation was attempted.\n" }
+            let operationDetails = details
             DispatchQueue.main.async {
                 self.busy = false
                 self.progress.stopAnimation(nil)
@@ -587,7 +568,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let device = verifiedDevice, let identity, verifiedPoint != nil {
                     self.verifiedIdentities[device] = identity
                 }
-                self.status = result.status == 0 ? (mountDevice == nil ? "Completed" : "Write access enabled") : (result.status == 2 ? "Cancelled" : "Operation failed")
+                self.status = result.status == 0 ? (mountDevice == nil ? "Completed" : (finalVerificationMissing ? "Write access state unavailable" : "Write access enabled")) : (result.status == 2 ? "Cancelled" : "Operation failed")
                 self.operationStatus = self.status
                 self.statusItem.button?.toolTip = "mouNTFS — \(self.status)"
                 self.rebuildMenu()
@@ -608,7 +589,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     if choice == .alertSecondButtonReturn {
                         self.showOutput(title: self.status, text: operationDetails)
                     }
-                } else if result.status == 0 && showSuccessOutput {
+                } else if result.status == 0 && (showSuccessOutput || finalVerificationMissing) {
                     self.showOutput(title: self.status, text: operationDetails)
                 }
                 if let point = verifiedPoint, !point.isEmpty, UserDefaults.standard.bool(forKey: "openFinderAfterMount") {
@@ -639,7 +620,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // Lockout / a closed lid must use the native password fallback,
             // rather than silently skipping confirmation on a Touch ID Mac.
             if biometricAvailable || context.biometryType == .touchID {
-                busy = true; status = "Waiting for Touch ID…"; rebuildMenu()
+                busy = true; helperStatusGeneration += 1; status = "Waiting for Touch ID…"; rebuildMenu()
                 NSApp.activate(ignoringOtherApps: true)
                 context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "enable write access to " + selected.name) { success, _ in
                     DispatchQueue.main.async {

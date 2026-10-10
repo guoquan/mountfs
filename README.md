@@ -11,8 +11,8 @@
 **Free & open source. Keep your drive's NTFS format.**
 
 No reformatting. Enable writing from the menu bar, then copy files in Finder.
-mouNTFS is a native Mac app for external NTFS drives, with a standalone script
-available for command-line use.
+mouNTFS is a native Mac app for external NTFS drives, with a command-line core
+that requires the bundled native identity tool for mounting.
 
 ![mouNTFS: write to NTFS on your Mac, free and open source](docs/images/promo-hero.en.png)
 

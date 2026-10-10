@@ -19,6 +19,11 @@ int main(void) {
     char *success[] = {"/bin/sh", "-c", "printf stdout; printf stderr >&2; exit 7", NULL};
     assert(mountfs_run_tool(success[0], success, 2000, output, sizeof(output), &length) == 7);
     assert(length == 12 && memcmp(output, "stdoutstderr", 12) == 0);
+    char *custom_env[] = {"MOUNTFS_RUNNER_TEST=preserved", "PATH=/usr/bin:/bin", NULL};
+    char *metadata[] = {"/bin/sh", "-c", "printf '%s' \"$MOUNTFS_RUNNER_TEST\"; printf noisy-diagnostic >&2", NULL};
+    assert(mountfs_run_tool_environment(metadata[0], metadata, custom_env, 0, 2000, output, sizeof(output), &length) == 0);
+    assert(length == 9 && memcmp(output, "preserved", 9) == 0);
+    puts("PASS custom app environment is preserved and stderr cannot corrupt structured stdout");
     char *spam[] = {"/bin/sh", "-c", "yes x | head -c 200000", NULL};
     assert(mountfs_run_tool(spam[0], spam, 3000, output, sizeof(output), &length) == 0);
     assert(length == sizeof(output));

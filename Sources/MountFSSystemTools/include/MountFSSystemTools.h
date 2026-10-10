@@ -4,6 +4,7 @@
 #include <stdint.h>
 int32_t mountfs_run_tool(const char *path, char *const argv[], uint32_t timeout_ms,
                         char *output, size_t capacity, size_t *length);
+int32_t mountfs_run_tool_environment(const char *path, char *const argv[], char *const envp[], int merge_errors, uint32_t timeout_ms, char *output, size_t capacity, size_t *length);
 int mountfs_process_live(int32_t pid);
 int mountfs_self_cdhash(unsigned char hash[20]);
 uint64_t mountfs_process_birth(int32_t pid);

@@ -31,7 +31,7 @@ static double now(void) {
 /* A new process group is established by spawn, before any child code runs.
  * Draining, process exit and timeout are monitored together; descendants holding
  * stdout open cannot block the serialized transaction queue indefinitely. */
-int32_t mountfs_run_tool(const char *path, char *const argv[], uint32_t timeout_ms,
+int32_t mountfs_run_tool_environment(const char *path, char *const argv[], char *const envp[], int merge_errors, uint32_t timeout_ms,
                         char *output, size_t capacity, size_t *length) {
     *length = 0;
     if (!timeout_ms) return 124;
@@ -48,14 +48,15 @@ int32_t mountfs_run_tool(const char *path, char *const argv[], uint32_t timeout_
     if (error) { posix_spawn_file_actions_destroy(&actions); close(fd[0]); close(fd[1]); return 1; }
     error = posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0);
     if (!error) error = posix_spawn_file_actions_adddup2(&actions, fd[1], STDOUT_FILENO);
-    if (!error) error = posix_spawn_file_actions_adddup2(&actions, fd[1], STDERR_FILENO);
+    if (!error) error = merge_errors ? posix_spawn_file_actions_adddup2(&actions, fd[1], STDERR_FILENO)
+        : posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY, 0);
     if (!error) error = posix_spawn_file_actions_addclose(&actions, fd[0]);
     if (!error) error = posix_spawn_file_actions_addclose(&actions, fd[1]);
     if (!error) error = posix_spawnattr_setpgroup(&attr, 0);
     if (!error) error = posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETPGROUP);
     char *env[] = {"PATH=/usr/bin:/bin:/usr/sbin:/sbin", "LANG=C", "HOME=/var/root", NULL};
     pid_t pid = 0;
-    if (!error) error = posix_spawn(&pid, path, &actions, &attr, argv, env);
+    if (!error) error = posix_spawn(&pid, path, &actions, &attr, argv, envp ? envp : env);
     posix_spawnattr_destroy(&attr);
     posix_spawn_file_actions_destroy(&actions);
     close(fd[1]);
@@ -120,6 +121,11 @@ int32_t mountfs_run_tool(const char *path, char *const argv[], uint32_t timeout_
         return 125;
     }
     return WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
+}
+
+int32_t mountfs_run_tool(const char *path, char *const argv[], uint32_t timeout_ms,
+                        char *output, size_t capacity, size_t *length) {
+    return mountfs_run_tool_environment(path, argv, NULL, 1, timeout_ms, output, capacity, length);
 }
 
 int mountfs_process_live(int32_t pid) {

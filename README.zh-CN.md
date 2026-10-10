@@ -10,7 +10,7 @@
 
 **免费开源，保留磁盘原有的 NTFS 格式。**
 
-无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。mouNTFS 是管理外置 NTFS 磁盘的原生 Mac 应用，也保留独立脚本供命令行使用。
+无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。mouNTFS 是管理外置 NTFS 磁盘的原生 Mac 应用，也提供命令行核心；挂载操作需要配套的原生身份校验工具。
 
 ![mouNTFS：Mac 也能写入 NTFS，免费开源](docs/images/promo-hero.zh-CN.png)
 

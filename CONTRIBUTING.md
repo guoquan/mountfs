@@ -10,7 +10,7 @@ open dist/mouNTFS.app
 swift test
 ```
 
-The standalone Bash 3.2-compatible core can also be used:
+After building the native identity executable, the Bash 3.2-compatible core can also be used from this checkout:
 
 ```bash
 bash mountfs.sh --list
@@ -21,8 +21,9 @@ bash mountfs.sh --cli --device disk4s1
 
 `disk4s1` is an example; identify the actual partition before acting. Run as the
 normal user: CLI mode requests sudo itself. The app/script do not install drivers.
-Standalone use without the bundled metadata tool retains the boot-record identity
-fallback. Exit codes: 0 success, 1 failure, 2 cancellation/invalid input,
+Mounting requires the bundled or checkout-built native identity executable for
+protected execution and system-wide locking. The script alone supports read-only
+listing/diagnosis, not mounting. Exit codes: 0 success, 1 failure, 2 cancellation/invalid input,
 130 interruption.
 
 ## Checks and boundaries
