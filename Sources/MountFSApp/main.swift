@@ -4,8 +4,9 @@ import MountFSCore
 import MountFSPrivileged
 import ServiceManagement
 import LocalAuthentication
+import CoreServices
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.2"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.3"
 
 func helperResult(_ option: String, device: String) -> CommandResult? {
     let candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,
@@ -229,6 +230,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let enable = item(helperReady ? "Refresh Protected NTFS Driver…" : "Enable Permission Helper…", action: #selector(enableHelper))
         enable.isEnabled = !busy
         settings.addItem(enable)
+        let repair = item("Repair Permission Helper Registration…", action: #selector(repairHelperRegistration))
+        repair.isEnabled = !busy && !helperReady
+        settings.addItem(repair)
         let disable = item("Disable Permission Helper…", action: #selector(disableHelper))
         disable.isEnabled = !busy && helperService.status != .notRegistered
         settings.addItem(disable)
@@ -376,6 +380,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         return lines.joined(separator: "\n")
     }
+    @objc private func repairHelperRegistration() {
+        guard !busy, !helperReady else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        guard Bundle.main.bundlePath.hasPrefix("/Applications/"), Bundle.main.bundlePath.hasSuffix(".app") else {
+            showOutput(title: "Install before repairing helper", text: "Move mouNTFS.app into /Applications, reopen it there, and retry.")
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "Repair this app's helper registration?"
+        alert.informativeText = "Unregister mouNTFS's helper, refresh this application's Launch Services record, and register its bundled helper again. macOS may request background-service approval. Protected driver copies are retained. After repair, select Enable Permission Helper to check the connection and finish setup."
+        alert.addButton(withTitle: "Repair")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        busy = true; rebuildMenu()
+        Task {
+            do {
+                // Wait for the specific service's removal before submitting it again.
+                if helperService.status != .notRegistered { try await helperService.unregister() }
+                await MainActor.run {
+                    do {
+                        let result = LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
+                        guard result == noErr else {
+                            throw HelperError.invalid("Launch Services registration failed: OSStatus \(result)")
+                        }
+                        try self.helperService.register()
+                        self.busy = false
+                        self.refreshHelperStatus()
+                        if self.helperService.status == .requiresApproval { self.showHelperApproval() }
+                        else { self.showOutput(title: "Helper registration refreshed", text: "Registration was resubmitted. Select Settings → Enable Permission Helper to verify that the daemon can start and finish driver setup. Registration alone does not establish a working helper.") }
+                    } catch {
+                        self.busy = false; self.helperReady = false; self.refreshHelperStatus()
+                        let failure = error as NSError
+                        if self.helperService.status == .requiresApproval ||
+                            (failure.domain == "SMAppServiceErrorDomain" && failure.code == 1) { self.showHelperApproval(error: error) }
+                        else { self.showOutput(title: "Helper registration repair failed", text: self.helperSetupDetails(error)) }
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.busy = false; self.refreshHelperStatus()
+                    self.showOutput(title: "Helper unregister failed; repair stopped", text: self.helperSetupDetails(error))
+                }
+            }
+        }
+    }
     @objc private func disableHelper() {
         guard !busy else { return }
         NSApp.activate(ignoringOtherApps: true)
@@ -497,6 +546,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             let result = runCommand(executable, arguments, environment: operationEnvironment)
             var details = result.text
+            if result.status != 0 && arguments.first == "--helper-configure" {
+                details += "\n\n--- Helper launch state (read-only) ---\n"
+                details += runCommand("/bin/launchctl", ["print", "system/" + helperServiceName]).text
+                details += "\n\n--- Installed application signature ---\n"
+                details += runCommand("/usr/bin/codesign", ["--verify", "--deep", "--strict", "--verbose=2", Bundle.main.bundlePath]).text
+                details += "\n\n--- Helper signing identity ---\n"
+                details += runCommand("/usr/bin/codesign", ["-d", "--verbose=4", Bundle.main.bundlePath + "/Contents/MacOS/mountfs-helper"]).text
+            }
             if result.status != 0 && result.status != 2 && arguments.contains("--device") {
                 let scan = scanVolumes(verifiedIdentities: identities)?.report ?? "Disk scan unavailable."
                 let diagnosis = runCommand(executable, [arguments[0], "--diagnose"]).text

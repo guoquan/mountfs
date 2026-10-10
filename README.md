@@ -221,3 +221,20 @@ requires notarization. No signing certificate is supplied by this repository.
 
 References: [Apple registration walkthrough](https://developer.apple.com/forums/thread/802443)
 and [Apple signing guidance](https://developer.apple.com/forums/thread/799910).
+
+### Registered helper fails to start (0.3.3)
+
+If launchd reports `spawn failed` / `78: EX_CONFIG` even though the bundled
+executable exists and `codesign --verify --deep --strict` passes, use **Settings →
+Repair Permission Helper Registration…**. This waits for this service's
+unregistration, refreshes the installed app's Launch Services registration via
+`LSRegisterURL`, then submits the service again. Return to Enable Permission
+Helper after any system approval. This is a targeted recovery attempt, not a
+proven fix for every BTM/launch-constraint failure. The app does not reset the
+global background-item database or edit macOS security policy.
+
+Failed helper setup now includes the launchd service state and local signature
+diagnostics. A disk-valid signature does not establish that SMAppService can
+resolve and start the installed bundle. An unreadable cdhash value in
+`launchctl print` alone is insufficient to prove an empty constraint, because
+the value is binary data. Ordinary mounting remains available without the helper.
