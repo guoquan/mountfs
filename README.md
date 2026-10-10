@@ -48,7 +48,7 @@ illustrations based on those captures, not proof of hardware validation.
 
 1. Review the application development branch and this Pages branch together.
 2. Merge the reviewed native-app work into `main` first.
-3. Render production links with `CONTENT_REF=main python3 scripts/build-site.py`.
+3. Render production links with `python3 scripts/build-site.py` (the default is `main`).
 4. Check the `main` usage/roadmap/contributing links and a successful Checks run
    with a downloadable app artifact. Artifacts expire; a stable public release
    download is a separate future change. Download instructions currently require
@@ -58,8 +58,11 @@ illustrations based on those captures, not proof of hardware validation.
 7. Confirm the actual configured GitHub Pages branch/path, deployment success and
    `https://mountfs.sh/` before announcing the live site.
 
-Staging links currently point to `feat/mountfs-safe-core`, where the native-app docs
-and app builds already exist. Do not silently present a development build as a
+Committed pages use durable `main` links. Until the coordinated app merge, those
+new documentation and build links may not be available on `main`; this is why the
+Pages PR must follow the app PR. For a temporary staging render, explicitly set
+`CONTENT_REF=feat/mountfs-safe-core` and do not commit that render. CI regenerates
+with the production default and checks consistency. Do not silently present a development build as a
 notarized release. The default kernel backend still requires compatible driver and
 macOS permission setup; helper/Touch ID and experimental backends are not headline
 features on this page.

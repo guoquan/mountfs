@@ -6,8 +6,8 @@ import os
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = 'https://github.com/guoquan/mountfs'
-# Point to main only when the native-app changes have been merged there.
-REF = os.environ.get('CONTENT_REF', 'feat/mountfs-safe-core')
+# Production links are durable. Set CONTENT_REF explicitly for a staging render.
+REF = os.environ.get('CONTENT_REF', 'main')
 COPY = {
  'en': {
   'file': 'index.html', 'other': 'zh-CN.html', 'switch': '简体中文', 'otherlang': 'zh-CN',
