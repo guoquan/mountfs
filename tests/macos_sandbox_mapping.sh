@@ -24,6 +24,7 @@ set -e
 printf 'PASS actual executable mapping allowed by the old read-only deny and refused by the driver profile\n'
 # Exercise the real root-owned lock store through independent tool processes.
 HELPER="$ROOT/dist/mouNTFS.app/Contents/MacOS/mountfs-identity"
+ls -ld /Library /private/var/run
 sudo "$HELPER" --system-device-lock acquire disk99999s9 ci-session-one
 if sudo "$HELPER" --system-device-lock acquire disk99999s9 ci-session-two; then exit 1; fi
 if sudo "$HELPER" --system-device-lock release disk99999s9 ci-session-two; then exit 1; fi

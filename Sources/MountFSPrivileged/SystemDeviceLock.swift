@@ -9,14 +9,14 @@ public enum SystemDeviceLock {
         var description: String {
             switch self {
             case .unsafe: return "Unsafe lock storage; no disk command was issued."
-            case .busy: return "Another operation or a stale lock holds this device. Inspect /private/var/run/mountfs-locks as administrator; do not remove a lock until all earlier disk operations have ended."
+            case .busy: return "Another operation or a stale lock holds this device. Inspect /Library/mountfs-locks as administrator; do not remove a lock until all earlier disk operations have ended."
             case .token: return "Lock ownership token does not match; lock retained."
             }
         }
     }
     public static func perform(_ operation: String, device: String, token: String) throws {
         guard geteuid() == 0 else { throw Failure.unsafe }
-        try perform(operation, device: device, token: token, parent: "/private/var/run", owner: 0)
+        try perform(operation, device: device, token: token, parent: "/Library", owner: 0)
     }
     private static func trusted(_ fd: Int32, owner: uid_t, directory: Bool) -> Bool {
         var info = stat()

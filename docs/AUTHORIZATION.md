@@ -195,7 +195,7 @@ bounded by the remaining transaction lifetime). Timeouts terminate the group,
 escalate to SIGKILL and bound the reap wait. This lets serialized recovery and
 expiry resume. Recovery can take additional bounded tool time after expiry.
 If a kernel-stuck process cannot be reaped, the transaction refuses further
-mutation and its device lock is retained until an administrator confirms all earlier operations ended and removes that specific stale lock (or reboots). Detached
+mutation and its device lock is retained until an administrator confirms all earlier operations ended and removes that specific stale lock. Detached
 processes and actual kernel/driver timeout behavior still require physical-Mac
 validation; successfully committed FUSE daemons are intentionally kept running.
 
@@ -209,7 +209,7 @@ and a macOS process-state query that rejects an unreaped zombie.
 
 
 The default AppleScript path and opt-in root daemon share root-owned per-device
-locks under `/private/var/run/mountfs-locks`, across login users. The default
+locks under `/Library/mountfs-locks`, across login users. The default
 path acquires its lock after authorization and before preparing a mount directory.
 Lock storage is opened through no-follow directory descriptors and must be owned
 by root without group/world write access. Only the transaction's random ownership
@@ -218,5 +218,5 @@ token can release its lock. A collision fails before any disk mutation.
 Crash leftovers are deliberately retained rather than inferred stale from a PID:
 a driver can outlive its launching process, and PIDs can be reused. An administrator
 should inspect the lock and verify that earlier mouNTFS/driver operations have
-ended before removing that specific device lock. Reboot clears this run-directory
-state. Do not delete all locks while operations may be active.
+ended before removing that specific device lock. These locks survive daemon restarts and reboots; an inspected per-device
+removal is required. Do not delete all locks while operations may be active.
