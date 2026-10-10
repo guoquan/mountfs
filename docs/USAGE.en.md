@@ -65,18 +65,16 @@ The app does not save your password.
 | Administrator authorization | Run mount operations requiring elevated privileges | Follow the system dialog; this does not grant disk privacy access |
 | Full Disk Access | Permit the relevant executable to access macOS privacy-controlled data/devices | If device access is denied, check the actual ntfs-3g path |
 
-In the reported working environment, **ntfs-3g** Full Disk Access was sufficient
-even with mouNTFS Full Disk Access disabled. Common paths:
+Current builds execute a protected copy of ntfs-3g. If macOS denies device access,
+open **Diagnostics → Show Last Operation…**, find **Protected NTFS driver:** and
+add that exact executable under **System Settings → Privacy & Security → Full Disk Access**.
+Use Command-Shift-G in the file picker to paste the path. The path stays stable
+while the driver and its dependencies are unchanged; a driver update may require
+permission for a new copy. The app cannot confirm that macOS has granted access.
 
-```text
-/opt/homebrew/bin/ntfs-3g
-/usr/local/bin/ntfs-3g
-```
-
-Add the actual driver under **System Settings → Privacy & Security → Full Disk Access**.
-Installation diagnosis reports the driver path. The app cannot confirm whether
-macOS has granted permission. This observation comes from one environment;
-requirements may differ on other systems.
+Installation diagnosis lists the Homebrew source, usually `/opt/homebrew/bin/ntfs-3g`
+or `/usr/local/bin/ntfs-3g`. Permission for that source does not automatically
+cover the protected copy shown in the operation log.
 
 ## Troubleshooting
 

@@ -1,25 +1,24 @@
 import Foundation
 import Darwin
 import CryptoKit
-import MountFSPrivileged
 
-let driverSandboxProfile = "(version 1)(allow default)(deny file-read-data file-map-executable (subpath \"/opt/homebrew\") (subpath \"/usr/local\") (subpath \"/Users\"))"
+public let driverSandboxProfile = "(version 1)(allow default)(deny file-read-data file-map-executable (subpath \"/opt/homebrew\") (subpath \"/usr/local\") (subpath \"/Users\"))"
 
-let helperStorage = "/Library/Application Support/mouNTFS"
+public let helperStorage = "/Library/Application Support/mouNTFS"
 
-func rootDirectory(_ path: String) -> Bool {
+public func rootDirectory(_ path: String) -> Bool {
     var value = stat()
     return lstat(path, &value) == 0 && value.st_mode & S_IFMT == S_IFDIR &&
         value.st_uid == 0 && value.st_mode & 0o022 == 0
 }
 
-func rootFile(_ path: String) -> Bool {
+public func rootFile(_ path: String) -> Bool {
     var value = stat()
     return lstat(path, &value) == 0 && value.st_mode & S_IFMT == S_IFREG &&
         value.st_uid == 0 && value.st_mode & 0o022 == 0 && value.st_nlink == 1
 }
 
-func secureAncestors(_ path: String) -> Bool {
+public func secureAncestors(_ path: String) -> Bool {
     var directory = URL(fileURLWithPath: path).deletingLastPathComponent()
     while true {
         guard rootDirectory(directory.path) else { return false }
@@ -28,12 +27,12 @@ func secureAncestors(_ path: String) -> Bool {
     }
 }
 
-func runTool(_ path: String, _ args: [String], timeout: TimeInterval = 30) -> HelperReply {
+public func runTool(_ path: String, _ args: [String], timeout: TimeInterval = 30) -> HelperReply {
     let (status, data) = boundedTool(path, args, timeout: timeout)
     return HelperReply(status, String(decoding: data, as: UTF8.self))
 }
 
-func requireTool(_ path: String, _ args: [String]) throws -> String {
+public func requireTool(_ path: String, _ args: [String]) throws -> String {
     let value = runTool(path, args)
     guard value.status == 0 else { throw HelperError.invalid(value.output) }
     return value.output
@@ -42,7 +41,7 @@ func requireTool(_ path: String, _ args: [String]) throws -> String {
 // Resolve Homebrew links before this call, then walk the resulting path through
 // directory descriptors. A replaced ancestor or leaf symlink cannot redirect a
 // privileged read; all metadata and bytes come from the same opened inode.
-func readDriverSource(_ canonical: String, limit: Int = 64 * 1024 * 1024) throws -> Data {
+public func readDriverSource(_ canonical: String, limit: Int = 64 * 1024 * 1024) throws -> Data {
     guard canonical.hasPrefix("/") else { throw HelperError.invalid("Absolute driver path required.") }
     let parts = canonical.split(separator: "/").map(String.init)
     guard !parts.isEmpty, !parts.contains("."), !parts.contains("..") else { throw HelperError.invalid("Invalid driver path.") }
@@ -80,11 +79,12 @@ func readDriverSource(_ canonical: String, limit: Int = 64 * 1024 * 1024) throws
     return data
 }
 
-struct DriverConfiguration {
-    let uid: uid_t
-    let source: String
-    let executable: String
-    static func load() -> DriverConfiguration? {
+public struct DriverConfiguration {
+    public let uid: uid_t
+    public let source: String
+    public let executable: String
+    public init(uid: uid_t, source: String, executable: String) { self.uid = uid; self.source = source; self.executable = executable }
+    public static func load() -> DriverConfiguration? {
         let path = helperStorage + "/driver.plist"
         guard rootFile(path), secureAncestors(path), let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
               let value = (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any],
@@ -101,19 +101,40 @@ struct DriverConfiguration {
 // dependencies into a new root-owned generation and rewrite load commands. The
 // persistent daemon never executes mutable Homebrew files or caller-selected
 // paths. Previous generations are retained to avoid breaking mounted drivers.
-func configureDriver(_ source: String, uid: uid_t) throws -> String {
+private func snapshotDriver(_ source: String, uid: uid_t, approvalOnly: Bool = false,
+                            approved: [String: String]? = nil) throws -> (String, [String: String]) {
     guard ["/opt/homebrew/bin/ntfs-3g", "/usr/local/bin/ntfs-3g"].contains(source), uid > 0 else {
         throw HelperError.invalid("Only the installed Homebrew ntfs-3g driver can be selected.")
     }
-    guard secureAncestors(helperStorage) else { throw HelperError.invalid("Helper storage ancestors are not protected.") }
-    if !FileManager.default.fileExists(atPath: helperStorage) {
-        try FileManager.default.createDirectory(atPath: helperStorage, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o755])
+    let storage: String
+    if approvalOnly {
+        storage = FileManager.default.temporaryDirectory.appendingPathComponent("mountfs-approval-" + UUID().uuidString).path
+        try FileManager.default.createDirectory(atPath: storage, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+    } else {
+        guard geteuid() == 0, secureAncestors(helperStorage) else { throw HelperError.invalid("Helper storage ancestors are not protected.") }
+        if !FileManager.default.fileExists(atPath: helperStorage) {
+            try FileManager.default.createDirectory(atPath: helperStorage, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o755])
+        }
+        guard rootDirectory(helperStorage) else { throw HelperError.invalid("Helper storage is not root-owned and protected.") }
+        storage = helperStorage
     }
-    guard rootDirectory(helperStorage) else { throw HelperError.invalid("Helper storage is not root-owned and protected.") }
-    let generation = helperStorage + "/driver-" + UUID().uuidString
-    try FileManager.default.createDirectory(atPath: generation, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+    defer { if approvalOnly { try? FileManager.default.removeItem(atPath: storage) } }
+    let cacheKey: String
+    if let approved {
+        let encoded = try JSONSerialization.data(withJSONObject: approved, options: [.sortedKeys])
+        cacheKey = "approved-" + SHA256.hash(data: encoded).map { String(format: "%02x", $0) }.joined()
+    } else { cacheKey = UUID().uuidString }
+    let generation = storage + "/driver-" + cacheKey
+    if let approved, rootFile(generation + "/ready.json"), secureAncestors(generation + "/ready.json"),
+       rootFile(generation + "/ntfs-3g"), secureAncestors(generation + "/ntfs-3g"),
+       let marker = try? Data(contentsOf: URL(fileURLWithPath: generation + "/ready.json")),
+       marker == (try JSONSerialization.data(withJSONObject: approved, options: [.sortedKeys])) {
+        return (generation + "/ntfs-3g", approved)
+    }
+    guard mkdir(generation, 0o700) == 0 else { throw HelperError.invalid("Driver generation is incomplete or still being prepared: " + generation) }
     var committed = false
     defer { if !committed { try? FileManager.default.removeItem(atPath: generation) } }
+    var hashes: [String: String] = [:]
     var copies: [String: String] = [:]
     var edges: [String: [(String, String)]] = [:]
     var totalBytes = 0
@@ -142,6 +163,8 @@ func configureDriver(_ source: String, uid: uid_t) throws -> String {
         totalBytes += bytes.count
         guard totalBytes <= 256 * 1024 * 1024 else { throw HelperError.invalid("Driver dependency size limit exceeded.") }
         let hash = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+        guard approved == nil || approved?[canonical] == hash else { throw HelperError.invalid("Approved driver bytes changed: " + canonical) }
+        hashes[canonical] = hash
         let destination = generation + "/" + (executable ? "ntfs-3g" : hash + ".dylib")
         try bytes.write(to: URL(fileURLWithPath: destination), options: .withoutOverwriting)
         guard chmod(destination, 0o755) == 0 else { throw HelperError.invalid("Cannot protect driver copy.") }
@@ -185,6 +208,8 @@ func configureDriver(_ source: String, uid: uid_t) throws -> String {
         return destination
     }
     let driver = try copyBinary(executableSource, executable: true)
+    if approvalOnly { return (driver, hashes) }
+    guard approved == nil || approved == hashes else { throw HelperError.invalid("Approved driver dependency graph changed.") }
     for destination in copies.values {
         for (old, new) in edges[destination] ?? [] {
             _ = try requireTool("/usr/bin/install_name_tool", ["-change", old, new, destination])
@@ -204,12 +229,32 @@ func configureDriver(_ source: String, uid: uid_t) throws -> String {
         _ = try requireTool("/usr/bin/codesign", ["--force", "--sign", "-", destination])
         guard rootFile(destination), secureAncestors(destination) else { throw HelperError.invalid("Driver copy is not protected.") }
     }
+    if let approved {
+        let marker = try JSONSerialization.data(withJSONObject: approved, options: [.sortedKeys])
+        try marker.write(to: URL(fileURLWithPath: generation + "/ready.json"), options: .withoutOverwriting)
+        guard chmod(generation + "/ready.json", 0o600) == 0 else { throw HelperError.invalid("Cannot seal driver approval marker.") }
+    }
     // Publish only after every binary has been inspected, rewritten and signed.
     guard chmod(generation, 0o755) == 0 else { throw HelperError.invalid("Cannot publish protected driver generation.") }
-    let plist: [String: Any] = ["uid": uid, "source": source, "executable": driver]
-    let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
-    try data.write(to: URL(fileURLWithPath: helperStorage + "/driver.plist"), options: .atomic)
-    guard chmod(helperStorage + "/driver.plist", 0o600) == 0 else { throw HelperError.invalid("Cannot protect helper configuration.") }
+    if approved == nil {
+        let plist: [String: Any] = ["uid": uid, "source": source, "executable": driver]
+        let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+        try data.write(to: URL(fileURLWithPath: helperStorage + "/driver.plist"), options: .atomic)
+        guard chmod(helperStorage + "/driver.plist", 0o600) == 0 else { throw HelperError.invalid("Cannot protect helper configuration.") }
+    }
     committed = true
-    return driver
+    return (driver, hashes)
+}
+
+public func configureDriver(_ source: String, uid: uid_t) throws -> String {
+    try snapshotDriver(source, uid: uid).0
+}
+public func driverApprovalPlan(_ source: String) throws -> [String: String] {
+    try snapshotDriver(source, uid: geteuid(), approvalOnly: true).1
+}
+public func approvedDriver(_ source: String, uid: uid_t, hashes: [String: String]) throws -> String {
+    guard !hashes.isEmpty, hashes.count <= 64, hashes.values.allSatisfy({ $0.range(of: "^[0-9a-f]{64}$", options: .regularExpression) != nil }) else {
+        throw HelperError.invalid("Invalid approved driver hashes.")
+    }
+    return try snapshotDriver(source, uid: uid, approved: hashes).0
 }

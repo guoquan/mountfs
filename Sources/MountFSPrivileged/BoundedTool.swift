@@ -20,3 +20,9 @@ public func boundedTool(_ path: String, _ arguments: [String], timeout: TimeInte
 }
 
 public func authorizationProcessIsLive(_ pid: Int32) -> Bool { mountfs_process_live(pid) != 0 }
+
+public func runningExecutableCDHash() -> String? {
+    var bytes = [UInt8](repeating: 0, count: 20)
+    guard mountfs_self_cdhash(&bytes) != 0 else { return nil }
+    return bytes.map { String(format: "%02x", $0) }.joined()
+}

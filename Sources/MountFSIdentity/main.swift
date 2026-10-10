@@ -3,7 +3,35 @@ import Darwin
 import MountFSPrivileged
 
 let arguments = CommandLine.arguments
-if arguments.count == 5, arguments[1] == "--system-device-lock", ["acquire", "release"].contains(arguments[2]) {
+if arguments.count == 3, arguments[1] == "--driver-approval-plan" {
+    do {
+        let data = try JSONSerialization.data(withJSONObject: driverApprovalPlan(arguments[2]), options: [.sortedKeys])
+        FileHandle.standardOutput.write(data)
+    } catch { FileHandle.standardError.write(Data(("Driver preflight failed: \(error)\n").utf8)); exit(1) }
+} else if arguments.count == 5, arguments[1] == "--prepare-approved-driver", geteuid() == 0 {
+    do {
+        guard let uid = UInt32(arguments[3]), uid > 0, let data = arguments[2].data(using: .utf8), data.count <= 65536,
+              let hashes = (try JSONSerialization.jsonObject(with: data)) as? [String: String] else { exit(1) }
+        print(try approvedDriver(arguments[4], uid: uid, hashes: hashes))
+    } catch { FileHandle.standardError.write(Data(("Approved driver refused: \(error)\n").utf8)); exit(1) }
+} else if arguments.count >= 2, arguments[1] == "--approved-driver-run" {
+    exit(runApprovedDriver(Array(arguments.dropFirst(2))))
+} else if arguments.count == 5, arguments[1] == "--root-boundary-args" {
+    do {
+        let boundary = try RootBoundary()
+        let command = try boundary.command([arguments[0], "--system-device-lock"] + Array(arguments.dropFirst(2)))
+        let data = try JSONSerialization.data(withJSONObject: command)
+        FileHandle.standardOutput.write(data)
+    } catch { exit(1) }
+} else if arguments.count >= 3, arguments[1] == "--authorize-cli" {
+    do {
+        let command = Array(arguments.dropFirst(2))
+        let boundary = try RootBoundary(driver: command.first == arguments[0] ? nil : command.first)
+        let result = runTool("/usr/bin/sudo", ["-n", "--"] + (try boundary.command(command)), timeout: 300)
+        if !result.output.isEmpty { FileHandle.standardOutput.write(Data((result.output + "\n").utf8)) }
+        exit(result.status)
+    } catch { FileHandle.standardError.write(Data(("Cannot authorize a protected executable: \(error)\n").utf8)); exit(1) }
+} else if arguments.count == 5, arguments[1] == "--system-device-lock", ["acquire", "release"].contains(arguments[2]) {
     do {
         try SystemDeviceLock.perform(arguments[2], device: arguments[3], token: arguments[4])
         exit(0)

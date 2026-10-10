@@ -42,6 +42,7 @@ jobs:
           bash tests/macos_media_identity.sh
           bash tests/macos_helper_service.sh
           bash tests/macos_sandbox_mapping.sh
+          bash tests/macos_execution_boundary.sh
           VERSION=$(bash mountfs.sh --version)
           codesign --verify --deep --strict "dist/mouNTFS.app"
           test -f "dist/mouNTFS.app/Contents/Resources/mountfs.sh"

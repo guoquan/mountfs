@@ -47,14 +47,9 @@ macOS 会在需要时请求管理员授权，提示次数可能因系统而异�
 | 管理员授权 | 执行需要提权的挂载等操作 | 按系统窗口授权；它不等于磁盘隐私权限 |
 | Full Disk Access（完全磁盘访问权限） | 允许相关可执行文件访问受 macOS 隐私控制的数据/设备 | 出现设备访问拒绝时，核对实际 ntfs-3g 路径 |
 
-已报告的可用环境中，给 **ntfs-3g** 完全磁盘权限即可工作，即使关闭 mouNTFS 的该权限也可以。常见路径为：
+当前构建会执行受保护的 ntfs-3g 副本。若 macOS 拒绝设备访问，打开 **Diagnostics → Show Last Operation…**，找到 **Protected NTFS driver:**，在 **System Settings → Privacy & Security → Full Disk Access** 中添加该行所示的可执行文件。文件选择窗口中可按 Command-Shift-G 粘贴路径。驱动及其依赖未变化时，路径保持一致；更新驱动后可能需要给新的副本授权。应用不能直接确认 macOS 是否已经授予权限。
 
-```text
-/opt/homebrew/bin/ntfs-3g
-/usr/local/bin/ntfs-3g
-```
-
-在 **System Settings → Privacy & Security → Full Disk Access** 中按实际路径添加驱动。安装诊断可显示驱动路径；应用不能直接确认系统是否已经授予该权限。上述反馈来自一个环境，不代表所有系统都只需同一项权限。
+安装诊断列出的是 Homebrew 源路径，通常为 `/opt/homebrew/bin/ntfs-3g` 或 `/usr/local/bin/ntfs-3g`。给源文件的权限不会自动覆盖操作日志中所示的受保护副本。
 
 ## 按错误定位
 

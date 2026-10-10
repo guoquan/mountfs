@@ -7,7 +7,7 @@ trap 'rm -rf "$FIXTURE"' EXIT
 printf 'int mountfs_fixture(void) { return 7; }\n' > "$FIXTURE/library.c"
 clang -dynamiclib "$FIXTURE/library.c" -o "$FIXTURE/library.dylib"
 clang -Wall -Wextra -Werror "$ROOT/tests/sandbox_mapping_test.c" -o "$FIXTURE/probe"
-PROFILE=$(python3 - "$ROOT/Sources/MountFSHelper/DriverSnapshot.swift" <<'PY'
+PROFILE=$(python3 - "$ROOT/Sources/MountFSPrivileged/DriverSnapshot.swift" <<'PY'
 import json, sys
 line = next(x for x in open(sys.argv[1]) if x.startswith('let driverSandboxProfile = '))
 print(json.loads(line.split(' = ', 1)[1]))

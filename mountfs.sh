@@ -128,7 +128,7 @@ native_helper_command() {
 
 start_authorization_session() {
     [ "$GUI" -eq 1 ] || return 0
-    AUTH_HELPER=$(native_helper_path) || return 0
+    AUTH_HELPER=$(native_helper_path) || { fail "Protected authorization requires the native identity tool; build mouNTFS first."; return 1; }
     local mode=--authorization-session
     if [ "${MOUNTFS_PRIVILEGED_HELPER:-0}" = 1 ]; then
         mode=--privileged-session
@@ -215,7 +215,12 @@ check_backend() {
 # CLI uses sudo's own authentication. Neither mode handles the user's password.
 run_privileged() {
     if [ "$GUI" -eq 0 ]; then
-        /usr/bin/sudo -- "$@"
+        local boundary_helper
+        if boundary_helper=$(native_helper_path) && { [ "$1" = "$DRIVER" ] || [ "$1" = "$boundary_helper" ]; }; then
+            "$boundary_helper" --authorize-cli "$@"
+        else
+            /usr/bin/sudo -- "$@"
+        fi
     elif [ -n "$AUTH_SESSION_PID" ]; then
         local auth_status=0
         "$AUTH_HELPER" --authorization-request "$SESSION_DIR" "$AUTH_SESSION_PID" "$@" || auth_status=$?

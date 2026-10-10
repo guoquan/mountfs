@@ -7,6 +7,7 @@ import MountFSPrivileged
 // authorization cache. Requests are bounded to this one partition/transaction.
 private final class AuthorizationHost {
     private let script: NSAppleScript?
+    private var boundary: RootBoundary?
     private let privilegedClient: MountHelperClient?
     private let device: String?
     private let driver: String?
@@ -23,6 +24,7 @@ private final class AuthorizationHost {
             privilegedClient = client; script = nil; return
         }
         privilegedClient = nil
+        if administrator { boundary = try RootBoundary(driver: driver) }
         let suffix = administrator ? " with administrator privileges" : ""
         let source = """
         on performCommand(arguments)
@@ -56,8 +58,13 @@ private final class AuthorizationHost {
             eventID: AEEventID(kASSubroutineEvent), targetDescriptor: nil,
             returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID))
         event.setParam(NSAppleEventDescriptor(string: "performcommand"), forKeyword: AEKeyword(keyASSubroutineName))
+        var approvedArguments = arguments
+        if let boundary, arguments.first == CommandLine.arguments[0] || arguments.first == driver {
+            do { approvedArguments = try boundary.command(arguments) }
+            catch { return (1, "Privileged executable validation failed: \(error)") }
+        }
         let values = NSAppleEventDescriptor.list()
-        for (index, value) in arguments.enumerated() { values.insert(NSAppleEventDescriptor(string: value), at: index + 1) }
+        for (index, value) in approvedArguments.enumerated() { values.insert(NSAppleEventDescriptor(string: value), at: index + 1) }
         let parameters = NSAppleEventDescriptor.list()
         parameters.insert(values, at: 1)
         event.setParam(parameters, forKeyword: AEKeyword(keyDirectObject))

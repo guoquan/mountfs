@@ -220,3 +220,33 @@ a driver can outlive its launching process, and PIDs can be reused. An administr
 should inspect the lock and verify that earlier mouNTFS/driver operations have
 ended before removing that specific device lock. These locks survive daemon restarts and reboots; an inspected per-device
 removal is required. Do not delete all locks while operations may be active.
+
+
+### Execution-time validation in the default path
+
+The unprivileged authorization host obtains its live CDHash from the kernel's
+`csops(CS_OPS_CDHASH)` operation, rather than reading the current app signature
+from a mutable path. The administrator shell launches Apple system tools only
+until a candidate image in root-owned `/Library/mountfs-authorizers` storage has
+passed strict signature validation against that hash. Every later invocation
+checks that protected image again and executes it there; it never verifies one
+file and then executes the mutable source. Source replacement before bootstrap
+is refused; source replacement afterward cannot replace the protected image.
+
+Before authorization, the default host inspects a private copy of the driver and
+its non-system dependency graph and freezes their content hashes. The protected
+authorizer re-reads those sources through no-follow descriptors, requires every
+hash and graph entry to match, rewrites linkage, signs the copies and publishes
+a root-owned generation only after writing its approval marker. A missing marker
+prevents reuse of a partial generation. Existing approved generations avoid
+reopening mutable sources at execution time. Execution uses the fixed sandbox
+profile, including the executable-map denial. CLI mounts use the same protected
+execution boundary after sudo authentication. The SMAppService flow remains
+separately opt-in and retains its explicit administrator driver-setup policy.
+
+The protected driver's Full Disk Access is a separate OS permission; a Homebrew
+source grant may not cover the copy. Native CI fixtures test app-image replacement,
+driver/dependency replacement and protected-copy reuse. They do not establish
+real NTFS mounting or privacy-approval behavior on a physical Mac. Kernel-stuck
+copy operations and exact OS authorization-cache behavior also require physical
+validation.

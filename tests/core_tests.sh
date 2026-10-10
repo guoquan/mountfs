@@ -41,6 +41,7 @@ run_case() (
             } ;;
     esac
     acquire_lock() { return 0; }
+    start_authorization_session() { return 0; }
     confirm_mount() { [ "$scenario" != cancel ]; }
     sleep() { :; }
     load_volume() {

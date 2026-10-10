@@ -129,3 +129,14 @@ int mountfs_process_live(int32_t pid) {
     return kill(pid, 0) == 0;
 #endif
 }
+
+/* Apple's bsd/sys/codesign.h: CS_OPS_CDHASH=5. Ask the kernel for the
+ * running image, never re-read an app bundle that its owner can replace. */
+int mountfs_self_cdhash(unsigned char hash[20]) {
+#ifdef __APPLE__
+    extern int csops(pid_t, unsigned int, void *, size_t);
+    return csops(getpid(), 5, hash, 20) == 0;
+#else
+    (void)hash; return 0;
+#endif
+}
