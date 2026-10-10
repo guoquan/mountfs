@@ -196,3 +196,28 @@ See [helper architecture and test limits](docs/AUTHORIZATION.md). CI checks code
 signing pins and unprivileged denial cases; first registration, real privileged
 mounting, Touch ID and the copied driver's macFUSE/TCC behavior need physical-Mac
 validation.
+
+### Helper registration troubleshooting (0.3.1)
+
+First registration can return `SMAppServiceErrorDomain / 1` while waiting for
+background-service approval. The app now opens Login Items & Extensions instead
+of presenting this as an unexplained setup failure. Approve mouNTFS there and
+return to Enable Permission Helper. If no item appears, copy the registration
+report, which includes the error domain/code, service state and signatures.
+Full Disk Access does not grant background-service approval.
+
+CI downloads remain ad-hoc signed. Apple recommends signing the container app
+and embedded helper with the same Apple-issued identity; ad-hoc signing can cause
+registration and approval persistence problems. On a Mac with that certificate:
+
+```bash
+MOUNTFS_SIGNING_IDENTITY='Apple Development: Your Name (TEAMID)' bash scripts/build-app.sh
+```
+
+This signs all three executables with the selected identity before generating
+the XPC pins and sealing the app. Do not re-sign a downloaded app afterward:
+that invalidates its exact peer pins. Developer ID distribution additionally
+requires notarization. No signing certificate is supplied by this repository.
+
+References: [Apple registration walkthrough](https://developer.apple.com/forums/thread/802443)
+and [Apple signing guidance](https://developer.apple.com/forums/thread/799910).

@@ -21,7 +21,7 @@ jobs:
           bash tests/media_identity_tests.sh
           bash tests/mount_state_tests.sh
           bash mountfs.sh --help
-          test "$(bash mountfs.sh --version)" = 0.3.0
+          test "$(bash mountfs.sh --version)" = 0.3.1
       - name: ShellCheck
         if: runner.os == 'Linux'
         run: shellcheck mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/mount_state_tests.sh

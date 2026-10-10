@@ -5,7 +5,7 @@ import MountFSPrivileged
 import ServiceManagement
 import LocalAuthentication
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.0"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.1"
 
 func helperResult(_ option: String, device: String) -> CommandResult? {
     let candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,
@@ -313,13 +313,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         do {
+            if helperService.status == .requiresApproval {
+                showHelperApproval()
+                return
+            }
             if helperService.status != .enabled {
-                try helperService.register()
+                do {
+                    try helperService.register()
+                } catch {
+                    // register() can throw EPERM after adding an unapproved daemon.
+                    // Check the post-registration state before treating this as failure.
+                    let failure = error as NSError
+                    if helperService.status == .requiresApproval ||
+                        (failure.domain == "SMAppServiceErrorDomain" && failure.code == 1) {
+                        showHelperApproval(error: error)
+                        return
+                    }
+                    throw error
+                }
             }
             if helperService.status == .requiresApproval {
-                helperReady = false; helperStatus = "Needs system approval"; rebuildMenu()
-                SMAppService.openSystemSettingsLoginItems()
-                showOutput(title: "Approve the helper", text: "Allow mouNTFS in System Settings → General → Login Items & Extensions. Return to Settings → Enable Permission Helper to finish the protected driver setup.")
+                showHelperApproval()
                 return
             }
             guard helperService.status == .enabled else { throw HelperError.invalid("The system has not enabled the helper.") }
@@ -328,7 +342,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 throw HelperError.invalid("Install ntfs-3g before setting up the helper.")
             }
             execute("Setting up permission helper…", executable: client, arguments: ["--helper-configure", driver], showSuccessOutput: true)
-        } catch { showOutput(title: "Helper setup failed", text: (error as? HelperError)?.message ?? error.localizedDescription) }
+        } catch {
+            showOutput(title: "Helper setup failed", text: helperSetupDetails(error))
+        }
+    }
+    private func showHelperApproval(error: Error? = nil) {
+        helperReady = false
+        let pending = helperService.status == .requiresApproval
+        helperStatus = pending ? "Needs system approval" : "Registration needs attention"
+        rebuildMenu()
+        SMAppService.openSystemSettingsLoginItems()
+        var text = "Allow mouNTFS in System Settings → General → Login Items & Extensions (Allow in the Background). Return to Settings → Enable Permission Helper to finish the protected driver setup. Full Disk Access is a separate permission."
+        if !pending {
+            text += "\n\nIf mouNTFS is absent from that page, registration may have been rejected for another reason. This development package uses ad-hoc signing unless built with an Apple-issued signing identity; ad-hoc signatures can cause SMAppService registration and approval persistence problems. Copy the details below rather than repeatedly granting disk access."
+        }
+        if let error = error { text += "\n\n" + helperSetupDetails(error) }
+        showOutput(title: pending ? "Approve the helper" : "Check helper approval", text: text)
+    }
+    private func helperSetupDetails(_ error: Error) -> String {
+        let failure = error as NSError
+        var lines = ["Stage: service registration / setup preflight",
+                     "Error: \(failure.domain) / \(failure.code): \(failure.localizedDescription)",
+                     "Service status: \(helperService.status.rawValue)",
+                     "Application: \(Bundle.main.bundlePath)"]
+        if let reason = failure.localizedFailureReason { lines.append("Reason: " + reason) }
+        if let underlying = failure.userInfo[NSUnderlyingErrorKey] as? NSError {
+            lines.append("Underlying: \(underlying.domain) / \(underlying.code): \(underlying.localizedDescription)")
+        }
+        if let specific = error as? HelperError { lines.append(specific.message) }
+        for path in [Bundle.main.bundlePath, Bundle.main.bundlePath + "/Contents/MacOS/mountfs-helper"] {
+            let signature = runCommand("/usr/bin/codesign", ["-d", "--verbose=4", path])
+            lines.append("Signature (\(path)):\n" + signature.text)
+        }
+        return lines.joined(separator: "\n")
     }
     @objc private func disableHelper() {
         guard !busy else { return }
