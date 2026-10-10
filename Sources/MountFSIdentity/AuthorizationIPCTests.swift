@@ -24,7 +24,7 @@ func authorizationIPCSelfTest() -> Bool {
             if fd < 0 { Thread.sleep(forTimeInterval: 0.01); continue }
             defer { close(fd) }
             index += 1
-            // First connection is this same-UID process, not its descendant.
+            // First connection is a detached same-UID process, not a shell descendant.
             guard index == 4 || (mountfs_auth_peer(fd, 0, parent, birth) != 0 &&
                   mountfs_auth_peer(fd, 0, parent, birth + 1) == 0),
                   readConnection(fd, timeout: 1) != nil else { continue }
@@ -34,7 +34,34 @@ func authorizationIPCSelfTest() -> Bool {
     }
     let args = [directory, String(parent), "/usr/bin/true"]
     // Learning the directory and PID does not authorize an unrelated process.
-    let rejected = authorizationRequest(args, timeout: 1) != 0
+    let rogue = #"""
+import os, socket, plistlib, struct, sys, time
+first = os.fork()
+if first:
+    os.waitpid(first, 0)
+    sys.exit(0)
+second = os.fork()
+if second:
+    os._exit(0)
+deadline = time.monotonic() + 1
+while os.getppid() != 1 and time.monotonic() < deadline:
+    time.sleep(.01)
+assert os.getppid() == 1
+client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+client.settimeout(1)
+client.connect(sys.argv[1] + '/s')
+packet = plistlib.dumps({'arguments': ['/usr/bin/true'], 'claimedParent': int(sys.argv[2])})
+try:
+    client.sendall(struct.pack('!I', len(packet)) + packet)
+    refused = not client.recv(4)
+except (ConnectionResetError, BrokenPipeError):
+    refused = True
+open(sys.argv[1] + '/rogue-result', 'w').write('rejected' if refused else 'accepted')
+client.close()
+os._exit(0)
+"""#
+    let rogueResult = boundedTool("/usr/bin/python3", ["-c", rogue, directory, String(parent)], timeout: 3)
+    let rejected = rogueResult.0 == 0 && (try? String(contentsOfFile: directory + "/rogue-result", encoding: .utf8)) == "rejected"
     let client = CommandLine.arguments[0]
     let reply = boundedTool(client, ["--authorization-request"] + args, timeout: 3)
     let accepted = reply.0 == 125 && String(data: reply.1, encoding: .utf8)?.contains("Authenticated round trip") == true
