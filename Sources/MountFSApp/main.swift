@@ -9,8 +9,12 @@ import CoreServices
 let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.4"
 
 func helperResult(_ option: String, device: String) -> CommandResult? {
-    let candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,
-                      URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(".build/release/MountFSIdentity").path]
+    var candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path]
+    // A distributed app trusts only its bundled identity client. Never execute
+    // a current-directory binary when a packaged helper is missing.
+    if !Bundle.main.bundlePath.hasSuffix(".app") {
+        candidates.append(URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(".build/release/MountFSIdentity").path)
+    }
     guard let path = candidates.compactMap({ $0 }).first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return nil }
     return runCommand(path, [option, device], mergeErrors: false)
 }

@@ -24,7 +24,7 @@ method = r'''
         let names = ["menu-readonly", "menu-writable", "menu-progress", "diagnostics"]
         guard index < names.count else { NSApp.terminate(nil); return }
         let output = ProcessInfo.processInfo.environment["MOUNTFS_DOC_OUTPUT"]!
-        volumes = [Volume(device: "disk9s1", name: "Travel Drive", mountPoint: "/Volumes/Travel Drive", readOnly: index != 1)]
+        volumes = [Volume(device: "disk9s1", mediaIdentity: "iomedia:900:901:1048576", name: "Travel Drive", mountPoint: "/Volumes/Travel Drive", readOnly: index != 1)]
         busy = index == 2
         status = index == 1 ? "Demo · Write access verified" : (busy ? "Demo · Enabling write access…" : "Demo · 1 external NTFS partition")
         helperReady = false
