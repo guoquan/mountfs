@@ -104,7 +104,17 @@ int32_t mountfs_run_tool(const char *path, char *const argv[], uint32_t timeout_
          * caller retains the device lock when termination cannot be confirmed. */
         if (!exited) return 125;
     }
-    if (timedout) return 124;
+    if (timedout) {
+        /* Reaping the leader does not establish that its descendants stopped.
+         * Include zombies/kernel-stuck members conservatively; ESRCH is the
+         * only proof of group disappearance. Never wait indefinitely here. */
+        double group_deadline = now() + 1;
+        do {
+            if (kill(-pid, 0) < 0 && errno == ESRCH) return 124;
+            struct timespec pause = {0, 10000000}; nanosleep(&pause, NULL);
+        } while (now() < group_deadline);
+        return 125;
+    }
     return WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
 }
 

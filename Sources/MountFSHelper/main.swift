@@ -212,7 +212,7 @@ if CommandLine.arguments.contains("--self-test") {
         do { _ = try readDriverSource(ancestor.path + "/source"); exit(1) } catch {}
         do { _ = try readDriverSource(canonical, limit: 4); exit(1) } catch {}
         let timed = runTool("/bin/sh", ["-c", "trap '' TERM; sleep 30 & echo $!; wait"], timeout: 0.2)
-        guard timed.status == 124, let child = Int32(timed.output.components(separatedBy: .newlines)[0]),
+        guard [124, 125].contains(timed.status), let child = Int32(timed.output.components(separatedBy: .newlines)[0]),
               !authorizationProcessIsLive(child) else { exit(1) }
         print("PASS descriptor driver reads reject leaf/ancestor links and oversize files; timed-out child is stopped")
         let plugin = cache.appendingPathComponent("untrusted-plugin")

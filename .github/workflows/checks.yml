@@ -41,6 +41,7 @@ jobs:
           test ! -e dist/mouNTFS.app/Contents/Resources/stale-build-marker
           bash tests/macos_media_identity.sh
           bash tests/macos_helper_service.sh
+          bash tests/macos_sandbox_mapping.sh
           VERSION=$(bash mountfs.sh --version)
           codesign --verify --deep --strict "dist/mouNTFS.app"
           test -f "dist/mouNTFS.app/Contents/Resources/mountfs.sh"

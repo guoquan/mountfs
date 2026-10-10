@@ -195,7 +195,7 @@ bounded by the remaining transaction lifetime). Timeouts terminate the group,
 escalate to SIGKILL and bound the reap wait. This lets serialized recovery and
 expiry resume. Recovery can take additional bounded tool time after expiry.
 If a kernel-stuck process cannot be reaped, the transaction refuses further
-mutation and its device lock is retained until the daemon is restarted. Detached
+mutation and its device lock is retained until an administrator confirms all earlier operations ended and removes that specific stale lock (or reboots). Detached
 processes and actual kernel/driver timeout behavior still require physical-Mac
 validation; successfully committed FUSE daemons are intentionally kept running.
 

@@ -6,6 +6,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <signal.h>
+#include <errno.h>
+#include <stdlib.h>
 
 static double seconds(void) {
     struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t);
@@ -19,15 +22,23 @@ int main(void) {
     char *spam[] = {"/bin/sh", "-c", "yes x | head -c 200000", NULL};
     assert(mountfs_run_tool(spam[0], spam, 3000, output, sizeof(output), &length) == 0);
     assert(length == sizeof(output));
-    char *hung[] = {"/bin/sh", "-c", "trap '' TERM; sleep 30 & wait", NULL};
+    char *hung[] = {"/bin/sh", "-c", "echo $$; trap '' TERM; sleep 30 & wait", NULL};
     double start = seconds();
-    assert(mountfs_run_tool(hung[0], hung, 150, output, sizeof(output), &length) == 124);
-    assert(seconds() - start < 2);
+    int result = mountfs_run_tool(hung[0], hung, 150, output, sizeof(output), &length);
+    assert(result == 124 || result == 125);
+    output[length] = 0;
+    pid_t group = (pid_t)strtol(output, NULL, 10); assert(group > 1);
+    if (result == 124) { assert(kill(-group, 0) < 0 && errno == ESRCH); }
+    assert(seconds() - start < 3);
     /* Leader exits successfully, but its child holds the output pipe open. */
-    char *pipeheld[] = {"/bin/sh", "-c", "sleep 30 & exit 0", NULL};
+    char *pipeheld[] = {"/bin/sh", "-c", "echo $$; sleep 30 & exit 0", NULL};
     start = seconds();
-    assert(mountfs_run_tool(pipeheld[0], pipeheld, 150, output, sizeof(output), &length) == 124);
-    assert(seconds() - start < 2);
+    result = mountfs_run_tool(pipeheld[0], pipeheld, 150, output, sizeof(output), &length);
+    assert(result == 124 || result == 125);
+    output[length] = 0;
+    group = (pid_t)strtol(output, NULL, 10); assert(group > 1);
+    if (result == 124) { assert(kill(-group, 0) < 0 && errno == ESRCH); }
+    assert(seconds() - start < 3);
     char *missing[] = {"/nonexistent/mountfs-tool", NULL};
     assert(mountfs_run_tool(missing[0], missing, 150, output, sizeof(output), &length) != 0);
 #ifdef __APPLE__
