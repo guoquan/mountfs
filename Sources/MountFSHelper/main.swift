@@ -28,10 +28,9 @@ private final class Transaction {
     var touched = false
     var committed = false
     var terminationUnconfirmed = false
-    init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t) throws {
+    init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t) {
         self.device = device; self.identity = identity; originalPoint = original
         driver = configuration.executable; uid = configuration.uid; self.gid = gid
-        try SystemDeviceLock.perform("acquire", device: device, token: lockToken)
     }
     func current() -> [String: Any]? {
         guard !terminationUnconfirmed, mediaIdentity(device) == identity else { return nil }
@@ -135,8 +134,8 @@ private final class ClientService: NSObject, MountHelperProtocol {
                   externalNTFS(device), mediaIdentity(device) == identity, let state = mountState(device) else {
                 reply(1, "Cannot begin an authorized external NTFS helper transaction."); return
             }
-            let transaction: Transaction
-            do { transaction = try Transaction(device: device, identity: identity, original: state["MountPoint"] as? String ?? "", configuration: configuration, gid: self.gid) }
+            let transaction = Transaction(device: device, identity: identity, original: state["MountPoint"] as? String ?? "", configuration: configuration, gid: self.gid)
+            do { try SystemDeviceLock.perform("acquire", device: device, token: transaction.lockToken) }
             catch { reply(1, "System-wide device lock failed: \(error)"); return }
             self.transaction = transaction
             lockedDevices.insert(device)

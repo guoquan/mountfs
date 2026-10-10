@@ -157,7 +157,10 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
         try? FileManager.default.removeItem(atPath: request)
         guard let id = packet["id"] as? String, let command = packet["arguments"] as? [String] else { return 1 }
         var result = (1, "Authorization session refused an invalid command or changed device.")
-        if (policy.allows(command) || (privileged && policy.driverUsed && command == ["--helper-commit"])), (command.dropFirst().first == "--system-device-lock" || mediaIdentity(policy.device) == identity), let state = mountState(policy.device) {
+        if !privileged, policy.allows(command), command.dropFirst().first == "--system-device-lock" {
+            // Lock release changes no disk state and must work after hot unplug.
+            result = host.execute(command)
+        } else if (policy.allows(command) || (privileged && policy.driverUsed && command == ["--helper-commit"])), mediaIdentity(policy.device) == identity, let state = mountState(policy.device) {
             let mountedPoint = state["MountPoint"] as? String ?? ""
             let unmount = command.first == "/usr/sbin/diskutil" && command.dropFirst().first == "unmount"
             let mounting = command.first == policy.driver || command == ["/usr/sbin/diskutil", "mount", "readOnly", policy.device]
