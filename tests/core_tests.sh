@@ -252,4 +252,16 @@ for completion in release acknowledge; do
     printf 'PASS uncertain cleanup %s preserves status 125\n' "$completion"
     passed=$((passed + 1))
 done
+(
+    . "$ROOT/mountfs.sh"
+    LOCK_DIR=test-token
+    native_helper_path() { return 1; }
+    run_privileged() { return 99; }
+    if cleanup 2> "$FIXTURE/missing-cleanup-tool.error"; then exit 1; else result=$?; fi
+    [ "$result" -eq 1 ]
+    [ "$LOCK_DIR" = test-token ]
+    grep -q 'identity tool is unavailable; the system device lock was retained' "$FIXTURE/missing-cleanup-tool.error"
+)
+printf 'PASS missing cleanup native tool reports failure and retains lock\n'
+passed=$((passed + 1))
 printf '%s regression groups passed.\n' "$passed"

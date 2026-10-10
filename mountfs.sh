@@ -383,6 +383,9 @@ cleanup() {
         local lock_helper
         if lock_helper=$(native_helper_path); then
             run_privileged "$lock_helper" --system-device-lock release "$TRANSACTION_DEVICE" "$LOCK_DIR" || status=1
+        else
+            message "Error: The native identity tool is unavailable; the system device lock was retained. Restore the app/tool and inspect the lock before retrying."
+            status=1
         fi
     fi
     if [ "$AUTH_PRIVILEGED" -eq 1 ] && [ "$HELPER_COMMIT_CONFIRMED" -eq 1 ] && [ "$DRIVER_TERMINATION_UNCONFIRMED" -eq 0 ]; then

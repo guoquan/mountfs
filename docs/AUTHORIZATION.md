@@ -300,3 +300,8 @@ Cleanup rechecks the uncertainty flag after late lock-release or commit-acknowle
 requests and preserves status 125 in the EXIT trap. It reports uncertain completion
 and lock state instead of claiming an ordinary failed mount or a definitely held
 lock. Both late-reply-loss paths are covered by shell simulations.
+
+If the native client disappears after system-lock acquisition (for example during
+app replacement), cleanup reports failure and explicitly identifies the retained
+lock. It cannot silently report a successfully completed transaction. The missing
+client case is included in the shell cleanup regressions.
