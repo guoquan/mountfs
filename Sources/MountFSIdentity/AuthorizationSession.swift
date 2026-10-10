@@ -72,7 +72,7 @@ private final class AuthorizationHost {
         let result = script.executeAppleEvent(event, error: &error)
         if let error {
             let number = (error[NSAppleScript.errorNumber] as? NSNumber)?.intValue ?? 1
-            return (number == -128 ? 2 : 1, error[NSAppleScript.errorMessage] as? String ?? "macOS authorization failed.")
+            return (number == -128 ? 2 : (number == 125 ? 125 : 1), error[NSAppleScript.errorMessage] as? String ?? "macOS authorization failed.")
         }
         return (0, result.stringValue ?? "")
     }

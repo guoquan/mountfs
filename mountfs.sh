@@ -23,6 +23,7 @@ READ_ONLY=true
 INTERNAL=true
 NEW_MOUNT_POINT=
 RECOVERY_NEEDED=0
+DRIVER_TERMINATION_UNCONFIRMED=0
 USER_ID=
 GROUP_ID=
 
@@ -358,17 +359,20 @@ recover_volume() {
 cleanup() {
     local status=$?
     trap - EXIT INT TERM HUP
-    if [ "$RECOVERY_NEEDED" -eq 1 ]; then
+    if [ "$DRIVER_TERMINATION_UNCONFIRMED" -eq 1 ]; then
+        message "Driver termination is unconfirmed; recovery and device-lock release are suppressed. Inspect running driver processes before administrator cleanup."
+        status=125
+    elif [ "$RECOVERY_NEEDED" -eq 1 ]; then
         recover_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" || status=1
     fi
-    if [ -n "$NEW_MOUNT_POINT" ]; then
+    if [ "$DRIVER_TERMINATION_UNCONFIRMED" -eq 0 ] && [ -n "$NEW_MOUNT_POINT" ]; then
         # Only remove our empty mount directory. rmdir never removes user files.
         # An active mount is deliberately retained, even if its root is empty.
         if same_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" && [ "$MOUNT_POINT" != "$NEW_MOUNT_POINT" ]; then
             run_privileged /bin/rmdir "$NEW_MOUNT_POINT" >/dev/null 2>&1 || true
         fi
     fi
-    if [ -n "$LOCK_DIR" ]; then
+    if [ "$DRIVER_TERMINATION_UNCONFIRMED" -eq 0 ] && [ -n "$LOCK_DIR" ]; then
         local lock_helper
         if lock_helper=$(native_helper_path); then
             run_privileged "$lock_helper" --system-device-lock release "$TRANSACTION_DEVICE" "$LOCK_DIR" || status=1
@@ -441,6 +445,11 @@ mount_volume() {
     message "[3/4] Mounting with ntfs-3g ($BACKEND)..."
     run_privileged "$DRIVER" "/dev/$TRANSACTION_DEVICE" "$NEW_MOUNT_POINT" -o "$options" > "$SESSION_DIR/driver.log" 2>&1 || rc=$?
     cat "$SESSION_DIR/driver.log" >&2
+    if [ "$rc" -eq 125 ]; then
+        DRIVER_TERMINATION_UNCONFIRMED=1
+        fail "Driver termination could not be confirmed. The device lock is retained; no recovery will be attempted."
+        return 125
+    fi
     if [ "$rc" -ne 0 ]; then
         report_driver_failure "$SESSION_DIR/driver.log"
         return 1

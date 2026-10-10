@@ -75,6 +75,7 @@ run_case() (
                 case "$5" in *force*|*remove_hiberfile*) return 99 ;; esac
                 case "$scenario" in
                     driver-failure) return 1 ;;
+                    driver-unconfirmed) return 125 ;;
                     readonly-success) printf 'readonly\n' > "$TEST_DIR/state" ;;
                     *) printf 'driver-mounted\n' > "$TEST_DIR/state" ;;
                 esac ;;
@@ -89,9 +90,15 @@ run_case() (
     }
     mount_volume >/dev/null 2>&1
     result=$?
-    if [ "$RECOVERY_NEEDED" -eq 1 ]; then recover_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" >/dev/null 2>&1; fi
+    if [ "$scenario" = driver-unconfirmed ]; then
+        LOCK_DIR=retained-token
+        SESSION_DIR=
+        cleanup >/dev/null 2>&1
+        [ "$?" -eq 125 ] || exit 1
+    elif [ "$RECOVERY_NEEDED" -eq 1 ]; then recover_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" >/dev/null 2>&1; fi
     case "$scenario" in
         success|helper-success) [ "$result" -eq 0 ] && [ "$RECOVERY_NEEDED" -eq 0 ] && [ "$(cat "$TEST_DIR/state")" = driver-mounted ] ;;
+        driver-unconfirmed) [ "$result" -eq 125 ] && [ "$DRIVER_TERMINATION_UNCONFIRMED" -eq 1 ] && [ "$LOCK_DIR" = retained-token ] && ! grep -Eq "mount readOnly|rmdir|system-device-lock release" "$TEST_DIR/calls" ;;
         cancel) [ "$result" -eq 2 ] && [ ! -s "$TEST_DIR/calls" ] ;;
         busy) [ "$result" -eq 1 ] && [ "$(cat "$TEST_DIR/state")" = mounted ] && ! grep -q '/opt/homebrew/bin/ntfs-3g' "$TEST_DIR/calls" ;;
         driver-failure|readonly-success|probe-failure|helper-commit-failure)
@@ -101,7 +108,7 @@ run_case() (
     esac
 )
 
-for scenario in success helper-success helper-commit-failure cancel busy driver-failure readonly-success probe-failure unplug replaced; do
+for scenario in success helper-success helper-commit-failure cancel busy driver-failure driver-unconfirmed readonly-success probe-failure unplug replaced; do
     if run_case "$scenario"; then
         printf 'PASS %s\n' "$scenario"
         passed=$((passed + 1))
