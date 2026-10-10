@@ -3,6 +3,8 @@ import Darwin
 import CryptoKit
 import MountFSPrivileged
 
+let driverSandboxProfile = "(version 1)(allow default)(deny file-read-data (subpath \"/opt/homebrew\") (subpath \"/usr/local\") (subpath \"/Users\"))"
+
 let helperStorage = "/Library/Application Support/mouNTFS"
 
 func rootDirectory(_ path: String) -> Bool {

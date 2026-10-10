@@ -109,7 +109,7 @@ public func withAdministratorAuthorization(_ body: (Data) -> HelperReply) -> Hel
 public func verifyAdministratorAuthorization(_ data: Data) -> Bool {
     guard data.count == MemoryLayout<AuthorizationExternalForm>.size else { return false }
     var external = AuthorizationExternalForm()
-    withUnsafeMutableBytes(of: &external) { buffer in data.copyBytes(to: buffer) }
+    _ = withUnsafeMutableBytes(of: &external) { buffer in data.copyBytes(to: buffer) }
     var authorization: AuthorizationRef?
     guard AuthorizationCreateFromExternalForm(&external, &authorization) == errAuthorizationSuccess, let authorization else { return false }
     defer { AuthorizationFree(authorization, []) }

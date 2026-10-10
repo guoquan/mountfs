@@ -65,8 +65,7 @@ private final class Transaction {
             // ntfs-3g can dlopen external reparse plugins as well as its linked
             // libraries. Prevent a persistent root driver from reading code or
             // plugins out of mutable Homebrew/user directories after setup.
-            let profile = "(version 1)(allow default)(deny file-read-data (subpath \"/opt/homebrew\") (subpath \"/usr/local\") (subpath \"/Users\"))"
-            return runTool("/usr/bin/sandbox-exec", ["-p", profile, driver, "/dev/" + device, point, "-o",
+            return runTool("/usr/bin/sandbox-exec", ["-p", driverSandboxProfile, driver, "/dev/" + device, point, "-o",
                 "rw,norecover,allow_other,default_permissions,uid=\(uid),gid=\(gid),umask=077," + backend])
         case "recover":
             guard !committed, mounted.isEmpty else { return HelperReply(1, "Recovery requires an unmounted selected device.") }
@@ -174,12 +173,24 @@ if CommandLine.arguments.contains("--self-test") {
     for operation in ["force", "arbitrary-command", "mount-kernel", "unmount", "recover", "commit"] {
         guard transaction.perform(operation).status != 0 else { exit(1) }
     }
+    let cache = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Caches/mountfs-helper-test-" + UUID().uuidString)
+    guard cache.path.hasPrefix("/Users/") else { exit(1) }
+    do {
+        try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        defer { try? FileManager.default.removeItem(at: cache) }
+        let plugin = cache.appendingPathComponent("untrusted-plugin")
+        try Data("untrusted".utf8).write(to: plugin)
+        guard runTool("/bin/cat", [plugin.path]).status == 0,
+              runTool("/usr/bin/sandbox-exec", ["-p", driverSandboxProfile, "/usr/bin/true"]).status == 0,
+              runTool("/usr/bin/sandbox-exec", ["-p", driverSandboxProfile, "/bin/cat", plugin.path]).status != 0 else { exit(1) }
+    } catch { exit(1) }
+    print("PASS driver sandbox allows system execution and rejects a real user-writable plugin read")
     print("PASS helper rejects writable storage, fake authorization, unknown operations and missing media before mutation")
     exit(0)
 }
 guard geteuid() == 0, allowedHelperClient.hasPrefix("cdhash ") else { exit(1) }
 let listener = NSXPCListener(machServiceName: helperServiceName)
-let delegate = ListenerDelegate()
+private let delegate = ListenerDelegate()
 listener.delegate = delegate
 listener.setConnectionCodeSigningRequirement(allowedHelperClient)
 listener.resume()
