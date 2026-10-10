@@ -22,14 +22,20 @@ trap cleanup EXIT
 python3 - "$WORK/service.plist" "$HELPER" "$SERVICE" "$WORK" <<'PYPLIST'
 import plistlib,sys
 with open(sys.argv[1], 'wb') as f:
-    plistlib.dump({'Label': sys.argv[3], 'Program': sys.argv[2],
+    plistlib.dump({'Label': sys.argv[3], 'Program': sys.argv[2], 'ProgramArguments': [sys.argv[2]],
                   'MachServices': {sys.argv[3]: True},
                   'StandardErrorPath': sys.argv[4]+'/stderr',
                   'StandardOutPath': sys.argv[4]+'/stdout'}, f)
 PYPLIST
-sudo /bin/launchctl bootstrap system "$WORK/service.plist"
+sudo /usr/sbin/chown root:wheel "$WORK/service.plist"
+sudo /bin/chmod 644 "$WORK/service.plist"
+if ! sudo /bin/launchctl bootstrap system "$WORK/service.plist"; then
+    sudo /usr/bin/log show --last 1m --style compact --predicate 'process == "launchd"' | tail -100
+    exit 1
+fi
 LOADED=1
 for attempt in 1 2 3; do
+    printf 'XPC status check %s/3\n' "$attempt"
     if ! "$CLIENT" --helper-status > "$WORK/status"; then
         cat "$WORK/status"
         sudo /bin/launchctl print "system/$SERVICE" || true
@@ -38,6 +44,8 @@ for attempt in 1 2 3; do
     fi
     [ "$(cat "$WORK/status")" = unconfigured ]
     # Run-loop early return/daemon exits must not be masked by status mocks.
+    # The runner owns the diagnostic output; only launchctl needs root.
+    # shellcheck disable=SC2024
     sudo /bin/launchctl print "system/$SERVICE" > "$WORK/state"
     grep -q 'state = running' "$WORK/state"
     sleep 1
