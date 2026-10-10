@@ -2,7 +2,7 @@
 
 [English](USAGE.en.md) · **简体中文** · [项目介绍](../README.zh-CN.md)
 
-mouNTFS 是 macOS 菜单栏工具，调用 macFUSE 和 ntfs-3g，让外置 NTFS 分区获得读写访问。它不会在插盘后自动改成可写，也不会格式化磁盘。
+mouNTFS 是免费开源的 macOS 菜单栏工具，调用 macFUSE 和 ntfs-3g，让外置 NTFS 分区获得读写访问。保留磁盘原有格式，从菜单栏启用写入，继续在 Finder 中使用。它不会在插盘后自动改成可写，也不会格式化磁盘。
 
 当前版本为 **0.3.4 开发版**，尚未公证发布。按下方步骤启用写入即可，无需配置 Settings 中的实验授权选项。后续授权体验与功能安排见 [ROADMAP](../ROADMAP.md)。
 

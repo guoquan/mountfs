@@ -54,7 +54,8 @@ image captions and links. Each pair has a language switch at the top. The applic
 UI is currently English; translated docs do not imply a localized UI.
 
 Development documents are English-only: ROADMAP.md, CONTRIBUTING.md,
-docs/AUTHORIZATION.md and docs/VALIDATION.md. Explain user-visible behavior in user
+docs/AUTHORIZATION.md, docs/VALIDATION.md and docs/PROMOTION.md. The promotion guide
+maintains aligned bilingual copy, artwork and brand rules. Explain user-visible behavior in user
 docs; put implementation choices, experiments and specific test history in the
 appropriate developer document. Planned work belongs in the roadmap.
 

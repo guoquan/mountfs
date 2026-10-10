@@ -6,15 +6,18 @@
 [![Built with AI](https://img.shields.io/badge/Built--with-AI-blueviolet)](#humanai-collaboration)
 [![Website](https://img.shields.io/badge/Website-mountfs.sh-blue)](https://mountfs.sh)
 
-> 🤝 An experiment in human–AI collaboration, co-developed with AI buddies.
-> 🤖 AI writes the code; 👤 humans lead design, review, testing and direction.
-> 🥳 From a shell script to a native Mac app — let's see where this ride goes.
+### Write to NTFS. On your Mac.
 
-### Your NTFS drive, from the macOS menu bar
+**Free & open source. Keep your drive's NTFS format.**
 
-Connect an external NTFS drive, enable write access, and continue in Finder.
-mouNTFS now has a native menu bar app with visible drive states, progress feedback
-and copyable diagnostics. The standalone shell script remains available for CLI use.
+No reformatting. Enable writing from the menu bar, then copy files in Finder.
+mouNTFS is a native Mac app for external NTFS drives, with a standalone script
+available for command-line use.
+
+![mouNTFS: write to NTFS on your Mac, free and open source](docs/images/promo-hero.en.png)
+
+*Illustrative artwork based on the app's English UI with sample drive data.
+Requires separately installed drivers and macOS permissions.*
 
 **Current version: 0.3.4 development build.** Requires separately installed macFUSE
 and ntfs-3g. Development downloads are ad-hoc signed and not notarized.
@@ -39,19 +42,19 @@ and ntfs-3g. Development downloads are ad-hoc signed and not notarized.
 These captures use the actual macOS app UI with **sample drive data and an example
 log**. No disk was mounted to create them. The current UI is English.
 
-## What has changed
+## Your drive, your usual workflow
 
-| Earlier script workflow | Current app experience |
-|---|---|
-| Run commands in Terminal | Select the drive from a native menu |
-| Read command output to understand state | See read-only/writable state beside each drive |
-| Follow logs during an operation | Progress feedback; quiet completion; logs available when needed |
-| Locate the mounted volume yourself | Finder opens after verified mounting by default |
-| Gather troubleshooting output manually | Disk scan, installation diagnosis and copyable reports |
+- **Keep NTFS.** Use your existing external drive without reformatting it.
+- **Enable writing from the menu bar.** Select the drive, complete authorization
+  and wait for mounting to finish.
+- **Continue in Finder.** Copy, edit and organize files after writing is enabled;
+  Finder opens by default after success.
+- **Eject when finished.** Close files, then use the app's safe-eject action.
 
-The app also includes branded icons, safe eject confirmation, automatic list refresh
-and preferences for Finder opening and the menu bar volume count. It never enables
-writing just because a drive was connected.
+The app shows drive states and operation progress, refreshes the drive list
+automatically and keeps troubleshooting reports available when needed. Connecting
+a drive does not enable writing automatically. Initial setup requires compatible
+drivers, system approval and disk-access permissions.
 
 ## Quick start
 
@@ -116,6 +119,10 @@ can replace it. Quit the old app before replacing it. The separate website downl
 endpoint has not been updated by this development branch.
 
 ## Human–AI collaboration
+
+> 🤝 An experiment in human–AI collaboration, co-developed with AI buddies.
+> 🤖 AI writes the code; 👤 humans lead design, review, testing and direction.
+> 🥳 From a shell script to a native Mac app — let's see where this ride goes.
 
 The collaboration is part of the project’s identity: AI writes the code while
 humans shape the product, review changes and test it in the real world.
