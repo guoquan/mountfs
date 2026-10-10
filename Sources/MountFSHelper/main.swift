@@ -27,15 +27,20 @@ private final class Transaction {
     var driverUsed = false
     var touched = false
     var committed = false
-    var commitAcknowledged = false
-    var mayReleaseLock: Bool { !terminationUnconfirmed && (!committed || commitAcknowledged) }
+    private(set) var lockReleased = false
+    private let releaseDeviceLock: (String, String) throws -> Void
+    var mayReleaseLock: Bool { !terminationUnconfirmed && !committed && !lockReleased }
     var terminationUnconfirmed = false
-    init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t) {
+    init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t,
+         releaseDeviceLock: @escaping (String, String) throws -> Void = { device, token in
+             try SystemDeviceLock.perform("release", device: device, token: token)
+         }) {
         self.device = device; self.identity = identity; originalPoint = original
         driver = configuration.executable; uid = configuration.uid; self.gid = gid
+        self.releaseDeviceLock = releaseDeviceLock
     }
     func current() -> [String: Any]? {
-        guard !terminationUnconfirmed, mediaIdentity(device) == identity else { return nil }
+        guard !terminationUnconfirmed, !lockReleased, mediaIdentity(device) == identity else { return nil }
         return mountState(device)
     }
     private func tool(_ path: String, _ args: [String], timeout: TimeInterval = 30) -> HelperReply {
@@ -48,8 +53,12 @@ private final class Transaction {
             guard committed, !terminationUnconfirmed, ProcessInfo.processInfo.systemUptime < deadline else {
                 return HelperReply(1, "No confirmed commit to acknowledge.")
             }
-            commitAcknowledged = true
-            return HelperReply(0, "Caller acknowledged the committed mount.")
+            do {
+                try releaseLock()
+                return HelperReply(0, "Committed mount acknowledged; device lock release confirmed.")
+            } catch {
+                return HelperReply(1, "Committed mount retained, but device lock release failed: \(error). Inspect Show Details before retrying.")
+            }
         }
         guard ["prepare", "unmount", "mount-kernel", "mount-fskit", "recover", "cleanup", "commit"].contains(operation),
               ProcessInfo.processInfo.systemUptime < deadline, let state = current() else {
@@ -98,6 +107,11 @@ private final class Transaction {
             return HelperReply(0, "Helper transaction committed.")
         default: return HelperReply(1, "Unknown helper operation.")
         }
+    }
+    func releaseLock() throws {
+        guard !lockReleased else { return } // An acknowledgement retry cannot release another lease.
+        try releaseDeviceLock(device, lockToken)
+        lockReleased = true
     }
     // Connection loss/expiry never matches a new disk or unmounts another path.
     // Committed mounts survive disconnect; their lock requires caller acknowledgement.
@@ -159,6 +173,10 @@ private final class ClientService: NSObject, MountHelperProtocol {
         work.async {
             guard let transaction = self.transaction else { reply(1, "No active helper transaction."); return }
             let result = transaction.perform(operation)
+            if transaction.lockReleased {
+                lockedDevices.remove(transaction.device)
+                self.transaction = nil
+            }
             reply(result.status, result.output)
         }
     }
@@ -167,7 +185,7 @@ private final class ClientService: NSObject, MountHelperProtocol {
         transaction.abort()
         if transaction.mayReleaseLock {
             do {
-                try SystemDeviceLock.perform("release", device: transaction.device, token: transaction.lockToken)
+                try transaction.releaseLock()
                 lockedDevices.remove(transaction.device)
             } catch { helperLog.error("System-wide device lock retained after release failure") }
         }
@@ -200,17 +218,30 @@ if CommandLine.arguments.contains("--self-test") {
     // No service registration, privileges, filesystem changes or disk mutation.
     guard !rootDirectory("/tmp"), !rootFile("/etc"), !verifyAdministratorAuthorization(Data()) else { exit(1) }
     let configuration = DriverConfiguration(uid: 501, source: "/opt/homebrew/bin/ntfs-3g", executable: "/tmp/untrusted-driver")
-    let transaction = Transaction(device: "disk99999s1", identity: "not-live", original: "/Volumes/other", configuration: configuration, gid: 20)
+    var releaseAttempts = 0
+    var releaseFails = true
+    struct SimulatedReleaseFailure: Error {}
+    let transaction = Transaction(device: "disk99999s1", identity: "not-live", original: "/Volumes/other", configuration: configuration, gid: 20,
+        releaseDeviceLock: { device, token in
+            guard device == "disk99999s1", !token.isEmpty else { exit(1) }
+            releaseAttempts += 1
+            if releaseFails { throw SimulatedReleaseFailure() }
+        })
     for operation in ["force", "arbitrary-command", "mount-kernel", "unmount", "recover", "commit"] {
         guard transaction.perform(operation).status != 0 else { exit(1) }
     }
     guard transaction.mayReleaseLock else { exit(1) }
     transaction.committed = true
     guard !transaction.mayReleaseLock else { exit(1) }
-    guard transaction.perform("acknowledge").status == 0, transaction.mayReleaseLock else { exit(1) }
+    guard transaction.perform("acknowledge").status != 0, !transaction.lockReleased,
+          !transaction.mayReleaseLock, releaseAttempts == 1 else { exit(1) }
+    releaseFails = false
+    guard transaction.perform("acknowledge").status == 0, transaction.lockReleased,
+          !transaction.mayReleaseLock, releaseAttempts == 2 else { exit(1) }
+    guard transaction.perform("acknowledge").status == 0, releaseAttempts == 2 else { exit(1) }
     transaction.terminationUnconfirmed = true
     guard !transaction.mayReleaseLock else { exit(1) }
-    print("PASS committed helper lock survives missing acknowledgement and disconnect; confirmed caller completion permits release")
+    print("PASS committed helper lock retention, synchronous release failure propagation and idempotent confirmed release")
     let cache = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Caches/mountfs-helper-test-" + UUID().uuidString)
     guard cache.path.hasPrefix("/Users/") else { exit(1) }
     do {

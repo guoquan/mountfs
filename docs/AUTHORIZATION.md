@@ -272,9 +272,12 @@ Helper commit replies preserve status 125 through the shared shell request handl
 Uncertain commit results suppress recovery, directory cleanup and lock release.
 The daemon distinguishes a committed mount from an acknowledged commit: disconnect
 and session expiry cannot release a committed transaction's lock until the shell
-confirms it received the success reply. An acknowledged commit may release its lock
-when closing; loss of that acknowledgement's reply does not undo the already known
-commit result. CI simulates missing commit replies and exercises these lease states
+confirms it received the success reply. The acknowledgement request releases the lock synchronously before replying;
+release errors reach shell cleanup and prevent reporting overall success. Disconnect
+does not retry a failed committed-lock release. Repeated acknowledgements on the same
+transaction do not release another lease. Loss of the acknowledgement reply leaves
+completion uncertain without undoing the known commit. CI simulates release failure,
+idempotent acknowledgement and missing commit replies, and exercises these lease states
 without mounting a physical disk.
 
 App-launched commands use the same bounded process-group runner, preserving the
