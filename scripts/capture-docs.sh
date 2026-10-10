@@ -18,7 +18,10 @@ import sys
 p = Path(sys.argv[1])
 s = p.read_text()
 # This modification exists only in the temporary documentation build.
-s = s.replace('        refresh()\n        refreshHelperStatus()\n', '        captureDocumentationScene(0)\n        return\n', 1)
+s = s.replace('        refresh()\n        refreshHelperStatus()\n', '        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.captureDocumentationScene(0) }\n        return\n', 1)
+# Keep the sample menu isolated from asynchronous disk scans during tracking.
+s = s.replace('func menuWillOpen(_ menu: NSMenu) { menuTracking = true; refresh() }',
+              'func menuWillOpen(_ menu: NSMenu) { menuTracking = true }')
 method = r'''
     private func captureDocumentationScene(_ index: Int) {
         let names = ["menu-readonly", "menu-writable", "menu-progress", "diagnostics"]
@@ -39,7 +42,7 @@ method = r'''
                 guard (window[kCGWindowOwnerPID as String] as? Int) == Int(getpid()),
                       let bounds = window[kCGWindowBounds as String] as? [String: CGFloat]
                 else { return false }
-                return (bounds["Width"] ?? 0) >= 300 && (bounds["Height"] ?? 0) > 150
+                return (bounds["Width"] ?? 0) >= 200 && (bounds["Height"] ?? 0) > 150
             }
             guard let window = candidates.first,
                   let number = window[kCGWindowNumber as String] as? Int else {
