@@ -1,74 +1,93 @@
-# Authorization and Touch ID design
+# Optional permission helper and Touch ID
 
-Status: design recommendation, not shipped. Updated 2026-10-10.
+0.3.0 implements this as an opt-in development feature. Physical-Mac validation
+of registration, protected driver mounting and biometric UI is pending.
 
-## Current development build
+## Setup and authority
 
-0.2.11 retains the 0.2.8 authorization host, validated by the user after granting
-Full Disk Access to the actual ntfs-3g executable. One compiled AppleScript lives
-for one bounded mount transaction, including recovery and cleanup. It is not a
-persistent root process and does not persist passwords. Exact interactive prompt
-counts, cancellation and expiry still need physical-Mac validation.
+The app registers a bundled SMAppService LaunchDaemon, subject to macOS approval.
+Setup imports `system.privilege.admin` obtained in the user's process and verifies
+it on the root side, with no interactive authorization in the daemon. No password
+or authorization token is persisted. Only the approved login uid can begin mount
+transactions after setup. The app exposes enable, disable and driver refresh.
 
-Full Disk Access and administrator authorization are independent. Neither a
-fingerprint result nor an administrator password grants ntfs-3g TCC access.
+The root daemon contains a build-time code requirement for the exact hardened
+`mountfs-identity` client. NSXPCListener/NSXPCConnection enforce live peer signing
+requirements; the client separately pins the bundled server. The main UI is not
+itself an accepted daemon client. Pin generation and nested signing happen before
+sealing the app, without re-signing the pinned executables afterward. Development
+build updates can require disabling and re-enabling the service so a stale daemon
+does not accept the new client. This is not stable Developer ID distribution.
 
-## Recommended next implementation
+## Protected driver
 
-Use an opt-in, bundled SMAppService LaunchDaemon on macOS 13+, communicating over
-XPC. Installation/approval is an explicit user setup action; service status and
-unregister must be exposed in Settings. Preserve the current authorization path
-when the helper is absent, denied or disabled. Never retry a possibly dispatched
-mount through the fallback path: reconcile the current mount first.
+One-time administrator setup approves the selected existing Homebrew ntfs-3g.
+The daemon copies that binary and its non-system Mach-O dependencies into a new
+root-owned generation, rewrites load commands, removes resolved rpaths, and signs
+the copied binaries. System libraries and protected macFUSE libraries remain in
+place. Unsupported dependency layouts fail setup rather than running mutable
+Homebrew binaries persistently as root. Configuration and copy ancestors must
+be root-owned and not group/world writable. No caller-selected executable path
+is accepted by the mount API. Driver refresh requires administrator authorization.
 
-The helper must authenticate the actual connecting process using its audit token
-and an approved code-signing requirement; matching only a bundle ID or a PID is
-insufficient. Stable app/helper signing is a prerequisite for a distributable
-implementation; this repository currently produces ad-hoc development builds.
+These copies may require their own Full Disk Access. Existing Homebrew ntfs-3g
+TCC approval is not assumed to cover another executable. The exact copy path is
+reported by setup and transaction errors. Old generations are retained intentionally
+to keep libraries available to existing mounted driver processes.
 
-Expose typed requests for prepare, mount, recover, cleanup and eject, never an
-arbitrary command or shell string. Resolve the driver from trusted configuration,
-validate its ownership and permissions, and do not execute a caller-supplied
-binary as root. Carry over partition identity checks, external NTFS filtering,
-device locks, controlled directories and read-only recovery. Bound sessions to
-one authenticated client, login session and live partition, with expiry and
-replay rejection. Revalidate before each mutation. The UI's writable probe must
-still run as the logged-in user, not root.
+## Transaction boundary
 
-Use Authorization Services for administrator rights, verified on the privileged
-side. The OS decides what authentication mechanisms are available; neither
-SMAppService nor Authorization Services promises a Touch ID-only dialog on all
-supported Macs. LocalAuthentication can be part of a separate user-presence
-experience, but a client-supplied `authenticated=true` flag is not a privileged
-authorization credential. A helper must not trust that flag as its security gate.
+XPC exposes status, authorized driver configuration, begin and a fixed operation
+enum. There is no arbitrary shell or command argument endpoint. Begin validates
+an external NTFS partition and pins its current IOMedia identity, original mount
+point, caller uid/gid and protected driver. The daemon serializes requests, holds
+a device lock, bounds sessions to five minutes, invokes the driver once and fixes
+`rw,norecover,allow_other,default_permissions,uid,gid,umask` and backend options.
 
-First prototype helper registration and the system authorization UI on the
-reported Mac, with a harmless operation, before changing disk operations. If
-native administrator authentication still requires a password, prioritize one-time
-helper setup plus bounded authorized sessions, rather than advertising unsupported
-fingerprint-only elevation. Do not change PAM, sudoers or the authorization database
-to make the UI look like Touch ID support.
+A connection-scoped client bridges the existing private plist request channel.
+Both the unprivileged bridge and the daemon validate identity/state. No mutation
+uses a timeout followed by fallback; a broken connection fails the operation.
+The existing shell core verifies the writable kernel mount and performs an
+exclusive create/write/remove probe as the login user. Only then does it commit
+the helper transaction. An uncommitted disconnect/expiry attempts same-identity
+read-only recovery, leaves unrelated mounts alone, and removes only its empty
+controlled directory. A committed disconnect leaves the successful mount intact.
 
-## Acceptance checks
+Helper absence selects the existing AppleScript path before starting a transaction.
+Once helper execution starts, it does not silently retry the disk operation via
+AppleScript. Whole-disk eject currently retains its separate existing confirmation
+and diskutil path.
 
-- Registration, denial, disable, unregister and app replacement preserve a usable
-  fallback. No automatic background service installation.
-- An unapproved client, spoofed bundle ID, modified executable, replay or expired
-  session cannot cause privileged work.
-- One approved setup/transaction does not request administrator credentials for
-  each individual subcommand. Test Touch ID availability, lockout, cancellation,
-  password fallback, sleep/wake and a Mac without a fingerprint sensor.
-- Device replacement, hot unplug, driver failure and late authorization cannot
-  target another disk or trigger duplicate mounts; read-only recovery still works.
-- ntfs-3g Full Disk Access is checked by a real device access attempt, not inferred
-  from successful authentication. No hidden raw disk reads in a UI capability test.
+## Touch ID boundary
+
+When the helper is ready, the app can use LocalAuthentication's native device-owner
+confirmation before a mount. The setting defaults on; available biometry enables
+the native Touch ID/password fallback. Unavailable biometry does not add a redundant
+password prompt to already-approved helper operations. Cancellation stops before
+starting the shell transaction. This is a UI user-presence confirmation, not an
+administrator right or a daemon-trusted Boolean. The daemon's privileged authority
+is the previous administrator setup plus the signed, approved-uid client and
+restricted operation policy. A matching CLI client can use that restricted authority
+without the UI's optional biometric confirmation.
+
+## Validation
+
+Shell simulations cover helper commit success and failed-commit read-only recovery
+in addition to prior mount safety cases. Unprivileged daemon self-tests reject
+writable storage, fake authorization data, unknown operations and missing media.
+macOS CI checks exact client/server signing requirements and rejects the unrelated
+UI executable as a root-service client. It also runs prior metadata, identity,
+mount-table, private IPC and AppleScript policy tests.
+
+Still requires physical-Mac testing: registration/approval, copied driver linkage
+and macFUSE mount behavior, copied-driver Full Disk Access, Touch ID cancellation
+and password fallback, helper replacement/disable, late connection loss, expiry,
+hot unplug and the committed/uncommitted recovery distinction. CI does not install
+a root daemon or access an external NTFS drive.
 
 ## Primary references
 
-- [LocalAuthentication](https://developer.apple.com/documentation/localauthentication):
-  apps receive an authentication result, not biometric data or root privileges.
-- [Authorization Services](https://developer.apple.com/documentation/security/authorization-services):
-  system-managed authorization for privileged operations.
+- [LocalAuthentication](https://developer.apple.com/documentation/localauthentication)
+- [Authorization Services](https://developer.apple.com/documentation/security/authorization-services)
 - [SMAppService](https://developer.apple.com/documentation/servicemanagement/smappservice)
-  and [register](https://developer.apple.com/documentation/servicemanagement/smappservice/register%28%29):
-  bundled service registration on macOS 13+ subject to user approval.
+- [XPC peer signing requirements](https://developer.apple.com/documentation/foundation/nsxpcconnection/setcodesigningrequirement%28_%3A%29)

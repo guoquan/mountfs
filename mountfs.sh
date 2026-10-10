@@ -3,11 +3,12 @@
 # See LICENSE for the full license text.
 # Compatible with the Bash 3.2 shipped by macOS. No password is read by this script.
 
-MOUNTFS_VERSION=0.2.11
+MOUNTFS_VERSION=0.3.0
 GUI=1
 APP_ACTION=0
 AUTH_SESSION_PID=
 AUTH_HELPER=
+AUTH_PRIVILEGED=0
 BACKEND=kernel
 DRIVER=
 SESSION_DIR=
@@ -127,7 +128,12 @@ native_helper_command() {
 start_authorization_session() {
     [ "$GUI" -eq 1 ] || return 0
     AUTH_HELPER=$(native_helper_path) || return 0
-    "$AUTH_HELPER" --authorization-session "$SESSION_DIR" "$DEVICE" "$DRIVER" "$USER_ID" "$GROUP_ID" "$$" \
+    local mode=--authorization-session
+    if [ "${MOUNTFS_PRIVILEGED_HELPER:-0}" = 1 ]; then
+        mode=--privileged-session
+        AUTH_PRIVILEGED=1
+    fi
+    "$AUTH_HELPER" "$mode" "$SESSION_DIR" "$DEVICE" "$DRIVER" "$USER_ID" "$GROUP_ID" "$$" \
         > "$SESSION_DIR/authorization-host.log" 2>&1 &
     AUTH_SESSION_PID=$!
 }
@@ -440,6 +446,9 @@ mount_volume() {
     for attempt in 1 2 3; do
         message "Verification attempt $attempt/3"
         if verify_write "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" "$NEW_MOUNT_POINT"; then
+            if [ "$AUTH_PRIVILEGED" -eq 1 ]; then
+                "$AUTH_HELPER" --authorization-request "$SESSION_DIR" "$AUTH_SESSION_PID" --helper-commit || return 1
+            fi
             RECOVERY_NEEDED=0
             message "Write access verified: $NEW_MOUNT_POINT"
             return 0

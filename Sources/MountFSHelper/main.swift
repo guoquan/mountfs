@@ -1,0 +1,179 @@
+import Foundation
+import Darwin
+import MountFSPrivileged
+
+private let work = DispatchQueue(label: "net.guoquan.mountfs.helper.transactions")
+private var lockedDevices = Set<String>() // Accessed only on work.
+
+private func externalNTFS(_ device: String) -> Bool {
+    let result = runTool("/usr/sbin/diskutil", ["info", "-plist", device])
+    guard result.status == 0, let data = result.output.data(using: .utf8),
+          let info = (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: Any] else { return false }
+    return info["DeviceIdentifier"] as? String == device && info["Internal"] as? Bool == false &&
+        info["WholeDisk"] as? Bool == false && info["FilesystemType"] as? String == "ntfs"
+}
+
+private final class Transaction {
+    let device: String
+    let identity: String
+    let originalPoint: String
+    let driver: String
+    let uid: uid_t
+    let gid: gid_t
+    let deadline = ProcessInfo.processInfo.systemUptime + 300
+    var point: String?
+    var driverUsed = false
+    var touched = false
+    var committed = false
+    init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t) {
+        self.device = device; self.identity = identity; originalPoint = original
+        driver = configuration.executable; uid = configuration.uid; self.gid = gid
+    }
+    func current() -> [String: Any]? {
+        guard mediaIdentity(device) == identity else { return nil }
+        return mountState(device)
+    }
+    func perform(_ operation: String) -> HelperReply {
+        guard ["prepare", "unmount", "mount-kernel", "mount-fskit", "recover", "cleanup", "commit"].contains(operation),
+              ProcessInfo.processInfo.systemUptime < deadline, let state = current() else {
+            return HelperReply(1, "Helper refused an invalid, expired or replaced-device transaction.")
+        }
+        let mounted = state["MountPoint"] as? String ?? ""
+        switch operation {
+        case "prepare":
+            guard point == nil else { return HelperReply(1, "Mount directory already prepared.") }
+            var template = Array(("/Volumes/mountfs." + device + ".XXXXXXXX").utf8CString)
+            guard let created = mkdtemp(&template) else { return HelperReply(1, "Cannot prepare controlled mount directory.") }
+            point = String(cString: created)
+            return HelperReply(0, point!)
+        case "unmount":
+            guard !committed, !mounted.isEmpty, mounted == originalPoint || mounted == point else {
+                return HelperReply(1, "Unrelated or absent mount was left unchanged.")
+            }
+            touched = true
+            return runTool("/usr/sbin/diskutil", ["unmount", device])
+        case "mount-kernel", "mount-fskit":
+            guard !committed, !driverUsed, mounted.isEmpty, let point,
+                  rootDirectory(point), secureAncestors(point), rootFile(driver), secureAncestors(driver) else {
+                return HelperReply(1, "Driver replay, unsafe directory or duplicate mount refused.")
+            }
+            touched = true; driverUsed = true
+            let backend = operation == "mount-kernel" ? "local" : "backend=fskit"
+            return runTool(driver, ["/dev/" + device, point, "-o",
+                "rw,norecover,allow_other,default_permissions,uid=\(uid),gid=\(gid),umask=077," + backend])
+        case "recover":
+            guard !committed, mounted.isEmpty else { return HelperReply(1, "Recovery requires an unmounted selected device.") }
+            return runTool("/usr/sbin/diskutil", ["mount", "readOnly", device])
+        case "cleanup":
+            guard let point, mounted != point else { return HelperReply(1, "Active mount directory retained.") }
+            return runTool("/bin/rmdir", [point])
+        case "commit":
+            guard !committed, driverUsed, let point, mounted == point,
+                  state["WritableVolume"] as? Bool == true else { return HelperReply(1, "Cannot commit an unverified mount.") }
+            committed = true
+            return HelperReply(0, "Helper transaction committed.")
+        default: return HelperReply(1, "Unknown helper operation.")
+        }
+    }
+    // Connection loss/expiry never matches a new disk or unmounts another path.
+    // A successful user's probe commits the mount before closing the connection.
+    func abort() {
+        guard !committed, let state = current() else { return }
+        var mounted = state["MountPoint"] as? String ?? ""
+        if touched, let point, mounted == point {
+            guard runTool("/usr/sbin/diskutil", ["unmount", device]).status == 0,
+                  let fresh = current() else { return }
+            mounted = fresh["MountPoint"] as? String ?? ""
+        }
+        if touched, mounted.isEmpty, current() != nil { _ = runTool("/usr/sbin/diskutil", ["mount", "readOnly", device]) }
+        if let point, let fresh = current(), fresh["MountPoint"] as? String != point {
+            _ = runTool("/bin/rmdir", [point])
+        }
+    }
+}
+
+private final class ClientService: NSObject, MountHelperProtocol {
+    let uid: uid_t
+    let gid: gid_t
+    private var transaction: Transaction?
+    init(uid: uid_t, gid: gid_t) { self.uid = uid; self.gid = gid }
+    func status(withReply reply: @escaping (String) -> Void) {
+        work.async {
+            guard let configuration = DriverConfiguration.load(), configuration.uid == self.uid else { reply("unconfigured"); return }
+            reply("ready\n" + configuration.executable)
+        }
+    }
+    func configure(_ driver: String, authorization: Data, withReply reply: @escaping (Int32, String) -> Void) {
+        work.async {
+            guard lockedDevices.isEmpty, verifyAdministratorAuthorization(authorization) else {
+                reply(1, "Driver setup requires administrator authorization and no active transaction."); return
+            }
+            do { reply(0, try configureDriver(driver, uid: self.uid)) }
+            catch { reply(1, (error as? HelperError)?.message ?? error.localizedDescription) }
+        }
+    }
+    func begin(_ device: String, identity: String, withReply reply: @escaping (Int32, String) -> Void) {
+        work.async {
+            guard self.transaction == nil, !lockedDevices.contains(device),
+                  let configuration = DriverConfiguration.load(), configuration.uid == self.uid,
+                  externalNTFS(device), mediaIdentity(device) == identity, let state = mountState(device) else {
+                reply(1, "Cannot begin an authorized external NTFS helper transaction."); return
+            }
+            let transaction = Transaction(device: device, identity: identity, original: state["MountPoint"] as? String ?? "", configuration: configuration, gid: self.gid)
+            self.transaction = transaction
+            lockedDevices.insert(device)
+            work.asyncAfter(deadline: .now() + 300) { [weak self, weak transaction] in
+                guard let self, let transaction, self.transaction === transaction else { return }
+                self.close()
+            }
+            reply(0, "Helper session ready.\nProtected ntfs-3g: " + configuration.executable)
+        }
+    }
+    func perform(_ operation: String, withReply reply: @escaping (Int32, String) -> Void) {
+        work.async {
+            guard let transaction = self.transaction else { reply(1, "No active helper transaction."); return }
+            let result = transaction.perform(operation)
+            reply(result.status, result.output)
+        }
+    }
+    private func close() {
+        guard let transaction else { return }
+        transaction.abort()
+        lockedDevices.remove(transaction.device)
+        self.transaction = nil
+    }
+    func disconnected() { work.async { self.close() } }
+}
+
+private final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
+    func listener(_ listener: NSXPCListener, shouldAcceptNewConnection connection: NSXPCConnection) -> Bool {
+        guard connection.effectiveUserIdentifier > 0 else { return false }
+        connection.setCodeSigningRequirement(allowedHelperClient)
+        let service = ClientService(uid: connection.effectiveUserIdentifier, gid: connection.effectiveGroupIdentifier)
+        connection.exportedInterface = NSXPCInterface(with: MountHelperProtocol.self)
+        connection.exportedObject = service
+        connection.invalidationHandler = { service.disconnected() }
+        connection.interruptionHandler = { service.disconnected() }
+        connection.resume()
+        return true
+    }
+}
+
+if CommandLine.arguments.contains("--self-test") {
+    // No service registration, privileges, filesystem changes or disk mutation.
+    guard !rootDirectory("/tmp"), !rootFile("/etc"), !verifyAdministratorAuthorization(Data()) else { exit(1) }
+    let configuration = DriverConfiguration(uid: 501, source: "/opt/homebrew/bin/ntfs-3g", executable: "/tmp/untrusted-driver")
+    let transaction = Transaction(device: "disk99999s1", identity: "not-live", original: "/Volumes/other", configuration: configuration, gid: 20)
+    for operation in ["force", "arbitrary-command", "mount-kernel", "unmount", "recover", "commit"] {
+        guard transaction.perform(operation).status != 0 else { exit(1) }
+    }
+    print("PASS helper rejects writable storage, fake authorization, unknown operations and missing media before mutation")
+    exit(0)
+}
+guard geteuid() == 0, allowedHelperClient.hasPrefix("cdhash ") else { exit(1) }
+let listener = NSXPCListener(machServiceName: helperServiceName)
+let delegate = ListenerDelegate()
+listener.delegate = delegate
+listener.setConnectionCodeSigningRequirement(allowedHelperClient)
+listener.resume()
+RunLoop.main.run()

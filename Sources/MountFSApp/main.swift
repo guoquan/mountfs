@@ -1,14 +1,24 @@
 import AppKit
 import Darwin
 import MountFSCore
+import MountFSPrivileged
+import ServiceManagement
+import LocalAuthentication
 
-let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.11"
+let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.0"
 
 func helperResult(_ option: String, device: String) -> CommandResult? {
     let candidates: [String?] = [Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path,
                       URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(".build/release/MountFSIdentity").path]
     guard let path = candidates.compactMap({ $0 }).first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return nil }
     return runCommand(path, [option, device], mergeErrors: false)
+}
+
+func bundledHelperCommand(_ arguments: [String]) -> CommandResult {
+    guard let path = Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path else {
+        return CommandResult(status: 1, output: Data("Bundled helper client missing.".utf8))
+    }
+    return runCommand(path, arguments)
 }
 
 func currentIdentity(_ device: String) -> String? {
@@ -42,7 +52,7 @@ private final class ErrorCapture {
 }
 
 // All commands use Process arguments; volume names are never evaluated as code.
-func runCommand(_ executable: String, _ arguments: [String], mergeErrors: Bool = true) -> CommandResult {
+func runCommand(_ executable: String, _ arguments: [String], mergeErrors: Bool = true, environment: [String: String]? = nil) -> CommandResult {
     let process = Process()
     let pipe = Pipe()
     let errorPipe = Pipe()
@@ -50,6 +60,7 @@ func runCommand(_ executable: String, _ arguments: [String], mergeErrors: Bool =
     let group = DispatchGroup()
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = arguments
+    if let environment { process.environment = environment }
     process.standardOutput = pipe
     process.standardError = errorPipe
     do {
@@ -110,6 +121,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var volumes: [Volume] = []
     private var busy = false
+    private var helperReady = false
+    private var helperStatus = "Not enabled"
+    private let helperService = SMAppService.daemon(plistName: helperPlistName)
     private var scanning = false
     private var scanGeneration = 0
     private var status = "Scanning volumes…"
@@ -130,7 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = brandImage(size: 22, template: true)
         statusItem.button?.image?.accessibilityDescription = "mouNTFS"
-        UserDefaults.standard.register(defaults: ["openFinderAfterMount": true, "showVolumeCount": false])
+        UserDefaults.standard.register(defaults: ["openFinderAfterMount": true, "showVolumeCount": false, "touchIDForHelper": true])
         progress.style = .spinning
         progress.controlSize = .small
         progress.isIndeterminate = true
@@ -139,6 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.addSubview(progress)
         rebuildMenu()
         refresh()
+        refreshHelperStatus()
         let poll = Timer(timeInterval: 5, repeats: true) { [weak self] _ in self?.refresh() }
         RunLoop.main.add(poll, forMode: .common)
         timer = poll
@@ -210,6 +225,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         count.state = UserDefaults.standard.bool(forKey: "showVolumeCount") ? .on : .off
         settings.addItem(count)
         settings.addItem(.separator())
+        settings.addItem(item("Permission Helper · " + helperStatus))
+        let enable = item(helperReady ? "Refresh Protected NTFS Driver…" : "Enable Permission Helper…", action: #selector(enableHelper))
+        enable.isEnabled = !busy
+        settings.addItem(enable)
+        let disable = item("Disable Permission Helper…", action: #selector(disableHelper))
+        disable.isEnabled = !busy && helperService.status != .notRegistered
+        settings.addItem(disable)
+        let biometric = item("Confirm helper mounts with Touch ID", action: #selector(toggleTouchID))
+        biometric.state = UserDefaults.standard.bool(forKey: "touchIDForHelper") ? .on : .off
+        biometric.isEnabled = !busy
+        settings.addItem(biometric)
+        settings.addItem(.separator())
         settings.addItem(item("NTFS Driver Permissions…", action: #selector(showPermissionHelp)))
         let preferences = item("Settings")
         preferences.isEnabled = true
@@ -249,12 +276,85 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.title = menuBarTitle
         rebuildMenu()
     }
-    @objc private func refreshAction() { operationStatus = nil; refresh() }
+    @objc private func refreshAction() { operationStatus = nil; refresh(); refreshHelperStatus() }
+    @objc private func toggleTouchID() {
+        UserDefaults.standard.set(!UserDefaults.standard.bool(forKey: "touchIDForHelper"), forKey: "touchIDForHelper")
+        rebuildMenu()
+    }
+    private func refreshHelperStatus() {
+        guard !busy else { return }
+        switch helperService.status {
+        case .enabled:
+            DispatchQueue.global(qos: .utility).async {
+                let result = bundledHelperCommand(["--helper-status"])
+                DispatchQueue.main.async {
+                    guard !self.busy else { return }
+                    self.helperReady = result.status == 0 && result.text.hasPrefix("ready\n")
+                    self.helperStatus = self.helperReady ? "Ready" : "Needs setup / update"
+                    self.rebuildMenu()
+                }
+            }
+        case .requiresApproval: helperReady = false; helperStatus = "Needs system approval"; rebuildMenu()
+        case .notFound: helperReady = false; helperStatus = "Missing bundled service"; rebuildMenu()
+        default: helperReady = false; helperStatus = "Not enabled"; rebuildMenu()
+        }
+    }
+    @objc private func enableHelper() {
+        guard !busy else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        guard Bundle.main.bundlePath.hasPrefix("/Applications/"), Bundle.main.bundlePath.hasSuffix(".app") else {
+            showOutput(title: "Install before enabling helper", text: "Quit mouNTFS, move mouNTFS.app into /Applications, and reopen it there. The system service follows the installed application; do not enable it from a temporary download directory.")
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = helperReady ? "Refresh the protected NTFS driver?" : "Enable the permission helper?"
+        alert.informativeText = "macOS may request setup approval and administrator authorization. The helper prepares a protected copy of the installed ntfs-3g driver and its libraries, then handles limited external NTFS mount operations without requesting a password for each command. You can disable it in Settings. Touch ID confirmations are available after setup on supported Macs."
+        alert.addButton(withTitle: "Continue")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        do {
+            if helperService.status != .enabled {
+                try helperService.register()
+            }
+            if helperService.status == .requiresApproval {
+                helperReady = false; helperStatus = "Needs system approval"; rebuildMenu()
+                SMAppService.openSystemSettingsLoginItems()
+                showOutput(title: "Approve the helper", text: "Allow mouNTFS in System Settings → General → Login Items & Extensions. Return to Settings → Enable Permission Helper to finish the protected driver setup.")
+                return
+            }
+            guard helperService.status == .enabled else { throw HelperError.invalid("The system has not enabled the helper.") }
+            guard let driver = ["/opt/homebrew/bin/ntfs-3g", "/usr/local/bin/ntfs-3g"].first(where: { FileManager.default.isExecutableFile(atPath: $0) }),
+                  let client = Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("mountfs-identity").path else {
+                throw HelperError.invalid("Install ntfs-3g before setting up the helper.")
+            }
+            execute("Setting up permission helper…", executable: client, arguments: ["--helper-configure", driver], showSuccessOutput: true)
+        } catch { showOutput(title: "Helper setup failed", text: (error as? HelperError)?.message ?? error.localizedDescription) }
+    }
+    @objc private func disableHelper() {
+        guard !busy else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Disable the permission helper?"
+        alert.informativeText = "Future mounts will use the original administrator authorization flow. Already committed mounts stay connected. Protected driver copies are retained so active mounts can keep using them."
+        alert.addButton(withTitle: "Disable")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        busy = true; rebuildMenu()
+        Task {
+            do {
+                try await helperService.unregister()
+                await MainActor.run { self.busy = false; self.helperReady = false; self.refreshHelperStatus() }
+            } catch {
+                await MainActor.run { self.busy = false; self.refreshHelperStatus(); self.showOutput(title: "Could not disable helper", text: error.localizedDescription) }
+            }
+        }
+    }
     @objc private func showPermissionHelp() {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Allow the NTFS driver to access your drive"
-        alert.informativeText = "In System Settings → Privacy & Security → Full Disk Access, add the actual ntfs-3g executable. Check Installation shows its installed path. Granting access only to mouNTFS may not cover the driver. Administrator authorization and Full Disk Access are separate permissions."
+        let protectedDriverNote = helperReady ? "The helper uses a protected ntfs-3g copy. Its exact path appears in the helper setup report or operation details. Grant access to that copy if macOS denies device access. " : ""
+        alert.informativeText = protectedDriverNote + "In System Settings → Privacy & Security → Full Disk Access, add the actual ntfs-3g executable. Check Installation shows its installed path. Granting access only to mouNTFS may not cover the driver. Administrator authorization and Full Disk Access are separate permissions."
         alert.addButton(withTitle: "Open Full Disk Access")
         alert.addButton(withTitle: "Check Installation")
         alert.addButton(withTitle: "Cancel")
@@ -339,6 +439,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         progress.startAnimation(nil)
         let identities = verifiedIdentities
         let generationForStatus = scanGeneration
+        var environment = ProcessInfo.processInfo.environment
+        environment["MOUNTFS_PRIVILEGED_HELPER"] = mountDevice != nil && helperReady ? "1" : "0"
+        let operationEnvironment = environment
         rebuildMenu()
         DispatchQueue.global(qos: .userInitiated).async {
             let identity = mountDevice.flatMap { currentIdentity($0) }
@@ -346,7 +449,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                let point = DiskMetadata(info).mountPoint, let directory = opendir(point) {
                 closedir(directory)
             }
-            let result = runCommand(executable, arguments)
+            let result = runCommand(executable, arguments, environment: operationEnvironment)
             var details = result.text
             if result.status != 0 && result.status != 2 && arguments.contains("--device") {
                 let scan = scanVolumes(verifiedIdentities: identities)?.report ?? "Disk scan unavailable."
@@ -397,6 +500,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     NSWorkspace.shared.open(URL(fileURLWithPath: point))
                 }
                 self.refresh()
+                self.refreshHelperStatus()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
                     guard !self.busy, self.scanGeneration == generationForStatus else { return }
                     self.operationStatus = nil
@@ -409,7 +513,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func mountVolume(_ sender: NSMenuItem) {
         guard let device = sender.representedObject as? String else { return }
         guard let script = scriptPath() else { showOutput(title: "Installation incomplete", text: "Bundled mountfs.sh was not found. Rebuild the app with scripts/build-app.sh."); return }
-        execute("Enabling write access…", executable: "/bin/bash", arguments: [script, "--device", device, "--backend", backend, "--app-action"], mountDevice: device)
+        let performMount = { [weak self] in
+            self?.execute("Enabling write access…", executable: "/bin/bash", arguments: [script, "--device", device, "--backend", self?.backend ?? "kernel", "--app-action"], mountDevice: device)
+        }
+        if helperReady && UserDefaults.standard.bool(forKey: "touchIDForHelper") {
+            let context = LAContext()
+            var error: NSError?
+            if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+                busy = true; status = "Waiting for Touch ID…"; rebuildMenu()
+                NSApp.activate(ignoringOtherApps: true)
+                context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "enable write access to " + (volumes.first(where: { $0.device == device })?.name ?? "the selected NTFS drive")) { success, _ in
+                    DispatchQueue.main.async {
+                        self.busy = false
+                        if success { performMount() }
+                        else { self.operationStatus = "Authorization cancelled"; self.refresh(); self.rebuildMenu() }
+                    }
+                }
+                return
+            }
+        }
+        performMount()
     }
 
     @objc private func openVolume(_ sender: NSMenuItem) {

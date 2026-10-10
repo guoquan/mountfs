@@ -1,12 +1,28 @@
 import Foundation
 import Darwin
 import Carbon
+import MountFSPrivileged
 
 // This host stays UNPRIVILEGED. One NSAppleScript instance owns the OS-managed
 // authorization cache. Requests are bounded to this one partition/transaction.
 private final class AuthorizationHost {
-    private let script: NSAppleScript
-    init(administrator: Bool = true) throws {
+    private let script: NSAppleScript?
+    private let privilegedClient: MountHelperClient?
+    private let device: String?
+    private let driver: String?
+    init(administrator: Bool = true, privileged: Bool = false, device: String? = nil, driver: String? = nil) throws {
+        self.device = device; self.driver = driver
+        if privileged {
+            guard let device, let identity = mediaIdentity(device) else { throw SessionError.invalid }
+            let client = try MountHelperClient()
+            let result = client.begin(device: device, identity: identity)
+            guard result.status == 0 else {
+                FileHandle.standardError.write(Data((result.output + "\n").utf8)); throw SessionError.invalid
+            }
+            FileHandle.standardError.write(Data((result.output + "\n").utf8))
+            privilegedClient = client; script = nil; return
+        }
+        privilegedClient = nil
         let suffix = administrator ? " with administrator privileges" : ""
         let source = """
         on performCommand(arguments)
@@ -23,6 +39,19 @@ private final class AuthorizationHost {
         self.script = script
     }
     func execute(_ arguments: [String]) -> (Int, String) {
+        if let client = privilegedClient, let device, let driver {
+            let operation: String
+            if arguments.first == "/usr/bin/mktemp" { operation = "prepare" }
+            else if arguments == ["/usr/sbin/diskutil", "unmount", device] { operation = "unmount" }
+            else if arguments == ["/usr/sbin/diskutil", "mount", "readOnly", device] { operation = "recover" }
+            else if arguments.first == "/bin/rmdir" { operation = "cleanup" }
+            else if arguments.first == driver { operation = arguments.last?.hasSuffix("backend=fskit") == true ? "mount-fskit" : "mount-kernel" }
+            else if arguments == ["--helper-commit"] { operation = "commit" }
+            else { return (1, "Helper refused an unknown operation.") }
+            let result = client.perform(operation)
+            return (Int(result.status), result.output)
+        }
+        guard let script else { return (1, "Authorization host is unavailable.") }
         let event = NSAppleEventDescriptor(eventClass: AEEventClass(kASAppleScriptSuite),
             eventID: AEEventID(kASSubroutineEvent), targetDescriptor: nil,
             returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID))
@@ -101,7 +130,7 @@ private func externalNTFS(_ device: String) -> Bool {
         info["Internal"] as? Bool == false && info["WholeDisk"] as? Bool == false
 }
 
-func authorizationSession(_ args: [String]) -> Int32 {
+func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
     // directory, partition, driver, login uid/gid, parent core PID
     guard args.count == 6, privateDirectory(args[0]),
           args[1].range(of: "^disk[0-9]+s[0-9]+(s[0-9]+)?$", options: .regularExpression) != nil,
@@ -109,7 +138,7 @@ func authorizationSession(_ args: [String]) -> Int32 {
           args[3] == String(geteuid()), args[4] == String(getegid()),
           let parent = Int32(args[5]), parent == getppid(),
           externalNTFS(args[1]), let identity = mediaIdentity(args[1]), let original = mountState(args[1]),
-          let host = try? AuthorizationHost() else {
+          let host = try? AuthorizationHost(privileged: privileged, device: args[1], driver: args[2]) else {
         FileHandle.standardError.write(Data("Cannot establish a safe external NTFS authorization session.\n".utf8))
         return 1
     }
@@ -124,7 +153,7 @@ func authorizationSession(_ args: [String]) -> Int32 {
         try? FileManager.default.removeItem(atPath: request)
         guard let id = packet["id"] as? String, let command = packet["arguments"] as? [String] else { return 1 }
         var result = (1, "Authorization session refused an invalid command or changed device.")
-        if policy.allows(command), mediaIdentity(policy.device) == identity, let state = mountState(policy.device) {
+        if (policy.allows(command) || (privileged && policy.driverUsed && command == ["--helper-commit"])), mediaIdentity(policy.device) == identity, let state = mountState(policy.device) {
             let mountedPoint = state["MountPoint"] as? String ?? ""
             let unmount = command.first == "/usr/sbin/diskutil" && command.dropFirst().first == "unmount"
             let mounting = command.first == policy.driver || command == ["/usr/sbin/diskutil", "mount", "readOnly", policy.device]

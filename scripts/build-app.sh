@@ -13,15 +13,35 @@ APP="$PROJECT_ROOT/dist/mouNTFS.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/MountFS" "$APP/Contents/MacOS/mouNTFS"
 cp "$BIN_DIR/MountFSIdentity" "$APP/Contents/MacOS/mountfs-identity"
+# Pin the live XPC client to this exact hardened binary, including ad-hoc builds.
+/usr/bin/codesign --force --options runtime --identifier net.guoquan.mountfs.client --sign - "$APP/Contents/MacOS/mountfs-identity"
+CLIENT_HASH=$(/usr/bin/codesign -d --verbose=4 "$APP/Contents/MacOS/mountfs-identity" 2>&1 | sed -n 's/^CDHash=//p')
+[[ "$CLIENT_HASH" =~ ^[0-9a-f]{40}$ ]] || { printf 'Cannot pin helper client signature.\n' >&2; exit 1; }
 cp mountfs.sh "$APP/Contents/Resources/mountfs.sh"
 ICON_WORK=$(mktemp -d "${TMPDIR:-/tmp}/mountfs-icons.XXXXXXXX")
-trap 'rm -rf "$ICON_WORK"' EXIT
+cp Sources/MountFSHelper/ClientIdentity.swift "$ICON_WORK/ClientIdentity.swift"
+cleanup_build() {
+    cp "$ICON_WORK/ClientIdentity.swift" Sources/MountFSHelper/ClientIdentity.swift
+    rm -rf "$ICON_WORK"
+}
+trap cleanup_build EXIT
+printf 'let allowedHelperClient = "cdhash %s"\n' "$CLIENT_HASH" > Sources/MountFSHelper/ClientIdentity.swift
+swift build -c release --product MountFSHelper
+cp "$BIN_DIR/MountFSHelper" "$APP/Contents/MacOS/mountfs-helper"
+/usr/bin/codesign --force --options runtime --identifier net.guoquan.mountfs.helper --sign - "$APP/Contents/MacOS/mountfs-helper"
+SERVER_HASH=$(/usr/bin/codesign -d --verbose=4 "$APP/Contents/MacOS/mountfs-helper" 2>&1 | sed -n 's/^CDHash=//p')
+[[ "$SERVER_HASH" =~ ^[0-9a-f]{40}$ ]] || { printf 'Cannot pin service signature.\n' >&2; exit 1; }
+/usr/bin/plutil -create xml1 "$APP/Contents/Resources/HelperPeers.plist"
+/usr/bin/plutil -insert server -string "cdhash $SERVER_HASH" "$APP/Contents/Resources/HelperPeers.plist"
+/usr/bin/plutil -insert client -string "cdhash $CLIENT_HASH" "$APP/Contents/Resources/HelperPeers.plist"
+mkdir -p "$APP/Contents/Library/LaunchDaemons"
+cp scripts/net.guoquan.mountfs.helper.plist "$APP/Contents/Library/LaunchDaemons/"
 swiftc Sources/MountFSApp/BrandIcon.swift scripts/generate-icons.swift -o "$ICON_WORK/generate-icons"
 "$ICON_WORK/generate-icons" "$ICON_WORK/AppIcon.iconset"
 /usr/bin/iconutil -c icns "$ICON_WORK/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
 cp scripts/Info.plist "$APP/Contents/Info.plist"
 # Ad-hoc signing is for local development only. Public distribution requires
 # a Developer ID signature and Apple notarization.
-/usr/bin/codesign --force --deep --sign - "$APP"
+/usr/bin/codesign --force --sign - "$APP"
 printf 'Built local development app: %s\n' "$APP"
 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP" "$PROJECT_ROOT/dist/mouNTFS-$VERSION-dev-$(uname -m).zip"

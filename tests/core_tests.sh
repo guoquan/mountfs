@@ -25,6 +25,19 @@ run_case() (
     DRIVER=/opt/homebrew/bin/ntfs-3g
     GUI=1
     scenario="$1"
+    case "$scenario" in
+        helper-success|helper-commit-failure)
+            AUTH_PRIVILEGED=1
+            AUTH_HELPER=fake_commit
+            AUTH_SESSION_PID=123
+            start_authorization_session() { return 0; }
+            fake_commit() {
+                [ "$1" = --authorization-request ] && [ "$4" = --helper-commit ] || return 1
+                [ "$(cat "$TEST_DIR/state")" = driver-mounted ] || return 1
+                printf 'commit\n' >> "$TEST_DIR/calls"
+                [ "$scenario" != helper-commit-failure ]
+            } ;;
+    esac
     acquire_lock() { return 0; }
     confirm_mount() { [ "$scenario" != cancel ]; }
     sleep() { :; }
@@ -76,17 +89,17 @@ run_case() (
     result=$?
     if [ "$RECOVERY_NEEDED" -eq 1 ]; then recover_volume "$TRANSACTION_DEVICE" "$TRANSACTION_UUID" >/dev/null 2>&1; fi
     case "$scenario" in
-        success) [ "$result" -eq 0 ] && [ "$RECOVERY_NEEDED" -eq 0 ] && [ "$(cat "$TEST_DIR/state")" = driver-mounted ] ;;
+        success|helper-success) [ "$result" -eq 0 ] && [ "$RECOVERY_NEEDED" -eq 0 ] && [ "$(cat "$TEST_DIR/state")" = driver-mounted ] ;;
         cancel) [ "$result" -eq 2 ] && [ ! -s "$TEST_DIR/calls" ] ;;
         busy) [ "$result" -eq 1 ] && [ "$(cat "$TEST_DIR/state")" = mounted ] && ! grep -q '/opt/homebrew/bin/ntfs-3g' "$TEST_DIR/calls" ;;
-        driver-failure|readonly-success|probe-failure)
+        driver-failure|readonly-success|probe-failure|helper-commit-failure)
             [ "$result" -eq 1 ] && [ "$(cat "$TEST_DIR/state")" = restored ] && grep -q 'mount readOnly disk4s1' "$TEST_DIR/calls" ;;
         unplug|replaced)
             [ "$result" -eq 1 ] && ! grep -q 'mount readOnly' "$TEST_DIR/calls" && ! grep -q '/opt/homebrew/bin/ntfs-3g' "$TEST_DIR/calls" ;;
     esac
 )
 
-for scenario in success cancel busy driver-failure readonly-success probe-failure unplug replaced; do
+for scenario in success helper-success helper-commit-failure cancel busy driver-failure readonly-success probe-failure unplug replaced; do
     if run_case "$scenario"; then
         printf 'PASS %s\n' "$scenario"
         passed=$((passed + 1))

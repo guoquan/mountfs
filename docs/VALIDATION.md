@@ -101,4 +101,11 @@ Exact macFUSE and ntfs-3g versions were not captured.
 
 These are user reports, not independently reproduced lab tests. Session expiry,
 authorization cancellation, hot-plug/replacement, Intel, FSKit and broader driver
-version compatibility remain pending. Touch ID-only authorization is unimplemented.
+version compatibility remain pending. The optional helper/Touch ID flow introduced in 0.3.0 has not been physically validated.
+
+
+0.3.0 adds an opt-in SMAppService helper and native LocalAuthentication confirmation
+for configured helper mounts. Unprivileged build tests do not establish service
+registration, protected-driver linkage/FDA, real privileged operations or biometric
+behavior. See AUTHORIZATION.md for the new validation matrix. The earlier 0.2.8
+physical success applies to the AppleScript authorization host, not this daemon.

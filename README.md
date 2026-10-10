@@ -1,6 +1,6 @@
 # *mouNT*FS
 
-Enable write access to external NTFS drives on your Mac. **0.2.11 is a development
+Enable write access to external NTFS drives on your Mac. **0.3.0 is a development
 update, pending actual macOS/NTFS drive validation.** It includes a native menu bar
 app and a rewritten standalone script. It is not yet a notarized public app release.
 
@@ -128,7 +128,7 @@ safety reviews are welcome. Original collaborators: Claude 3.5 Sonnet, GPT-4o an
 MIT License © 2024-2026 Quan Guo.
 
 Development archives and Actions artifacts include version numbers; the bundle
-is always `mouNTFS.app`, so it can replace the installed app. Version 0.2.11 is
+is always `mouNTFS.app`, so it can replace the installed app. Version 0.3.0 is
 shown in the menu header and the bundle metadata. Quit the old app before replacing
 it, and launch the replacement. The current build remains ad-hoc signed.
 Show Details includes each write-verification condition and filesystem errors.
@@ -142,8 +142,8 @@ unprivileged host owns one compiled AppleScript instance for mounting, recovery
 and directory cleanup. The command allowlist remains pinned to one connected
 partition, controlled mount directory and login uid/gid. Sessions end on cleanup,
 parent termination or a five-minute limit; no password/token is saved and no
-privileged daemon is installed. Touch ID-only administrator authorization remains
-unimplemented.
+privileged daemon is installed. An optional persistent helper is available in 0.3.0; the AppleScript host remains
+the default when that helper is not configured.
 
 Driver permissions matter separately from administrator authorization: in the
 reported macOS setup, ntfs-3g Full Disk Access was sufficient even with mouNTFS
@@ -165,9 +165,34 @@ Settings contains the Finder preference and an optional menu-bar volume count
 a shortcut to Full Disk Access; this opens settings without modifying permissions.
 Completion messages return to the current volume summary after eight seconds.
 
-Touch ID administrator authorization is still not implemented. LocalAuthentication
-provides identity verification, not a root execution channel. The proposed next
-step is an opt-in SMAppService helper with authenticated clients and narrowly
-scoped mount requests; see [authorization design](docs/AUTHORIZATION.md). Adding a
-fingerprint prompt before the current AppleScript would add a prompt without
-removing the administrator password requirement.
+## Optional permission helper and Touch ID (0.3.0)
+
+Quit the old app, replace `/Applications/mouNTFS.app`, and launch it there. Choose
+**Settings → Enable Permission Helper…**. macOS may require approval in **General →
+Login Items & Extensions**; return to the same menu item to finish setup. The system
+administrator dialog authorizes a protected copy of the installed Homebrew NTFS
+driver and its non-system libraries. This is opt-in; ordinary mounting retains
+the existing authorization path until the helper is ready.
+
+After setup, the daemon performs the limited mount subcommands without repeated
+administrator prompts. **Confirm helper mounts with Touch ID** is on by default:
+on Macs with available biometry, LocalAuthentication presents a native confirmation
+with the system password fallback. This confirms the user's intent in the app; it
+is not the credential that installed or authorized the root helper. Without
+available biometry, mounts use the already-enabled helper directly.
+
+The protected driver lives under `/Library/Application Support/mouNTFS/driver-…/`
+and may need separate Full Disk Access; the previous Homebrew driver's permission
+may not cover the copy. Setup reports and operation details include the exact
+path. After updating ntfs-3g through Homebrew, select **Refresh Protected NTFS
+Driver…**. Driver generations are retained so active mounts can continue using
+their libraries. **Disable Permission Helper…** unregisters the service without
+removing those copies or disconnecting committed mounts.
+
+Development builds pin XPC peers to exact hardened executable signatures. After
+replacing the app, disable and re-enable the helper if the old daemon rejects the
+new client. Public distribution still requires stable signing and notarization.
+See [helper architecture and test limits](docs/AUTHORIZATION.md). CI checks code,
+signing pins and unprivileged denial cases; first registration, real privileged
+mounting, Touch ID and the copied driver's macFUSE/TCC behavior need physical-Mac
+validation.
