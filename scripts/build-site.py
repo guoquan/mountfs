@@ -38,9 +38,9 @@ COPY = {
   'driverafter': 'Follow the macFUSE setup guide for approval and restart requirements. The default kernel backend may require a startup security change on Apple Silicon.',
   'driverlink': 'macFUSE setup guide ↗',
   'downloadlabel': '02 · Development download', 'downloadtitle': 'Add mouNTFS to Applications',
-  'downloadintro': 'Builds are currently distributed through GitHub Actions, rather than as a notarized public release.',
-  'downloadsteps': ['Open Checks and choose a successful run with a development-app artifact.', 'Sign in to GitHub and download the development-app artifact. Extract the outer ZIP and the versioned archive inside it.', 'Quit the old app if updating, then place mouNTFS.app in Applications. Open it and connect your drive.'],
-  'downloadcta': 'Browse app builds ↗', 'guidelink': 'Full installation guide ↗',
+  'downloadintro': 'Download the latest development build from GitHub Releases. These builds are ad-hoc signed and not Apple-notarized.',
+  'downloadsteps': ['Open the latest Release and choose the app ZIP under Assets for your Mac architecture (arm64 means Apple Silicon).', 'Download without signing in to GitHub. Extract the application ZIP once; SHA256SUMS.txt contains its checksum.', 'Quit the old app if updating, then place mouNTFS.app in Applications. Open it and connect your drive.'],
+  'downloadcta': 'Get latest Release ↗', 'guidelink': 'Full installation guide ↗',
   'permissionnote': 'Device access denied? Check Full Disk Access for the actual ntfs-3g executable. Administrator authorization is a separate permission. The usage guide covers both.',
   'faqtitle': 'Before you plug in.', 'faqintro': 'A few things worth knowing before your first write.',
   'questions': [
@@ -83,9 +83,9 @@ COPY = {
   'driverafter': '按 macFUSE 安装指南完成批准和重启。默认内核后端在 Apple Silicon 上可能需要调整启动安全策略。',
   'driverlink': 'macFUSE 安装指南 ↗',
   'downloadlabel': '02 · 下载开发构建', 'downloadtitle': '将 mouNTFS 放入 Applications',
-  'downloadintro': '目前通过 GitHub Actions 提供开发构建，尚未作为已公证的正式版本发布。',
-  'downloadsteps': ['打开 Checks，选择含 development-app artifact 的成功构建。', '登录 GitHub，下载 development-app artifact。解压外层 ZIP，再解压内部带版本号的下载包。', '更新时先退出旧应用，再将 mouNTFS.app 放入 Applications。打开应用，连接磁盘。'],
-  'downloadcta': '查看应用构建 ↗', 'guidelink': '完整安装说明 ↗',
+  'downloadintro': '从 GitHub Releases 下载最新开发构建。当前仍使用临时签名，尚未经过 Apple 公证。',
+  'downloadsteps': ['打开最新 Release，在 Assets 中选择匹配 Mac 架构的应用 ZIP（arm64 为 Apple Silicon）。', '无需登录 GitHub 即可下载。解压应用 ZIP 一次；SHA256SUMS.txt 提供校验值。', '更新时先退出旧应用，再将 mouNTFS.app 放入 Applications。打开应用，连接磁盘。'],
+  'downloadcta': '获取最新 Release ↗', 'guidelink': '完整安装说明 ↗',
   'permissionnote': '设备访问被拒绝？核对实际 ntfs-3g 可执行文件的完全磁盘权限。管理员授权是另一项权限，使用说明中有对应处理步骤。',
   'faqtitle': '插盘之前，先了解这些。', 'faqintro': '首次启用写入前，你可能关心的几个问题。',
   'questions': [
@@ -106,7 +106,7 @@ def render(lang, c):
     zh = lang == 'zh-CN'
     guide = f'{REPO}/blob/{REF}/docs/USAGE.{"zh-CN" if zh else "en"}.md'
     source = f'{REPO}/tree/{REF}'
-    builds = f'{REPO}/actions/workflows/checks.yml?query=branch%3A{REF.replace("/", "%2F")}'
+    builds = f'{REPO}/releases/latest'
     canonical = 'https://mountfs.sh/' + (c['file'] if zh else '')
     icons = ['<path d="M5 5h14v14H5zM8 15h.01M8 9h8"/>', '<path d="M4 7h6l2 2h8v11H4zM4 7V4h6l2 3"/>', '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/>']
     benefits = ''.join(f'<div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{symbol}</svg></span><div><strong>{e(title)}</strong><p>{e(body)}</p></div></div>' for symbol, (title, body) in zip(icons, c['benefits']))
@@ -165,8 +165,8 @@ def render(lang, c):
 brew install gromgit/fuse/ntfs-3g-mac</code></pre></div><p id="copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
       <p>{e(c['driverafter'])}</p><div class="actions"><a class="text-link" href="https://github.com/macfuse/macfuse/wiki/Getting-Started">{e(c['driverlink'])}</a></div>
     </article>
-    <article class="install-card"><span class="label">{e(c['downloadlabel'])}</span><h3>{e(c['downloadtitle'])}</h3><p>{e(c['downloadintro'])}</p><ol>{downloadsteps}</ol>
-      <div class="actions"><a class="button primary" href="{builds}">{e(c['downloadcta'])}</a><a class="text-link" href="{guide}">{e(c['guidelink'])}</a></div>
+    <article class="install-card"><span class="label">{e(c['downloadlabel'])}</span><h3>{e(c['downloadtitle'])}</h3><p>{e(c['downloadintro'])}</p><p data-release-info aria-live="polite"></p><ol>{downloadsteps}</ol>
+      <div class="actions"><a class="button primary" data-latest-release href="{builds}">{e(c['downloadcta'])}</a><a class="text-link" href="{guide}">{e(c['guidelink'])}</a></div>
     </article>
   </div><p class="notice">{e(c['permissionnote'])}</p>
 </section>

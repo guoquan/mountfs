@@ -49,10 +49,10 @@ illustrations based on those captures, not proof of hardware validation.
 1. Review the application development branch and this Pages branch together.
 2. Merge the reviewed native-app work into `main` first.
 3. Render production links with `python3 scripts/build-site.py` (the default is `main`).
-4. Check the `main` usage/roadmap/contributing links and a successful Checks run
-   with a downloadable app artifact. Artifacts expire; a stable public release
-   download is a separate future change. Download instructions currently require
-   a signed-in GitHub account and describe ad-hoc, non-notarized development builds.
+4. Confirm a downloadable development Release with an application ZIP and checksums.
+   Download links use `/releases/latest`; the page reads the public latest-Release
+   API to display the version and link to its tag. If the API fails or JavaScript
+   is disabled, the latest-Release link remains usable. No login is needed.
 5. Recheck both page languages, mobile layouts, image loading, tabs and copy behavior.
 6. Merge this Pages iteration into `gh-pages` after those checks. Preserve CNAME.
 7. Confirm the actual configured GitHub Pages branch/path, deployment success and
