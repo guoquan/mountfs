@@ -106,10 +106,15 @@ func runApprovedDriver(_ args: [String]) -> Int32 {
         FileHandle.standardError.write(Data(("Protected NTFS driver: " + driver + "\nIf macOS denies device access, grant Full Disk Access to this protected driver path and retry.\n").utf8))
         let result = runTool("/usr/bin/sandbox-exec", ["-p", driverSandboxProfile, driver] + Array(args.dropFirst(4)), timeout: 60)
         if !result.output.isEmpty { FileHandle.standardError.write(Data((result.output + "\n").utf8)) }
-        return result.status
+        return confirmedAuthorizedToolStatus(result.status)
     } catch { FileHandle.standardError.write(Data(("Approved driver refused: \(error)\n").utf8)); return 1 }
 }
 
+
+// Reserve 124 at the wrapper boundary for the wrapper's own deadline.
+// Inner 124 already confirms process-group disappearance and is an ordinary
+// operation failure; inner 125 must keep its lock-retaining meaning.
+func confirmedAuthorizedToolStatus(_ status: Int32) -> Int32 { status == 124 ? 1 : status }
 
 func authorizedSystemArguments(_ args: [String], device: String) -> Bool {
     guard device.range(of: "^disk[0-9]+s[0-9]+(s[0-9]+)?$", options: .regularExpression) != nil else { return false }
@@ -154,12 +159,16 @@ func runAuthorizedSystemCommand(_ args: [String]) -> Int32 {
     guard mediaIdentity(device) == identity else { return 1 }
     let result = runTool(command[0], Array(command.dropFirst()))
     if !result.output.isEmpty { (result.status == 0 ? FileHandle.standardOutput : FileHandle.standardError).write(Data(result.output.utf8)) }
-    return result.status
+    return confirmedAuthorizedToolStatus(result.status)
 }
 
 func authorizationDeadlineSelfTest() -> Bool {
     let start = ProcessInfo.processInfo.systemUptime
-    let timed = executeBeforeDeadline("/bin/sh", ["-c", "sleep 5"], deadline: start + 0.1)
+    let inner = runTool("/bin/sleep", ["5"], timeout: 0.1)
+    guard inner.status == 124, confirmedAuthorizedToolStatus(inner.status) == 1,
+          confirmedAuthorizedToolStatus(125) == 125,
+          executeBeforeDeadline("/bin/sh", ["-c", "exit 1"], deadline: ProcessInfo.processInfo.systemUptime + 2).0 == 1 else { return false }
+    let timed = executeBeforeDeadline("/bin/sh", ["-c", "sleep 5"], deadline: ProcessInfo.processInfo.systemUptime + 0.1)
     guard timed.0 == 125, ProcessInfo.processInfo.systemUptime - start < 3,
           executeBeforeDeadline("/usr/bin/true", [], deadline: start - 1).0 != 0,
           executeBeforeDeadline("/usr/bin/printf", ["%s", "ok"], deadline: ProcessInfo.processInfo.systemUptime + 2).0 == 0,
