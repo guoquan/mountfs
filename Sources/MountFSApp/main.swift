@@ -534,7 +534,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if let selected = selectedVolume, selected.mediaIdentity == nil || currentIdentity(selected.device) != selected.mediaIdentity {
                 result = CommandResult(status: 1, output: Data("Error: The selected drive disconnected or was replaced. Refresh the menu and select the drive again; no operation was started.\n".utf8))
             } else {
-                result = runCommand(executable, arguments, environment: operationEnvironment, timeout: 300)
+                // The authorization core has a 300s session deadline. Give its
+                // bounded recovery/lock cleanup extra time before the outer guard.
+                let command = runCommand(executable, arguments, environment: operationEnvironment, timeout: mountDevice != nil ? 420 : 300)
+                let completion = mountCompletionStatus(command.status, isMountOperation: mountDevice != nil)
+                let timeoutDetails = command.status == 124 && mountDevice != nil
+                    ? "\nError: The app deadline interrupted the mount core. Mount completion and device-lock state are uncertain (status 125); inspect Show Details before retrying. No further disk mutation was requested by the app.\n" : ""
+                result = CommandResult(status: completion, output: command.output + Data(timeoutDetails.utf8))
             }
             var details = result.text
             if result.status != 0 && arguments.first == "--helper-configure" {
@@ -574,7 +580,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let device = verifiedDevice, let identity, verifiedPoint != nil {
                     self.verifiedIdentities[device] = identity
                 }
-                self.status = result.status == 0 ? (mountDevice == nil ? "Completed" : (finalVerificationMissing ? "Write access state unavailable" : "Write access enabled")) : (verifiedPoint != nil ? "Write access enabled; completion requires attention" : (result.status == 2 ? "Cancelled" : "Operation failed"))
+                self.status = result.status == 0 ? (mountDevice == nil ? "Completed" : (finalVerificationMissing ? "Write access state unavailable" : "Write access enabled")) : (verifiedPoint != nil ? "Write access enabled; completion requires attention" : (result.status == 2 ? "Cancelled" : (result.status == 125 ? "Operation state uncertain" : "Operation failed")))
                 self.operationStatus = self.status
                 self.statusItem.button?.toolTip = "mouNTFS — \(self.status)"
                 self.rebuildMenu()

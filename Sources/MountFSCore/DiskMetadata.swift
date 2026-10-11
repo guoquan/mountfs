@@ -50,3 +50,9 @@ public func verifiedWritableMountPoint(expectedIdentity: String?, observedIdenti
           let point = mountState?["MountPoint"] as? String, !point.isEmpty else { return nil }
     return point
 }
+
+/// Killing the shell does not confirm completion of separately authorized work
+/// or its EXIT cleanup, even when the shell process group itself has exited.
+public func mountCompletionStatus(_ status: Int32, isMountOperation: Bool) -> Int32 {
+    isMountOperation && status == 124 ? 125 : status
+}

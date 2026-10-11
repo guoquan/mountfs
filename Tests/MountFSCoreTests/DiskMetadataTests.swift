@@ -88,6 +88,14 @@ final class DiskMetadataTests: XCTestCase {
         XCTAssertNil(verifiedWritableMountPoint(expectedIdentity: "selected", observedIdentity: "selected", mountState: ["MountPoint": "/Volumes/test", "WritableVolume": false]))
     }
 
+    func testOuterMountDeadlineCannotClaimConfirmedCleanup() {
+        XCTAssertEqual(mountCompletionStatus(124, isMountOperation: true), 125)
+        XCTAssertEqual(mountCompletionStatus(124, isMountOperation: false), 124)
+        for status: Int32 in [0, 1, 2, 125] {
+            XCTAssertEqual(mountCompletionStatus(status, isMountOperation: true), status)
+        }
+    }
+
     func testLiveMacOSSchema() throws {
         #if os(macOS)
         let process = Process()
