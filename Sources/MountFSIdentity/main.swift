@@ -14,6 +14,10 @@ if arguments.count == 3, arguments[1] == "--driver-approval-plan" {
               let hashes = (try JSONSerialization.jsonObject(with: data)) as? [String: String] else { exit(1) }
         print(try approvedDriver(arguments[4], uid: uid, hashes: hashes))
     } catch { FileHandle.standardError.write(Data(("Approved driver refused: \(error)\n").utf8)); exit(1) }
+} else if arguments.count >= 4, arguments[1] == "--bounded-authorized-operation" {
+    exit(runBoundedAuthorization(Array(arguments.dropFirst(2))))
+} else if arguments.count >= 6, arguments[1] == "--authorized-system-run" {
+    exit(runAuthorizedSystemCommand(Array(arguments.dropFirst(2))))
 } else if arguments.count >= 2, arguments[1] == "--approved-driver-run" {
     exit(runApprovedDriver(Array(arguments.dropFirst(2))))
 } else if arguments.count == 5, arguments[1] == "--root-boundary-args" {

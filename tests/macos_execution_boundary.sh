@@ -52,6 +52,20 @@ cp "$FIXTURE/library.dylib" "$WORK/original-library"
 # Use the root-owned verified authorizer, never sudo a mutable source executable.
 HASH=$(/usr/bin/codesign -d --verbose=4 "$CLIENT" 2>&1 | sed -n 's/^CDHash=//p')
 PROTECTED=/Library/mountfs-authorizers/$HASH/mountfs-identity
+python3 - "$PROTECTED" <<'PYDEADLINE'
+import subprocess, sys, time
+client = sys.argv[1]
+operation = ['--system-device-lock', 'acquire', 'disk99999s9', 'ci-deadline-token']
+expired = subprocess.run(['sudo', '-n', '--', client, '--bounded-authorized-operation',
+                          str(time.monotonic() - 1), *operation], check=False)
+assert expired.returncode != 0, 'expired authorized work was accepted'
+subprocess.run(['sudo', '-n', '--', client, '--bounded-authorized-operation',
+                str(time.monotonic() + 10), *operation], check=True)
+operation[1] = 'release'
+subprocess.run(['sudo', '-n', '--', client, '--bounded-authorized-operation',
+                str(time.monotonic() + 10), *operation], check=True)
+PYDEADLINE
+echo 'PASS protected deadline wrapper rejects expired work and confirms bounded token-owned acquire/release'
 PLAN=$(cat "$WORK/plan.json")
 UID_NUMBER=$(id -u)
 printf 'int main(void) { return 13; }\n' > "$WORK/replacement.c"

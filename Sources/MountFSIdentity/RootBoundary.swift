@@ -66,15 +66,18 @@ final class RootBoundary {
             plan = value
         } else { plan = nil }
     }
-    func command(_ arguments: [String]) throws -> [String] {
-        let operation: [String]
+    func command(_ arguments: [String], deadline: TimeInterval? = nil, device: String? = nil, identity: String? = nil) throws -> [String] {
+        var operation: [String]
         if arguments.count == 5, arguments[0] == CommandLine.arguments[0], arguments[1] == "--system-device-lock" {
             operation = Array(arguments.dropFirst())
         } else if let driver, let plan, arguments.first == driver {
             guard arguments.count == 5, arguments[1].hasPrefix("/dev/"),
                   let identity = mediaIdentity(String(arguments[1].dropFirst(5))) else { throw HelperError.invalid("Driver device identity is unavailable.") }
             operation = ["--approved-driver-run", plan, String(geteuid()), identity] + arguments
-        } else { throw HelperError.invalid("Mutable executable is not an approved operation.") }
+        } else if let device, let identity, authorizedSystemArguments(arguments, device: device) {
+            operation = ["--authorized-system-run", device, identity] + arguments
+        } else { throw HelperError.invalid("Executable is not an approved operation.") }
+        if let deadline { operation = ["--bounded-authorized-operation", String(deadline)] + operation }
         return ["/bin/sh", "-c", protectedExecutionGate, "mountfs-protected-operation", source, hash] + operation
     }
 }
@@ -105,4 +108,64 @@ func runApprovedDriver(_ args: [String]) -> Int32 {
         if !result.output.isEmpty { FileHandle.standardError.write(Data((result.output + "\n").utf8)) }
         return result.status
     } catch { FileHandle.standardError.write(Data(("Approved driver refused: \(error)\n").utf8)); return 1 }
+}
+
+
+func authorizedSystemArguments(_ args: [String], device: String) -> Bool {
+    guard device.range(of: "^disk[0-9]+s[0-9]+(s[0-9]+)?$", options: .regularExpression) != nil else { return false }
+    if args == ["/usr/sbin/diskutil", "unmount", device] || args == ["/usr/sbin/diskutil", "mount", "readOnly", device] { return true }
+    if args == ["/usr/bin/mktemp", "-d", "/Volumes/mountfs.\(device).XXXXXXXX"] { return true }
+    return args.count == 2 && args[0] == "/bin/rmdir" &&
+        args[1].range(of: "^/Volumes/mountfs\\.\(device)\\.[A-Za-z0-9]+$", options: .regularExpression) != nil
+}
+
+// The wrapper may have launched descendants with their own process groups.
+// Its timeout therefore cannot establish that privileged work has stopped.
+func executeBeforeDeadline(_ path: String, _ args: [String], deadline: TimeInterval) -> (Int32, Data) {
+    let remaining = deadline - ProcessInfo.processInfo.systemUptime
+    guard deadline.isFinite, remaining > 0, remaining <= 420 else { return (1, Data("Authorization operation deadline expired or invalid.\n".utf8)) }
+    let result = boundedTool(path, args, timeout: remaining)
+    if result.0 == 124 {
+        return (125, result.1 + Data("\nAuthorized work exceeded its deadline; descendant completion is uncertain and the device lock must be retained.\n".utf8))
+    }
+    return result
+}
+
+func runBoundedAuthorization(_ args: [String]) -> Int32 {
+    guard geteuid() == 0, args.count >= 2, let deadline = TimeInterval(args[0]),
+          ["--approved-driver-run", "--system-device-lock", "--authorized-system-run"].contains(args[1]),
+          rootFile(CommandLine.arguments[0]), secureAncestors(CommandLine.arguments[0]) else { return 1 }
+    let result = executeBeforeDeadline(CommandLine.arguments[0], Array(args.dropFirst()), deadline: deadline)
+    if !result.1.isEmpty { (result.0 == 0 ? FileHandle.standardOutput : FileHandle.standardError).write(result.1) }
+    return result.0
+}
+
+func runAuthorizedSystemCommand(_ args: [String]) -> Int32 {
+    guard geteuid() == 0, args.count >= 4 else { return 1 }
+    let device = args[0], identity = args[1], command = Array(args.dropFirst(2))
+    guard authorizedSystemArguments(command, device: device), mediaIdentity(device) == identity,
+          let state = mountState(device) else { return 1 }
+    if command.first == "/bin/rmdir" {
+        guard rootDirectory(command[1]), secureAncestors(command[1]), state["MountPoint"] as? String != command[1] else { return 1 }
+    }
+    if command == ["/usr/sbin/diskutil", "mount", "readOnly", device] {
+        guard (state["MountPoint"] as? String ?? "").isEmpty else { return 1 }
+    }
+    guard mediaIdentity(device) == identity else { return 1 }
+    let result = runTool(command[0], Array(command.dropFirst()))
+    if !result.output.isEmpty { (result.status == 0 ? FileHandle.standardOutput : FileHandle.standardError).write(Data(result.output.utf8)) }
+    return result.status
+}
+
+func authorizationDeadlineSelfTest() -> Bool {
+    let start = ProcessInfo.processInfo.systemUptime
+    let timed = executeBeforeDeadline("/bin/sh", ["-c", "sleep 5"], deadline: start + 0.1)
+    guard timed.0 == 125, ProcessInfo.processInfo.systemUptime - start < 3,
+          executeBeforeDeadline("/usr/bin/true", [], deadline: start - 1).0 != 0,
+          executeBeforeDeadline("/usr/bin/printf", ["%s", "ok"], deadline: ProcessInfo.processInfo.systemUptime + 2).0 == 0,
+          !authorizedSystemArguments(["/bin/sh", "-c", "anything"], device: "disk6s1"),
+          !authorizedSystemArguments(["/usr/sbin/diskutil", "unmount", "disk7s1"], device: "disk6s1"),
+          !authorizedSystemArguments(["/bin/rmdir", "/Volumes/other"], device: "disk6s1") else { return false }
+    print("PASS accepted work is bounded by its absolute deadline, expired work is refused and wrapper timeout retains status 125")
+    return true
 }

@@ -41,7 +41,7 @@ private final class AuthorizationHost {
         guard script.compileAndReturnError(&error) else { throw SessionError.invalid }
         self.script = script
     }
-    func execute(_ arguments: [String]) -> (Int, String) {
+    func execute(_ arguments: [String], deadline: TimeInterval? = nil, identity: String? = nil) -> (Int, String) {
         if let client = privilegedClient, let device, let driver {
             let operation: String
             if arguments.first == "/usr/bin/mktemp" { operation = "prepare" }
@@ -61,8 +61,8 @@ private final class AuthorizationHost {
             returnID: AEReturnID(kAutoGenerateReturnID), transactionID: AETransactionID(kAnyTransactionID))
         event.setParam(NSAppleEventDescriptor(string: "performcommand"), forKeyword: AEKeyword(keyASSubroutineName))
         var approvedArguments = arguments
-        if let boundary, arguments.first == CommandLine.arguments[0] || arguments.first == driver {
-            do { approvedArguments = try boundary.command(arguments) }
+        if let boundary {
+            do { approvedArguments = try boundary.command(arguments, deadline: deadline, device: device, identity: identity) }
             catch { return (1, "Privileged executable validation failed: \(error)") }
         }
         let values = NSAppleEventDescriptor.list()
@@ -201,10 +201,10 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
             result = (1, "Authorization deadline reached; only bounded recovery and completion requests remain available.")
         } else if privileged, policy.driverUsed, command == ["--helper-finish"] {
             // Acknowledgement changes no disk state and survives hot unplug.
-            result = host.execute(command)
+            result = host.execute(command, deadline: policy.allowsCleanup(command, privileged: privileged) ? lifetime.cleanupDeadline : lifetime.operationDeadline, identity: identity)
         } else if !privileged, policy.allows(command), command.dropFirst().first == "--system-device-lock" {
             // Lock release changes no disk state and must work after hot unplug.
-            result = host.execute(command)
+            result = host.execute(command, deadline: policy.allowsCleanup(command, privileged: privileged) ? lifetime.cleanupDeadline : lifetime.operationDeadline, identity: identity)
         } else if (policy.allows(command) || (privileged && policy.driverUsed && command == ["--helper-commit"])), mediaIdentity(policy.device) == identity, let state = mountState(policy.device) {
             let mountedPoint = state["MountPoint"] as? String ?? ""
             let unmount = command.first == "/usr/sbin/diskutil" && command.dropFirst().first == "unmount"
@@ -213,7 +213,7 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
                (!mounting || mountedPoint.isEmpty) &&
                (command.first != "/bin/rmdir" || mountedPoint != policy.point) &&
                lifetime.allows(cleanup: policy.allowsCleanup(command, privileged: privileged)) {
-                result = host.execute(command)
+                result = host.execute(command, deadline: policy.allowsCleanup(command, privileged: privileged) ? lifetime.cleanupDeadline : lifetime.operationDeadline, identity: identity)
                 if command.first == policy.driver { policy.driverUsed = true }
                 if command.first == "/usr/bin/mktemp", result.0 == 0 {
                     let point = result.1.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -285,7 +285,7 @@ func authorizationSelfTest() -> Int32 {
     }
     // AppleScript must preserve the lock-retaining status from the root tool.
     guard host.execute(["/bin/sh", "-c", "exit 125"]).0 == 125 else { return 1 }
-    guard authorizationIPCSelfTest() else { return 1 }
+    guard authorizationIPCSelfTest(), authorizationDeadlineSelfTest() else { return 1 }
     print("PASS authorization allowlist, one-shot driver and persistent AppleScript argument quoting (unprivileged)")
     return 0
 }

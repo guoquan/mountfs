@@ -4,7 +4,7 @@ import MountFSSystemTools
 
 // Preserve the app's cleanup grace period while retaining a hard ceiling.
 func toolTimeoutMilliseconds(_ timeout: TimeInterval) -> UInt32 {
-    UInt32((timeout.isNaN ? 1 : max(1, min(timeout, 600))) * 1000)
+    UInt32((timeout.isNaN || timeout <= 0 ? 1 : max(0.001, min(timeout, 600))) * 1000)
 }
 
 public func boundedTool(_ path: String, _ arguments: [String], timeout: TimeInterval = 30, environment: [String: String]? = nil, mergeErrors: Bool = true) -> (Int32, Data) {

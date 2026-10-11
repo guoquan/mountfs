@@ -322,3 +322,11 @@ Late unmount requests can target only the transaction's own controlled mount,
 not the original mount. Helper transactions use the same two-phase lifetime.
 The app's outer 420-second guard reports status 125 if it interrupts completion;
 a timeout never proves that privileged work or persistent-lock cleanup finished.
+
+Accepted default-path commands also execute through the pinned root authorizer
+with an absolute operation deadline, including the allowlisted system commands.
+An accepted command cannot monopolize the host indefinitely: wrapper timeout
+returns 125 because independently grouped descendants may remain, suppressing
+recovery and lock release. Helper tools similarly use the remaining phase budget.
+macOS tests cover an actual hung subprocess, expired-work refusal and protected
+root wrapper lock acquire/release without touching a real disk.

@@ -45,8 +45,10 @@ private final class Transaction {
         guard !terminationUnconfirmed, !lockReleased, mediaIdentity(device) == identity else { return nil }
         return mountState(device)
     }
-    private func tool(_ path: String, _ args: [String], timeout: TimeInterval = 30) -> HelperReply {
-        let result = runTool(path, args, timeout: timeout)
+    private func tool(_ path: String, _ args: [String], timeout: TimeInterval = 30, cleanup: Bool = false) -> HelperReply {
+        let remaining = (cleanup ? lifetime.cleanupDeadline : lifetime.operationDeadline) - ProcessInfo.processInfo.systemUptime
+        guard remaining > 0 else { return HelperReply(1, "Helper operation deadline expired before launch.") }
+        let result = runTool(path, args, timeout: min(timeout, remaining))
         if result.status == 125 { terminationUnconfirmed = true }
         return result
     }
@@ -79,7 +81,7 @@ private final class Transaction {
                 return HelperReply(1, "Unrelated or absent mount was left unchanged.")
             }
             touched = true
-            return tool("/usr/sbin/diskutil", ["unmount", device])
+            return tool("/usr/sbin/diskutil", ["unmount", device], cleanup: mounted == point)
         case "mount-kernel", "mount-fskit":
             guard !committed, !driverUsed, mounted.isEmpty, let point,
                   rootDirectory(point), secureAncestors(point), rootFile(driver), secureAncestors(driver) else {
@@ -98,10 +100,10 @@ private final class Transaction {
                 timeout: min(60, max(1, lifetime.operationDeadline - ProcessInfo.processInfo.systemUptime)))
         case "recover":
             guard !committed, mounted.isEmpty else { return HelperReply(1, "Recovery requires an unmounted selected device.") }
-            return tool("/usr/sbin/diskutil", ["mount", "readOnly", device])
+            return tool("/usr/sbin/diskutil", ["mount", "readOnly", device], cleanup: true)
         case "cleanup":
             guard let point, mounted != point else { return HelperReply(1, "Active mount directory retained.") }
-            return tool("/bin/rmdir", [point])
+            return tool("/bin/rmdir", [point], cleanup: true)
         case "commit":
             guard !committed, driverUsed, let point, mounted == point,
                   state["WritableVolume"] as? Bool == true else { return HelperReply(1, "Cannot commit an unverified mount.") }
@@ -121,13 +123,13 @@ private final class Transaction {
         guard !committed, let state = current() else { return }
         var mounted = state["MountPoint"] as? String ?? ""
         if touched, let point, mounted == point {
-            guard tool("/usr/sbin/diskutil", ["unmount", device]).status == 0,
+            guard tool("/usr/sbin/diskutil", ["unmount", device], cleanup: true).status == 0,
                   let fresh = current() else { return }
             mounted = fresh["MountPoint"] as? String ?? ""
         }
-        if touched, mounted.isEmpty, current() != nil { _ = tool("/usr/sbin/diskutil", ["mount", "readOnly", device]) }
+        if touched, mounted.isEmpty, current() != nil { _ = tool("/usr/sbin/diskutil", ["mount", "readOnly", device], cleanup: true) }
         if let point, let fresh = current(), fresh["MountPoint"] as? String != point {
-            _ = tool("/bin/rmdir", [point])
+            _ = tool("/bin/rmdir", [point], cleanup: true)
         }
     }
 }
