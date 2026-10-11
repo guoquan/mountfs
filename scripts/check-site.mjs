@@ -12,11 +12,17 @@ try {
     for (const width of [320, 390, 768, 1440]) {
       const context = await browser.newContext({ viewport: { width, height: 1000 }, permissions: ['clipboard-read', 'clipboard-write'] });
       const page = await context.newPage();
+      await page.route('https://api.github.com/repos/guoquan/mountfs/releases/latest', route => route.fulfill({
+        json: { tag_name: 'v0.3.4-build.19', draft: false, prerelease: false,
+          assets: [{ name: 'mouNTFS-0.3.4-dev-arm64.zip' }] }
+      }));
       const errors = []; const failures = [];
       page.on('pageerror', error => errors.push(error.message));
       page.on('response', response => { if (response.status() >= 400 && response.url().startsWith(url)) failures.push(response.url()); });
       await page.goto(`${url}/${file}`, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.fonts.ready);
+      await page.waitForFunction(() => document.querySelector('[data-release-info]').textContent.includes('v0.3.4-build.19'));
+      assert.equal(await page.locator('[data-latest-release]').getAttribute('href'), 'https://github.com/guoquan/mountfs/releases/tag/v0.3.4-build.19');
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
       assert.equal(overflow, false, `${language} at ${width}px has horizontal overflow`);
       const images = await page.locator('img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0));
@@ -57,7 +63,16 @@ try {
     assert.equal(await page.locator('#panel-1').isVisible(), true);
     assert.equal(await page.locator('.no-js').isVisible(), true);
     assert.equal(await page.locator('.language').isVisible(), true);
+    assert.equal(await page.locator('[data-latest-release]').getAttribute('href'), 'https://github.com/guoquan/mountfs/releases/latest');
     await context.close();
+    for (const fixture of [{ status: 403, body: '{}' }, { json: { assets: [] } }]) {
+      const fallback = await browser.newContext();
+      const fallbackPage = await fallback.newPage();
+      await fallbackPage.route('https://api.github.com/repos/guoquan/mountfs/releases/latest', route => route.fulfill(fixture));
+      await fallbackPage.goto(`${url}/${file}`, { waitUntil: 'networkidle' });
+      assert.equal(await fallbackPage.locator('[data-latest-release]').getAttribute('href'), 'https://github.com/guoquan/mountfs/releases/latest');
+      await fallback.close();
+    }
   }
   await writeFile(`${output}/report.json`, JSON.stringify(report, null, 2));
   console.log('Both languages passed at 320, 390, 768 and 1440px; tabs, keyboard, copy, FAQ, language switching and no-JS content verified.');
