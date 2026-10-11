@@ -1,0 +1,30 @@
+{
+  "created": "2026-10-10",
+  "tool": "built-in image_gen.imagegen",
+  "type": "illustrative promotional artwork; native captures remain separate",
+  "references": [
+    "previous approved light poster style",
+    "docs/images/menu-readonly.png",
+    "docs/images/menu-writable.png"
+  ],
+  "hero": [
+    {
+      "lang": "zh-CN",
+      "prompt": "Use case: ads-marketing. Create a NEW Chinese landscape 16:9 promotional poster for mouNTFS from this ENGLISH layout reference. Localize ALL marketing copy outside the app menus to Chinese using the exact copy below; no English headline from reference. Keep right-side English sample app menus and wordmark as reference. Off-white and lavender wave, premium clean layout, deep navy and blue-violet, generous margins. Exact wordmark mouNTFS top left: italic blue-violet mouNT including uppercase NT; upright navy FS. Exact large two-line headline: \"Mac，也能\" then \"写入 NTFS。\". IMPORTANT supporting text is ONLY \"启用写入，继续在 Finder 中使用。\" in one medium-sized line, readable modern Chinese sans serif. Do not use the words 拷贝 or 拷页 anywhere. Three pills exact: \"免费开源\" / \"无需格式化\" / \"菜单栏操作\". Bottom footer left exact: \"需安装 macFUSE 与 ntfs-3g，并完成系统授权\". Bottom footer right exact: \"示例界面\". No AI slogan, no standalone version outside menu, no safety/performance badges. Image 1 is style/layout reference; Images 2 and 3 are actual UI sources with English labels and 0.3.4 version, depict read-only behind and writable in front. Do not change UI row text. All Chinese marketing letters must be correct. Build a new artwork, do not retain any old Chinese subtitle."
+    },
+    {
+      "lang": "en",
+      "prompt": "Use case: ads-marketing. Create a polished NEW landscape marketing hero for mouNTFS, 16:9 wide high-resolution, matching the supplied light poster's visual family but significantly refining typography, restraint, spacing and hierarchy. Image 1 is a STYLE reference only (old approved poster); images 2 and 3 are actual app screenshot inserts, preserve their UI text, version number 0.3.4, sample labels, icons, row order and proportions exactly, do not invent UI. Show these two captures on the right, smaller read-only behind and readable writable in front, subtle soft lavender shadows, enough room that copy never overlaps. Off-white background, quiet lavender curved surface at lower right, deep navy type, clean contemporary Swiss typography and generous negative space. Do NOT use shield/checkmark security benefit badges. Wordmark exactly mouNTFS top left: mouNT is italic and uniformly blue-violet, FS is upright dark navy; N and T uppercase share color with mou (NOT with FS), matching reference wordmark, do not spell mountNTFS. Three compact text benefit pills, use simple restrained icons for free/open-source, drive, folder; no security claim. No AI-coding slogan, no performance claim, no Touch ID/helper, no 'one click setup', no standalone version number or release badge (version may remain inside screenshot only). Bottom small footer provides dependencies and example-UI label. Balanced premium utility branding, not flashy SaaS, no photo, no stock computer, no extra words. All marketing copy in English. Exact text: headline on two lines \"Write to NTFS.\" / \"On your Mac.\" with second line blue-violet. Supporting copy on two lines if needed \"No reformatting. Enable writing,\" / \"then copy files in Finder.\" Three pills: \"Free & open source\" / \"Keep NTFS\" / \"Menu bar access\". Footer left \"Requires macFUSE, ntfs-3g and macOS permissions\"; footer right \"Example interface\". Wordmark \"mouNTFS\"."
+    }
+  ],
+  "share": [
+    {
+      "lang": "zh-CN",
+      "prompt": "Use case: ads-marketing. NEW square 1:1 social sharing artwork for mouNTFS, matching light lavender/off-white/navy visual system of Image 1 (style reference). This must be a purpose-built square composition, not a crop of the wide poster. Large beautiful typographic headline top half; one readable actual writable app menu from Image 2 centered lower right, preserve its UI wording and 0.3.4 version INSIDE menu only, sample data. Subtle lavender wave and soft shadow, generous safe margins, no clutter. At top left wordmark exactly mouNTFS: italic mouNT uniformly blue-violet including uppercase N and T, upright FS dark navy. Small open-source code glyph and external drive glyph can balance menu. Product purpose and free/open source must be immediately readable at thumbnail size. No shield badges, no AI slogan, no performance claims, no standalone version, no invented dialogs. Exact Simplified Chinese marketing text: headline \"Mac，也能\" then \"写入 NTFS。\" with second line blue-violet; subline \"免费开源 · 无需格式化\"; bottom caption \"菜单栏启用写入，继续在 Finder 中使用。\"; small footer \"需安装 macFUSE 与 ntfs-3g，并完成系统授权\" and \"示例界面\". No other text outside the original app menu."
+    },
+    {
+      "lang": "en",
+      "prompt": "Use case: ads-marketing. NEW square 1:1 social sharing artwork for mouNTFS, matching light lavender/off-white/navy visual system of Image 1 (style reference). This must be a purpose-built square composition, not a crop of the wide poster. Large beautiful typographic headline top half; one readable actual writable app menu from Image 2 centered lower right, preserve its UI wording and 0.3.4 version INSIDE menu only, sample data. Subtle lavender wave and soft shadow, generous safe margins, no clutter. At top left wordmark exactly mouNTFS: italic mouNT uniformly blue-violet including uppercase N and T, upright FS dark navy. Small open-source code glyph and external drive glyph can balance menu. Product purpose and free/open source must be immediately readable at thumbnail size. No shield badges, no AI slogan, no performance claims, no standalone version, no invented dialogs. Exact English marketing text: headline \"Write to NTFS.\" then \"On your Mac.\" with second line blue-violet; subline \"Free & open source. No reformatting.\"; bottom caption \"Enable writing. Continue in Finder.\"; small footer \"Requires macFUSE, ntfs-3g and macOS permissions\" and \"Example interface\". No other text outside the original app menu."
+    }
+  ]
+}

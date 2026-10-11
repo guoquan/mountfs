@@ -1,0 +1,61 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax and regression simulations
+        run: |
+          for script in mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/macos_helper_service.sh tests/mount_state_tests.sh; do bash -n "$script"; done
+          bash tests/core_tests.sh
+          bash tests/ntfs_identity_tests.sh
+          bash tests/media_identity_tests.sh
+          bash tests/mount_state_tests.sh
+          cc -Wall -Wextra -Werror -I Sources/MountFSSystemTools/include Sources/MountFSSystemTools/Tools.c tests/tool_runner_tests.c -o /tmp/mountfs-tool-tests
+          /tmp/mountfs-tool-tests
+          bash mountfs.sh --help
+          test "$(bash mountfs.sh --version)" = 0.3.4
+      - name: ShellCheck
+        if: runner.os == 'Linux'
+        run: shellcheck mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/macos_helper_service.sh tests/mount_state_tests.sh
+      - name: Check actual macOS plist schema and Swift metadata tests
+        if: runner.os == 'macOS'
+        run: |
+          bash tests/macos_metadata.sh
+          swift test
+      - name: Build local menu bar app
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist/mouNTFS.app/Contents/Resources
+          touch dist/mouNTFS.app/Contents/Resources/stale-build-marker
+          bash scripts/build-app.sh
+          test ! -e dist/mouNTFS.app/Contents/Resources/stale-build-marker
+          bash tests/macos_media_identity.sh
+          bash tests/macos_helper_service.sh
+          bash tests/macos_sandbox_mapping.sh
+          bash tests/macos_execution_boundary.sh
+          VERSION=$(bash mountfs.sh --version)
+          codesign --verify --deep --strict "dist/mouNTFS.app"
+          test -f "dist/mouNTFS.app/Contents/Resources/mountfs.sh"
+          test -s "dist/mouNTFS.app/Contents/Resources/AppIcon.icns"
+          ARCHIVE="dist/mouNTFS-$VERSION-dev-$(uname -m).zip"
+          unzip -Z1 "$ARCHIVE" > /tmp/mountfs-archive-entries.txt
+          grep -E '^mouNTFS\.app/Contents/Info\.plist$' /tmp/mountfs-archive-entries.txt
+          ! grep -E '^mouNTFS-[^/]+\.app/' /tmp/mountfs-archive-entries.txt
+          echo "MOUNTFS_VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Upload development app
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mouNTFS-${{ env.MOUNTFS_VERSION }}-development-app
+          path: dist/mouNTFS-*-dev-*.zip
+          retention-days: 14

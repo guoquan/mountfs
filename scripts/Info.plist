@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>net.guoquan.mountfs</string>
+<key>CFBundleName</key><string>mouNTFS</string>
+<key>CFBundleExecutable</key><string>mouNTFS</string>
+<key>CFBundleIconFile</key><string>AppIcon</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>0.3.4</string>
+<key>CFBundleVersion</key><string>18</string>
+<key>LSMinimumSystemVersion</key><string>13.0</string>
+<key>NSRemovableVolumesUsageDescription</key><string>mouNTFS needs access to the selected removable volume to enable and verify NTFS writing.</string>
+<key>LSUIElement</key><true/>
+<key>NSHighResolutionCapable</key><true/>
+</dict></plist>

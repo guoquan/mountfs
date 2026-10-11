@@ -1,0 +1,22 @@
+name: Documentation images
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/capture-docs.sh
+      - .github/workflows/documentation-images.yml
+      - Sources/MountFSApp/**
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture native UI with sample volumes
+        run: bash scripts/capture-docs.sh docs/images
+      - uses: actions/upload-artifact@v4
+        with:
+          name: documentation-ui-screenshots
+          path: docs/images/*.png
+          retention-days: 14

@@ -35,3 +35,8 @@ Temporary Items
 *.icloud
 
 # End of https://www.toptal.com/developers/gitignore/api/macos
+
+# Local Swift builds and development app bundles
+.build/
+.swiftpm/
+dist/

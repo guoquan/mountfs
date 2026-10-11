@@ -1,143 +1,133 @@
 # *mouNT*FS
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Built-with-AI](https://img.shields.io/badge/Built--with-AI_🤖-blueviolet)](https://github.com/guoquan/mountfs#contributors)
-[![Website](https://img.shields.io/badge/HTTPS-mountfs.sh_🌐-blue)](https://mountfs.sh)
+**English** · [简体中文](README.zh-CN.md)
 
-## What's *mouNT*FS
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Built with AI](https://img.shields.io/badge/Built--with-AI-blueviolet)](#humanai-collaboration)
+[![Website](https://img.shields.io/badge/Website-mountfs.sh-blue)](https://mountfs.sh)
 
-*mouNT*FS (pronounced "maun-tee-ef-es") helps you write to NTFS (pronounced "en-tee-ef-es") drives on your Mac. No more "read-only" frustration! Just select your drive, provide your password to confirm, and you're ready to go - with native macOS dialogs that feel right at home.
+### Write to NTFS. On your Mac.
 
-Currently, *mouNT*FS is just one simple shell script that does one thing well - mounting NTFS drives with write access. We keep it clean and focused.
+**Free & open source. Keep your drive's NTFS format.**
 
-🤝 This project is an experiment in human-AI collaboration, co-developed with AI buddies.
-🤖 All code is written by AI, with 👤 humans focusing on design, review, and direction - no direct human coding.
-🥳 This must be a fun ride, and let's see where it goes.
+No reformatting. Enable writing from the menu bar, then copy files in Finder.
+mouNTFS is a native Mac app for external NTFS drives, with a command-line core
+that requires the bundled native identity tool for mounting.
 
-### Features
+![mouNTFS: write to NTFS on your Mac, free and open source](docs/images/promo-hero.en.png)
 
-- 🤖 Co-developed with AI buddies
-- 📁 Native file picker for volume selection
-- 🔐 Secure password handling through system dialog
-- 📊 Detailed volume information:
-  - Volume name and device path
-  - Current usage and total size
-  - File system and mount status
-- 🔄 Automatic fallback between mount methods
-- ✅ Write access verification
+*Illustrative artwork based on the app's English UI with sample drive data.
+Requires separately installed drivers and macOS permissions.*
 
-### Under the Hood
+**Current version: 0.3.4 development build.** Requires separately installed macFUSE
+and ntfs-3g. Development downloads are ad-hoc signed and not notarized.
 
-The script safely handles NTFS mounting by first unmounting the volume, then trying the `mount_ntfs` with read-write option. If that fails, it falls back to the more reliable `ntfs-3g`. After mounting, it verifies write access and uses native macOS dialogs throughout the process.
+[Get started](docs/USAGE.en.md) · [Downloads](https://github.com/guoquan/mountfs/actions) · [Roadmap](ROADMAP.md)
 
-## Getting Started
+## See the app
 
-### Requirements
+| Select a drive | Write access enabled |
+|---|---|
+| ![Native menu with a read-only example drive](docs/images/menu-readonly.png) | ![Native menu with a writable example drive](docs/images/menu-writable.png) |
 
-- macOS - so that you lose NTFS read-write access
-- [Homebrew](https://brew.sh) - to install macFUSE and ntfs-3g, and a lot of cool stuff for macOS 🍺
-- [macFUSE](https://osxfuse.github.io) - FUSE file system support for macOS
-- [ntfs-3g](https://github.com/tuxera/ntfs-3g) - NTFS driver with write support ([macOS version](https://github.com/gromgit/homebrew-fuse))
+<details>
+<summary>Operation progress and diagnostics</summary>
 
-### Installation
+| Operation in progress | Copyable operation report |
+|---|---|
+| ![Native menu during an example operation](docs/images/menu-progress.png) | ![Native diagnostic window showing an example report](docs/images/diagnostics.png) |
 
-0. Make sure you have [Homebrew](https://brew.sh) installed.
+</details>
 
-1. Install macFUSE and ntfs-3g-mac:
+These captures use the actual macOS app UI with **sample drive data and an example
+log**. No disk was mounted to create them. The current UI is English.
+
+## Your drive, your usual workflow
+
+- **Keep NTFS.** Use your existing external drive without reformatting it.
+- **Enable writing from the menu bar.** Select the drive, complete authorization
+  and wait for mounting to finish.
+- **Continue in Finder.** Copy, edit and organize files after writing is enabled;
+  Finder opens by default after success.
+- **Eject when finished.** Close files, then use the app's safe-eject action.
+
+The app shows drive states and operation progress, refreshes the drive list
+automatically and keeps troubleshooting reports available when needed. Connecting
+a drive does not enable writing automatically. Initial setup requires compatible
+drivers, system approval and disk-access permissions.
+
+## Quick start
+
+Requires macOS 13+, Homebrew and compatible drivers:
 
 ```bash
 brew install --cask macfuse
 brew install gromgit/fuse/ntfs-3g-mac
 ```
 
-2. Download `mountfs.sh`:
+Follow the [macFUSE setup guide](https://github.com/macfuse/macfuse/wiki/Getting-Started)
+for system approval and restart requirements. Download a successful macOS build
+from [Actions](https://github.com/guoquan/mountfs/actions), extract the archive, and
+place **mouNTFS.app** in Applications.
+
+1. Connect the drive and open the mouNTFS menu.
+2. Select **Enable Write Access…** and complete macOS authorization.
+3. Wait for write verification; Finder opens by default.
+4. Close files before **Safely Eject…**, which ejects the physical disk.
+
+If macOS denies device access, check Full Disk Access for the actual **ntfs-3g**
+executable. Administrator authorization is a separate permission.
+[The usage guide](docs/USAGE.en.md) covers setup, updates and troubleshooting.
+Experimental authorization settings are not required for the standard workflow.
+
+## Safety and compatibility
+
+mouNTFS targets external NTFS partitions, checks the selected device identity,
+verifies writing as the current user and attempts same-volume read-only recovery
+on failure. It does not force-unmount, clear Windows hibernation or format a drive.
+Recovery can still fail; inspect diagnostics and Disk Utility if an operation fails.
+
+Ordinary mounting has limited user-reported success on Apple Silicon. Other drive,
+OS and driver combinations require further testing. See the [validation record](docs/VALIDATION.md)
+for the evidence and remaining checks. FSKit remains experimental.
+
+## Documentation
+
+| For users | English | 简体中文 |
+|---|---|---|
+| Overview | [README](README.md) | [项目介绍](README.zh-CN.md) |
+| Setup, use and troubleshooting | [Usage guide](docs/USAGE.en.md) | [使用说明](docs/USAGE.zh-CN.md) |
+
+Development documentation is maintained in English:
+
+- [Roadmap](ROADMAP.md): planned stages and acceptance criteria.
+- [Authorization architecture](docs/AUTHORIZATION.md): permission helper, signing and Touch ID boundaries.
+- [Validation record](docs/VALIDATION.md): CI, physical-Mac reports and remaining tests.
+- [Contributing and documentation](CONTRIBUTING.md): local builds, checks and screenshot capture.
+
+## Build and contribute
+
+On macOS with Xcode Command Line Tools, from a checkout:
 
 ```bash
-cd ~/Downloads  # or any directory you won't get lost
-curl -L -o mountfs.sh https://get.mountfs.sh
-chmod +x mountfs.sh
+bash scripts/build-app.sh
+open dist/mouNTFS.app
 ```
 
-3. Configure security settings:
-   - Trust macFUSE library in Settings → Privacy & Security (signed by "Benjamin Fleischer")
-   - macFUSE needs a kernel extension to be enabled, which requires a system restart
-   - Grant disk access when prompted
+Download archives include a version number; the app stays **mouNTFS.app** so updates
+can replace it. Quit the old app before replacing it. The separate website download
+endpoint has not been updated by this development branch.
 
-Note: These security settings are required by macOS to allow third-party file system drivers. They only need to be configured once, unless you uninstall or reinstall the drivers.
+## Human–AI collaboration
 
-Refer to [macFUSE wiki](https://github.com/macfuse/macfuse/wiki/Getting-Started#how-to-install-macfuse) for more details.
+> 🤝 An experiment in human–AI collaboration, co-developed with AI buddies.
+> 🤖 AI writes the code; 👤 humans lead design, review, testing and direction.
+> 🥳 From a shell script to a native Mac app — let's see where this ride goes.
 
-### Usage
+The collaboration is part of the project’s identity: AI writes the code while
+humans shape the product, review changes and test it in the real world.
+Original collaborators: Claude 3.5 Sonnet, GPT-4o and [guoquan](https://guoquan.net).
+The current development update was prepared with Codex. Contributions and safety
+reviews are welcome.
 
-1. **Launch**:
-   - Double-click `mountfs.sh` in Finder, *OR*
-   - Run in terminal `./mountfs.sh`
-
-2. **Select Volume**:
-   - Choose your NTFS volume in the native file picker
-   - Non-NTFS volumes will be automatically rejected
-
-3. **Review & Confirm**:
-   - Check volume information
-   - Confirm the mount operation
-
-4. **Authenticate**:
-   - Enter administrator password in the popup dialog
-
-## Using *mouNT*FS
-
-### Notes
-
-- Requires administrator privileges for mounting
-- Performs safe unmount before remounting
-- Verifies write access after mounting
-- Uses the best available mount method
-
-### Troubleshooting
-
-If mounting fails:
-
-1. Ensure the volume is NTFS formatted
-2. Check macFUSE and ntfs-3g installation
-3. Try safely ejecting and reconnecting
-4. Check system logs for errors
-
-## Alternatives
-
-- **[Mounty](https://mounty.app/)** - Popular free GUI app for NTFS mounting
-- **[NTFS for Mac by Paragon](https://www.paragon-software.com/home/ntfs-mac/)** - Commercial solution with full NTFS support
-- **[Tuxera NTFS](https://www.tuxera.com/products/tuxera-ntfs-for-mac/)** - Another commercial driver with high performance
-- Feel free to explore other alternatives!
-
-*mouNT*FS focuses on simplicity and native macOS integration while remaining free and open source. We ❤️ open source!
-
-## Information
-
-### Roadmap
-
-- [ ] GUI interface with native macOS look and feel
-- [ ] Better error messages and recovery options
-- [ ] System tray integration for quick access
-- [ ] Volume monitoring for automatic mounting
-- [ ] Localization support for multiple languages
-
-### Contribution
-
-Contributions and suggestions are welcome! Feel free to open issues or pull requests.
-
-As a human-AI collaboration project:
-
-- For **code** contributions, please bring your AI buddy and keep the no-direct-human-coding spirit
-- For **other** contributions (docs, testing, reviews, etc.), both humans and AI buddies are more than welcome!
-
-Given wide-spread AI concerns, safety review is welcome.
-
-### Contributors
-
-| 🤖 AI | 👤 Humans |
-|-------|-----------|
-| 🦾 [Claude](https://anthropic.com/claude) (3.5 Sonnet, via [Cursor](https://cursor.sh))<br> 🧠 [GPT](https://openai.com/index/gpt-4/) (GPT-4o) | 🐰 [guoquan](https://guoquan.net) |
-
-### License
-
-[MIT License](LICENSE) © 2024 Quan Guo
+MIT License © 2024–2026 Quan Guo.
