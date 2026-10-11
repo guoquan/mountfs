@@ -8,6 +8,17 @@ in launchd state but did not resolve the failure. Investigation is paused pendin
 an Apple-issued signing environment. Use ordinary mounting while the helper is
 not ready. Protected-driver mounting and biometric UI remain unvalidated.
 
+## Temporary GUI pause (build 19)
+
+The menu bar app temporarily disables helper activation, registration repair,
+protected-driver refresh and Touch ID confirmation. It does not probe the daemon
+at startup or route mounts through an already registered helper. GUI operations
+use the existing administrator authorization flow. Settings shows the feature as
+temporarily unavailable and retains a disable action for previously registered
+helpers; registration is not automatically removed. Helper implementation and
+CLI capabilities remain available for development. The setup description below
+records the paused implementation, not currently available GUI actions.
+
 ## Setup and authority
 
 The app registers a bundled SMAppService LaunchDaemon, subject to macOS approval.

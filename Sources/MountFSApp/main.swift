@@ -104,6 +104,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var volumes: [Volume] = []
     private var busy = false
+    // Pause GUI helper use until Apple-issued signing is validated on a physical Mac.
+    private let permissionHelperEnabled = false
     private var helperReady = false
     private var helperStatusGeneration = 0
     private var helperStatus = "Not enabled"
@@ -209,20 +211,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         count.state = UserDefaults.standard.bool(forKey: "showVolumeCount") ? .on : .off
         settings.addItem(count)
         settings.addItem(.separator())
-        settings.addItem(item("Permission Helper · " + helperStatus))
-        let enable = item(helperReady ? "Refresh Protected NTFS Driver…" : "Enable Permission Helper…", action: #selector(enableHelper))
-        enable.isEnabled = !busy
-        settings.addItem(enable)
-        let repair = item("Repair Permission Helper Registration…", action: #selector(repairHelperRegistration))
-        repair.isEnabled = !busy && !helperReady
-        settings.addItem(repair)
-        let disable = item("Disable Permission Helper…", action: #selector(disableHelper))
-        disable.isEnabled = !busy && helperService.status != .notRegistered
-        settings.addItem(disable)
-        let biometric = item("Confirm helper mounts with Touch ID", action: #selector(toggleTouchID))
-        biometric.state = UserDefaults.standard.bool(forKey: "touchIDForHelper") ? .on : .off
-        biometric.isEnabled = !busy
-        settings.addItem(biometric)
+        settings.addItem(item("Permission Helper / Touch ID · Temporarily unavailable"))
+        // Keep removal available for users who registered an earlier build.
+        if helperService.status != .notRegistered {
+            let disable = item("Disable Previously Registered Helper…", action: #selector(disableHelper))
+            disable.isEnabled = !busy
+            settings.addItem(disable)
+        }
         settings.addItem(.separator())
         settings.addItem(item("NTFS Driver Permissions…", action: #selector(showPermissionHelp)))
         let preferences = item("Settings")
@@ -265,12 +260,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     @objc private func refreshAction() { operationStatus = nil; refresh(); refreshHelperStatus() }
     @objc private func toggleTouchID() {
+        guard permissionHelperEnabled else { return }
         UserDefaults.standard.set(!UserDefaults.standard.bool(forKey: "touchIDForHelper"), forKey: "touchIDForHelper")
         rebuildMenu()
     }
     private func refreshHelperStatus() {
         helperStatusGeneration += 1
         let generation = helperStatusGeneration
+        guard permissionHelperEnabled else {
+            helperReady = false
+            helperStatus = "Temporarily unavailable"
+            rebuildMenu()
+            return
+        }
         guard !busy else { return }
         switch helperService.status {
         case .enabled:
@@ -289,7 +291,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     @objc private func enableHelper() {
-        guard !busy else { return }
+        guard permissionHelperEnabled, !busy else { return }
         NSApp.activate(ignoringOtherApps: true)
         guard Bundle.main.bundlePath.hasPrefix("/Applications/"), Bundle.main.bundlePath.hasSuffix(".app") else {
             showOutput(title: "Install before enabling helper", text: "Quit mouNTFS, move mouNTFS.app into /Applications, and reopen it there. The system service follows the installed application; do not enable it from a temporary download directory.")
@@ -366,7 +368,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return lines.joined(separator: "\n")
     }
     @objc private func repairHelperRegistration() {
-        guard !busy, !helperReady else { return }
+        guard permissionHelperEnabled, !busy, !helperReady else { return }
         NSApp.activate(ignoringOtherApps: true)
         guard Bundle.main.bundlePath.hasPrefix("/Applications/"), Bundle.main.bundlePath.hasSuffix(".app") else {
             showOutput(title: "Install before repairing helper", text: "Move mouNTFS.app into /Applications, reopen it there, and retry.")
@@ -521,7 +523,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let identities = verifiedIdentities
         let generationForStatus = scanGeneration
         var environment = ProcessInfo.processInfo.environment
-        environment["MOUNTFS_PRIVILEGED_HELPER"] = mountDevice != nil && helperReady ? "1" : "0"
+        environment["MOUNTFS_PRIVILEGED_HELPER"] = permissionHelperEnabled && mountDevice != nil && helperReady ? "1" : "0"
         let operationEnvironment = environment
         rebuildMenu()
         DispatchQueue.global(qos: .userInitiated).async {
@@ -625,7 +627,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let performMount = { [weak self] in
             self?.execute("Enabling write access…", executable: "/bin/bash", arguments: [script, "--device", device, "--backend", self?.backend ?? "kernel", "--app-action", "--expected-identity", identity], mountDevice: device, selectedVolume: selected)
         }
-        if helperReady && UserDefaults.standard.bool(forKey: "touchIDForHelper") {
+        if permissionHelperEnabled && helperReady && UserDefaults.standard.bool(forKey: "touchIDForHelper") {
             let context = LAContext()
             var error: NSError?
             let biometricAvailable = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
