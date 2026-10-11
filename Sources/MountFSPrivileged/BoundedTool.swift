@@ -2,6 +2,11 @@ import Foundation
 import Darwin
 import MountFSSystemTools
 
+// Preserve the app's cleanup grace period while retaining a hard ceiling.
+func toolTimeoutMilliseconds(_ timeout: TimeInterval) -> UInt32 {
+    UInt32((timeout.isNaN ? 1 : max(1, min(timeout, 600))) * 1000)
+}
+
 public func boundedTool(_ path: String, _ arguments: [String], timeout: TimeInterval = 30, environment: [String: String]? = nil, mergeErrors: Bool = true) -> (Int32, Data) {
     var argv = ([path] + arguments).map { strdup($0) } + [nil]
     defer { for value in argv { free(value) } }
@@ -9,7 +14,7 @@ public func boundedTool(_ path: String, _ arguments: [String], timeout: TimeInte
     defer { for value in envp { free(value) } }
     var output = [CChar](repeating: 0, count: 65536)
     var length = 0
-    let milliseconds = UInt32(max(1, min(timeout, 300)) * 1000)
+    let milliseconds = toolTimeoutMilliseconds(timeout)
     let status = argv.withUnsafeMutableBufferPointer { values in
         output.withUnsafeMutableBufferPointer { bytes in
             envp.withUnsafeMutableBufferPointer { env in
