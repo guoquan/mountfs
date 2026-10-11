@@ -50,9 +50,9 @@ illustrations based on those captures, not proof of hardware validation.
 2. Merge the reviewed native-app work into `main` first.
 3. Render production links with `python3 scripts/build-site.py` (the default is `main`).
 4. Confirm a downloadable development Release with an application ZIP and checksums.
-   Download links use `/releases/latest`; the page reads the public latest-Release
-   API to display the version and link to its tag. If the API fails or JavaScript
-   is disabled, the latest-Release link remains usable. No login is needed.
+   Both the hero Get button and setup download button point to the fixed
+   `/releases` listing. The homepage does not fetch release metadata or embed
+   a version, so publishing a new build needs no homepage update.
 5. Recheck both page languages, mobile layouts, image loading, tabs and copy behavior.
 6. Merge this Pages iteration into `gh-pages` after those checks. Preserve CNAME.
 7. Confirm the actual configured GitHub Pages branch/path, deployment success and
