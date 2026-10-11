@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mouNTFS — Mac，也能写入 NTFS。</title><meta name="description" content="免费开源的 Mac NTFS 菜单栏工具。保留磁盘格式，启用写入，继续在 Finder 中使用。需安装 macFUSE 与 ntfs-3g。">
+  <meta name="theme-color" content="#fcfcff"><link rel="canonical" href="https://mountfs.sh/zh-CN.html">
+  <link rel="alternate" hreflang="en" href="https://mountfs.sh/">
+  <link rel="alternate" hreflang="zh-CN" href="https://mountfs.sh/zh-CN.html">
+  <link rel="alternate" hreflang="x-default" href="https://mountfs.sh/">
+  <meta property="og:type" content="website"><meta property="og:url" content="https://mountfs.sh/zh-CN.html">
+  <meta property="og:title" content="mouNTFS — Mac，也能写入 NTFS。"><meta property="og:description" content="免费开源的 Mac NTFS 菜单栏工具。保留磁盘格式，启用写入，继续在 Finder 中使用。需安装 macFUSE 与 ntfs-3g。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:image" content="https://mountfs.sh/assets/share.zh-CN.png">
+  <meta property="og:image:alt" content="mouNTFS — Mac，也能写入 NTFS。"><meta property="og:image:width" content="1254"><meta property="og:image:height" content="1254">
+  <meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@guoquan">
+  <meta name="twitter:image" content="https://mountfs.sh/assets/share.zh-CN.png">
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+  <link rel="stylesheet" href="assets/site.css"><script src="assets/site.js" defer></script>
+</head>
+<body class="zh">
+<a class="skip" href="#main">跳到正文</a>
+<header class="header"><nav class="wrap nav" aria-label="主导航">
+  <a href="zh-CN.html" class="wordmark" aria-label="mouNTFS"><span class="mount">mouNT</span><span class="fs">FS</span></a>
+  <div class="nav-links"><a class="desktop" href="#app">看看应用</a><a href="#get-started">开始使用</a><a class="desktop" href="#story">项目故事</a><a class="language" href="index.html" lang="en" hreflang="en">English</a></div>
+</nav></header>
+<main id="main">
+<section class="hero"><div class="wrap"><div class="hero-grid">
+  <div class="hero-text">
+    <h1>Mac，也能<span>写入 NTFS。</span></h1><p class="hero-copy">无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。</p>
+    <div class="actions"><a class="button primary" href="#get-started">获取开发版应用<span aria-hidden="true">↓</span></a><a class="button" href="https://github.com/guoquan/mountfs/tree/main">查看源代码<span aria-hidden="true">↗</span></a></div>
+    <p class="fine">macOS 13+ · 需安装 macFUSE、ntfs-3g 并完成系统授权。开发构建使用 ad-hoc 签名，尚未公证。</p><p class="hero-signoff">免费开源 · 为 macOS 而做</p>
+  </div>
+  <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="mouNTFS 实际菜单界面，示例磁盘显示可写状态" width="356" height="351" fetchpriority="high"><figcaption>实际应用界面 · 示例磁盘数据 · 当前界面为英文</figcaption></figure>
+</div><div class="benefits"><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5zM8 15h.01M8 9h8"/></svg></span><div><strong>保留 NTFS 格式</strong><p>继续使用你已有的磁盘。</p></div></div><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h6l2 2h8v11H4zM4 7V4h6l2 3"/></svg></span><div><strong>继续在 Finder 中使用</strong><p>启用写入后，拷贝和编辑文件。</p></div></div><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg></span><div><strong>免费开源</strong><p>MIT 许可，无需激活应用许可证。</p></div></div></div></div></section>
+<section id="app" class="section wrap"><div class="section-head"><h2>你的磁盘，<br class="mobile-break">熟悉的使用方式。</h2><p>完成驱动配置后，日常使用从菜单栏开始。</p></div>
+  <div class="steps"><article class="step"><div class="number">01</div><h3>连接磁盘</h3><p>打开 mouNTFS，从菜单中选择要使用的外置 NTFS 分区。</p></article><article class="step"><div class="number">02</div><h3>启用写入</h3><p>点击 Enable Write Access，完成 macOS 授权，等待挂载完成。</p></article><article class="step"><div class="number">03</div><h3>继续在 Finder 中使用</h3><p>拷贝和编辑文件。用完关闭占用磁盘的文件，再点 Safely Eject 安全弹出。</p></article></div>
+  <div class="showcase"><div><h3>一个小应用，就在菜单栏。</h3><p>查看磁盘，启用写入，打开 Finder。操作时显示进度，需要排查时再查看报告，不用一直盯着终端。</p>
+    <div class="tabs" role="tablist" aria-label="应用界面示例状态" data-tabs><button class="tab" role="tab" id="tab-0" aria-controls="panel-0" aria-selected="false" tabindex="-1">只读</button><button class="tab" role="tab" id="tab-1" aria-controls="panel-1" aria-selected="true" tabindex="0">可写</button><button class="tab" role="tab" id="tab-2" aria-controls="panel-2" aria-selected="false" tabindex="-1">进行中</button></div>
+    <noscript><p class="no-js">下方显示可写示例。启用 JavaScript 后可切换三个界面示例。</p></noscript>
+  </div><figure class="preview"><div id="panel-0" role="tabpanel" aria-labelledby="tab-0" tabindex="0" hidden><img src="assets/menu-readonly.png" alt="实际菜单界面，显示只读示例 NTFS 磁盘" width="356" height="351" loading="lazy"></div><div id="panel-1" role="tabpanel" aria-labelledby="tab-1" tabindex="0" ><img src="assets/menu-writable.png" alt="实际菜单界面，显示可写示例 NTFS 磁盘" width="356" height="351" loading="lazy"></div><div id="panel-2" role="tabpanel" aria-labelledby="tab-2" tabindex="0" hidden><img src="assets/menu-progress.png" alt="实际菜单界面，显示挂载操作进行中的示例状态" width="356" height="351" loading="lazy"></div><figcaption>界面状态为示例；生成截图时未执行磁盘挂载。</figcaption></figure></div>
+</section>
+<section id="get-started" class="section wrap"><div class="section-head"><h2>先做好配置，<br class="mobile-break">再回到你的文件。</h2><p>先安装驱动，再放入应用。完成这些步骤后，才能启用写入。</p></div>
+  <div class="install-grid">
+    <article class="install-card"><span class="label">01 · 驱动与权限</span><h3>准备好你的 Mac</h3><p>安装 Homebrew 后，执行这两条命令：</p>
+      <div class="command"><button class="copy" data-copy="driver-commands" data-success="命令已复制。" data-fallback="命令已选中，请按 ⌘C 或 Ctrl+C 复制。">复制命令</button><pre><code id="driver-commands">brew install --cask macfuse
+brew install gromgit/fuse/ntfs-3g-mac</code></pre></div><p id="copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
+      <p>按 macFUSE 安装指南完成批准和重启。默认内核后端在 Apple Silicon 上可能需要调整启动安全策略。</p><div class="actions"><a class="text-link" href="https://github.com/macfuse/macfuse/wiki/Getting-Started">macFUSE 安装指南 ↗</a></div>
+    </article>
+    <article class="install-card"><span class="label">02 · 下载开发构建</span><h3>将 mouNTFS 放入 Applications</h3><p>目前通过 GitHub Actions 提供开发构建，尚未作为已公证的正式版本发布。</p><ol><li>打开 Checks，选择含 development-app artifact 的成功构建。</li><li>登录 GitHub，下载 development-app artifact。解压外层 ZIP，再解压内部带版本号的下载包。</li><li>更新时先退出旧应用，再将 mouNTFS.app 放入 Applications。打开应用，连接磁盘。</li></ol>
+      <div class="actions"><a class="button primary" href="https://github.com/guoquan/mountfs/actions/workflows/checks.yml?query=branch%3Amain">查看应用构建 ↗</a><a class="text-link" href="https://github.com/guoquan/mountfs/blob/main/docs/USAGE.zh-CN.md">完整安装说明 ↗</a></div>
+    </article>
+  </div><p class="notice">设备访问被拒绝？核对实际 ntfs-3g 可执行文件的完全磁盘权限。管理员授权是另一项权限，使用说明中有对应处理步骤。</p>
+</section>
+<section class="section wrap faq"><div class="section-head"><h2>插盘之前，先了解这些。</h2><p>首次启用写入前，你可能关心的几个问题。</p><div class="actions"><a class="text-link" href="https://github.com/guoquan/mountfs/blob/main/docs/USAGE.zh-CN.md">使用与故障处理 ↗</a></div></div><div><details><summary>会格式化我的磁盘吗？</summary><p>不会。mouNTFS 为已有外置 NTFS 分区启用写入，不格式化磁盘。损坏或处于休眠状态的卷，可能需要先在 Windows 中处理，才能启用写入。</p></details><details><summary>插盘后会自动启用写入吗？</summary><p>不会。插盘只更新列表，由你决定何时启用写入。操作时 macOS 可能要求管理员授权，应用不保存密码。</p></details><details><summary>所有 Mac 和 NTFS 磁盘都能用吗？</summary><p>应用需要 macOS 13 或以上及兼容驱动。普通挂载已有有限的 Apple Silicon 使用反馈，更多硬件和驱动组合仍需验证；目前只处理外置 NTFS 分区。</p></details><details><summary>遇到问题怎么办？</summary><p>在 Diagnostics 中查看操作日志和只读磁盘扫描。使用说明涵盖驱动兼容、权限及磁盘忙碌等情况。不要因为操作失败就格式化磁盘。</p></details></div></section>
+<div class="wrap"><section class="story" id="story"><div><h2>与 AI 一起开发，<br>由人类把握方向。</h2><p class="story-label">人机协同开发</p></div><div><p>这是一场把小工具做得更好用的人机协同实验。AI 写代码，人类负责设计、审查、测试与方向。从 Shell 脚本到原生 Mac 应用，项目在真实使用反馈中继续成长。</p><div class="actions"><a class="text-link" href="https://github.com/guoquan/mountfs/blob/main/CONTRIBUTING.md">一起完善下一步 ↗</a><a class="text-link" href="https://github.com/sponsors/guoquan">支持这个项目 ↗</a></div></div></section></div>
+</main>
+<footer class="footer"><div class="wrap footer-row"><div>免费开源 · MIT 许可<br>© 2024–2026 <a href="https://guoquan.net">郭泉</a></div><div class="footer-links"><a href="https://github.com/guoquan/mountfs">GitHub</a><a href="https://github.com/guoquan/mountfs/blob/main/docs/USAGE.zh-CN.md">使用说明</a><a href="https://github.com/guoquan/mountfs/issues">反馈问题</a><a href="https://github.com/guoquan/mountfs/blob/main/ROADMAP.md">后续计划</a></div></div></footer>
+</body></html>

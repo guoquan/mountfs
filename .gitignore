@@ -35,3 +35,8 @@ Temporary Items
 *.icloud
 
 # End of https://www.toptal.com/developers/gitignore/api/macos
+
+# Local QA output; not part of the public Pages assets.
+node_modules/
+__pycache__/
+qa-output/
