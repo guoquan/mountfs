@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Shell syntax and regression simulations
         run: |
-          for script in mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/macos_helper_service.sh tests/mount_state_tests.sh; do bash -n "$script"; done
+          for script in mountfs.sh scripts/build-app.sh scripts/publish-release.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/macos_helper_service.sh tests/mount_state_tests.sh; do bash -n "$script"; done
           bash tests/core_tests.sh
           bash tests/ntfs_identity_tests.sh
           bash tests/media_identity_tests.sh
@@ -26,7 +26,7 @@ jobs:
           test "$(bash mountfs.sh --version)" = 0.3.4
       - name: ShellCheck
         if: runner.os == 'Linux'
-        run: shellcheck mountfs.sh scripts/build-app.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/macos_helper_service.sh tests/mount_state_tests.sh
+        run: shellcheck mountfs.sh scripts/build-app.sh scripts/publish-release.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/macos_helper_service.sh tests/mount_state_tests.sh
       - name: Check actual macOS plist schema and Swift metadata tests
         if: runner.os == 'macOS'
         run: |
@@ -59,3 +59,26 @@ jobs:
           name: mouNTFS-${{ env.MOUNTFS_VERSION }}-development-app
           path: dist/mouNTFS-*-dev-*.zip
           retention-days: 14
+
+  release:
+    name: Publish versioned development release
+    needs: core
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-development-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mouNTFS-*-development-app
+          path: release-assets
+          merge-multiple: true
+      - name: Publish app and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash scripts/publish-release.sh

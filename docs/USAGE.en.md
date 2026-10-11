@@ -26,10 +26,11 @@ require system-extension approval and, on Apple Silicon, a startup security chan
 in Recovery. The app does not change those settings. FSKit is experimental and
 has not completed physical-drive validation.
 
-On [GitHub Actions](https://github.com/guoquan/mountfs/actions), choose a successful
-build for the desired commit and download its development-app artifact. Inside the
-artifact ZIP is a versioned archive, such as `mouNTFS-0.3.4-dev-arm64.zip`; extract
-that archive to obtain the app.
+Open the [latest GitHub Release](https://github.com/guoquan/mountfs/releases/latest)
+and download the application ZIP under Assets for your Mac architecture (`arm64`
+means Apple Silicon). Extract it once to obtain mouNTFS.app. Release assets do not
+require a GitHub login. SHA256SUMS.txt provides checksums. These are ad-hoc signed,
+unnotarized development builds.
 
 - Downloads include version numbers so builds can be distinguished.
 - The application is always **mouNTFS.app**, allowing replacement updates.

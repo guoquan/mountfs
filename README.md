@@ -67,7 +67,7 @@ brew install gromgit/fuse/ntfs-3g-mac
 
 Follow the [macFUSE setup guide](https://github.com/macfuse/macfuse/wiki/Getting-Started)
 for system approval and restart requirements. Download a successful macOS build
-from [Actions](https://github.com/guoquan/mountfs/actions), extract the archive, and
+from [Releases](https://github.com/guoquan/mountfs/releases/latest), extract the application ZIP, and
 place **mouNTFS.app** in Applications.
 
 1. Connect the drive and open the mouNTFS menu.
@@ -131,3 +131,13 @@ The current development update was prepared with Codex. Contributions and safety
 reviews are welcome.
 
 MIT License © 2024–2026 Quan Guo.
+
+## Versioned downloads
+
+Successful main Checks runs publish a development Release when the combination
+of application version and CFBundleVersion is new. Release tags use
+`v<version>-build.<build>`; increase the build number before publishing a changed
+app. Existing releases are retained without replacing their assets. Each Release
+contains the app ZIP and SHA256SUMS.txt. Releases remain ad-hoc signed and
+unnotarized; GitHub's Latest label identifies the newest downloadable build, not
+a claim of production readiness.

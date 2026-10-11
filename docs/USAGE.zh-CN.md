@@ -17,7 +17,7 @@ brew install gromgit/fuse/ntfs-3g-mac
 
 按 [macFUSE 官方指南](https://github.com/macfuse/macfuse/wiki/Getting-Started)完成与你的系统对应的批准和重启。默认内核后端可能涉及系统扩展批准；Apple Silicon 上可能需要在恢复模式调整启动安全策略。应用不会自动修改这些设置。FSKit 是实验选项，尚未做真实磁盘验证。
 
-从 [GitHub Actions](https://github.com/guoquan/mountfs/actions)选择所需提交的成功构建，下载对应 development-app artifact。外层 artifact 压缩包内还包含版本化下载包，例如 `mouNTFS-0.3.4-dev-arm64.zip`，继续解压得到应用。
+打开[最新 GitHub Release](https://github.com/guoquan/mountfs/releases/latest)，在 Assets 中下载与 Mac 架构匹配的应用 ZIP（`arm64` 表示 Apple Silicon），解压一次即可得到 mouNTFS.app。下载无需登录 GitHub；SHA256SUMS.txt 提供校验值。当前仍为临时签名、未公证的开发构建。
 
 - 下载包带版本号，便于区分构建。
 - 应用始终叫 **mouNTFS.app**，便于覆盖安装。
