@@ -91,7 +91,7 @@ final class DiskMetadataTests: XCTestCase {
     func testOuterMountDeadlineCannotClaimConfirmedCleanup() {
         XCTAssertEqual(mountCompletionStatus(124, isMountOperation: true), 125)
         XCTAssertEqual(mountCompletionStatus(124, isMountOperation: false), 124)
-        for status: Int32 in [0, 1, 2, 125] {
+        for status in [Int32(0), 1, 2, 125] {
             XCTAssertEqual(mountCompletionStatus(status, isMountOperation: true), status)
         }
     }
