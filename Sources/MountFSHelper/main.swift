@@ -21,7 +21,7 @@ private final class Transaction {
     let driver: String
     let uid: uid_t
     let gid: gid_t
-    let deadline = ProcessInfo.processInfo.systemUptime + 300
+    let lifetime: AuthorizationLifetime
     let lockToken = UUID().uuidString
     var point: String?
     var driverUsed = false
@@ -32,12 +32,14 @@ private final class Transaction {
     var mayReleaseLock: Bool { !terminationUnconfirmed && !committed && !lockReleased }
     var terminationUnconfirmed = false
     init(device: String, identity: String, original: String, configuration: DriverConfiguration, gid: gid_t,
+         lifetime: AuthorizationLifetime = AuthorizationLifetime(),
          releaseDeviceLock: @escaping (String, String) throws -> Void = { device, token in
              try SystemDeviceLock.perform("release", device: device, token: token)
          }) {
         self.device = device; self.identity = identity; originalPoint = original
         driver = configuration.executable; uid = configuration.uid; self.gid = gid
         self.releaseDeviceLock = releaseDeviceLock
+        self.lifetime = lifetime
     }
     func current() -> [String: Any]? {
         guard !terminationUnconfirmed, !lockReleased, mediaIdentity(device) == identity else { return nil }
@@ -50,7 +52,7 @@ private final class Transaction {
     }
     func perform(_ operation: String) -> HelperReply {
         if operation == "acknowledge" {
-            guard committed, !terminationUnconfirmed, ProcessInfo.processInfo.systemUptime < deadline else {
+            guard committed, !terminationUnconfirmed, lifetime.allows(cleanup: true) else {
                 return HelperReply(1, "No confirmed commit to acknowledge.")
             }
             do {
@@ -61,7 +63,7 @@ private final class Transaction {
             }
         }
         guard ["prepare", "unmount", "mount-kernel", "mount-fskit", "recover", "cleanup", "commit"].contains(operation),
-              ProcessInfo.processInfo.systemUptime < deadline, let state = current() else {
+              lifetime.allows(cleanup: ["recover", "cleanup", "commit", "unmount"].contains(operation)), let state = current() else {
             return HelperReply(1, "Helper refused an invalid, expired or replaced-device transaction.")
         }
         let mounted = state["MountPoint"] as? String ?? ""
@@ -73,7 +75,7 @@ private final class Transaction {
             point = String(cString: created)
             return HelperReply(0, point!)
         case "unmount":
-            guard !committed, !mounted.isEmpty, mounted == originalPoint || mounted == point else {
+            guard !committed, !mounted.isEmpty, mounted == point || (lifetime.allows(cleanup: false) && mounted == originalPoint) else {
                 return HelperReply(1, "Unrelated or absent mount was left unchanged.")
             }
             touched = true
@@ -93,7 +95,7 @@ private final class Transaction {
             // plugins out of mutable Homebrew/user directories after setup.
             return tool("/usr/bin/sandbox-exec", ["-p", driverSandboxProfile, driver, "/dev/" + device, point, "-o",
                 "rw,norecover,allow_other,default_permissions,uid=\(uid),gid=\(gid),umask=077," + backend],
-                timeout: min(60, max(1, deadline - ProcessInfo.processInfo.systemUptime)))
+                timeout: min(60, max(1, lifetime.operationDeadline - ProcessInfo.processInfo.systemUptime)))
         case "recover":
             guard !committed, mounted.isEmpty else { return HelperReply(1, "Recovery requires an unmounted selected device.") }
             return tool("/usr/sbin/diskutil", ["mount", "readOnly", device])
@@ -162,7 +164,7 @@ private final class ClientService: NSObject, MountHelperProtocol {
             catch { reply(1, "System-wide device lock failed: \(error)"); return }
             self.transaction = transaction
             lockedDevices.insert(device)
-            work.asyncAfter(deadline: .now() + 300) { [weak self, weak transaction] in
+            work.asyncAfter(deadline: .now() + 420) { [weak self, weak transaction] in
                 guard let self, let transaction, self.transaction === transaction else { return }
                 self.close()
             }
@@ -270,7 +272,17 @@ if CommandLine.arguments.contains("--self-test") {
     guard transaction.perform("acknowledge").status == 0, releaseAttempts == 2 else { exit(1) }
     transaction.terminationUnconfirmed = true
     guard !transaction.mayReleaseLock else { exit(1) }
-    print("PASS committed helper lock retention, synchronous release failure propagation and idempotent confirmed release")
+    let late = Transaction(device: "disk99999s1", identity: "not-live", original: "", configuration: configuration, gid: 20,
+        lifetime: AuthorizationLifetime(start: ProcessInfo.processInfo.systemUptime - 301),
+        releaseDeviceLock: { _, _ in releaseAttempts += 1 })
+    late.committed = true
+    guard late.perform("acknowledge").status == 0, late.lockReleased, releaseAttempts == 3 else { exit(1) }
+    let expired = Transaction(device: "disk99999s1", identity: "not-live", original: "", configuration: configuration, gid: 20,
+        lifetime: AuthorizationLifetime(start: ProcessInfo.processInfo.systemUptime - 421),
+        releaseDeviceLock: { _, _ in releaseAttempts += 1 })
+    expired.committed = true
+    guard expired.perform("acknowledge").status != 0, !expired.lockReleased, releaseAttempts == 3 else { exit(1) }
+    print("PASS committed helper lock retention, synchronous release failure propagation, late cleanup acknowledgement, final expiry and idempotent confirmed release")
     let cache = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Caches/mountfs-helper-test-" + UUID().uuidString)
     guard cache.path.hasPrefix("/Users/") else { exit(1) }
     do {

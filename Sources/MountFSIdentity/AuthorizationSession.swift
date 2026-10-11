@@ -111,6 +111,14 @@ private struct SessionPolicy {
     func validPoint(_ value: String) -> Bool {
         value.range(of: "^/Volumes/mountfs\\.\(device.replacingOccurrences(of: ".", with: "\\."))\\.[A-Za-z0-9]+$", options: .regularExpression) != nil
     }
+    func allowsCleanup(_ args: [String], privileged: Bool) -> Bool {
+        if privileged, driverUsed, args == ["--helper-finish"] || args == ["--helper-commit"] { return true }
+        if args.count == 5, args[0] == CommandLine.arguments[0], args[1] == "--system-device-lock",
+           args[2] == "release", allows(args) { return true }
+        if args == ["/usr/sbin/diskutil", "mount", "readOnly", device] { return true }
+        guard let point, validPoint(point) else { return false }
+        return args == ["/bin/rmdir", point] || args == ["/usr/sbin/diskutil", "unmount", device]
+    }
     func allows(_ args: [String]) -> Bool {
         if args.count == 5, args[0] == CommandLine.arguments[0], args[1] == "--system-device-lock",
            ["acquire", "release"].contains(args[2]), args[3] == device,
@@ -172,8 +180,8 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
     var policy = SessionPolicy(device: args[1], driver: args[2], uid: args[3], gid: args[4])
     var terminationUnconfirmed = false
     let originalPoint = original["MountPoint"] as? String ?? ""
-    let deadline = ProcessInfo.processInfo.systemUptime + 300
-    while getppid() == parent && privateDirectory(directory) && ProcessInfo.processInfo.systemUptime < deadline {
+    let lifetime = AuthorizationLifetime()
+    while getppid() == parent && privateDirectory(directory) && lifetime.allows(cleanup: true) {
         let connection = mountfs_auth_accept(listener)
         guard connection >= 0 else { Thread.sleep(forTimeInterval: 0.05); continue }
         defer { close(connection) }
@@ -189,6 +197,8 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
         var result = (1, "Authorization session refused an invalid command or changed device.")
         if terminationUnconfirmed {
             result = (125, "Earlier operation termination is unconfirmed; device lock retained and further mutation refused.")
+        } else if !lifetime.allows(cleanup: policy.allowsCleanup(command, privileged: privileged)) {
+            result = (1, "Authorization deadline reached; only bounded recovery and completion requests remain available.")
         } else if privileged, policy.driverUsed, command == ["--helper-finish"] {
             // Acknowledgement changes no disk state and survives hot unplug.
             result = host.execute(command)
@@ -199,9 +209,10 @@ func authorizationSession(_ args: [String], privileged: Bool = false) -> Int32 {
             let mountedPoint = state["MountPoint"] as? String ?? ""
             let unmount = command.first == "/usr/sbin/diskutil" && command.dropFirst().first == "unmount"
             let mounting = command.first == policy.driver || command == ["/usr/sbin/diskutil", "mount", "readOnly", policy.device]
-            if (!unmount || (!mountedPoint.isEmpty && (mountedPoint == originalPoint || mountedPoint == policy.point))) &&
+            if (!unmount || (!mountedPoint.isEmpty && (mountedPoint == policy.point || (lifetime.allows(cleanup: false) && mountedPoint == originalPoint)))) &&
                (!mounting || mountedPoint.isEmpty) &&
-               (command.first != "/bin/rmdir" || mountedPoint != policy.point) {
+               (command.first != "/bin/rmdir" || mountedPoint != policy.point) &&
+               lifetime.allows(cleanup: policy.allowsCleanup(command, privileged: privileged)) {
                 result = host.execute(command)
                 if command.first == policy.driver { policy.driverUsed = true }
                 if command.first == "/usr/bin/mktemp", result.0 == 0 {
@@ -256,6 +267,15 @@ func authorizationSelfTest() -> Int32 {
           !policy.allows([policy.driver, "/dev/disk6s1", policy.point!, "-o", "rw,force"]) else { return 1 }
     let valid = [policy.driver, "/dev/disk6s1", policy.point!, "-o", "rw,norecover,allow_other,default_permissions,uid=501,gid=20,umask=077,local"]
     guard policy.allows(valid) else { return 1 }
+    let lifetime = AuthorizationLifetime(start: 0)
+    let cleanupCommands = [["/usr/sbin/diskutil", "mount", "readOnly", policy.device],
+                           ["/usr/sbin/diskutil", "unmount", policy.device], ["/bin/rmdir", policy.point!],
+                           [CommandLine.arguments[0], "--system-device-lock", "release", policy.device, "mountfs.ABCDEFGH"]]
+    guard cleanupCommands.allSatisfy({ policy.allowsCleanup($0, privileged: false) && lifetime.allows(cleanup: true, at: 301) }),
+          !policy.allowsCleanup(valid, privileged: false),
+          !policy.allowsCleanup(["/usr/bin/mktemp", "-d", "/Volumes/mountfs.disk6s1.XXXXXXXX"], privileged: false),
+          !policy.allowsCleanup([CommandLine.arguments[0], "--system-device-lock", "acquire", policy.device, "mountfs.ABCDEFGH"], privileged: false),
+          !lifetime.allows(cleanup: false, at: 301), !lifetime.allows(cleanup: true, at: 420) else { return 1 }
     policy.driverUsed = true
     guard !policy.allows(valid), let host = try? AuthorizationHost(administrator: false) else { return 1 }
     // Exercise two calls through the SAME compiled handler, without privileges.

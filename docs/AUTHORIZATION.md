@@ -49,7 +49,8 @@ XPC exposes status, authorized driver configuration, begin and a fixed operation
 enum. There is no arbitrary shell or command argument endpoint. Begin validates
 an external NTFS partition and pins its current IOMedia identity, original mount
 point, caller uid/gid and protected driver. The daemon serializes requests, holds
-a device lock, bounds sessions to five minutes, invokes the driver once and fixes
+a device lock, allows new work for five minutes with a further two-minute
+recovery/completion window, invokes the driver once and fixes
 `rw,norecover,allow_other,default_permissions,uid,gid,umask` and backend options.
 
 A connection-scoped client bridges the peer-authenticated local socket request channel.
@@ -311,3 +312,13 @@ If the native client disappears after system-lock acquisition (for example durin
 app replacement), cleanup reports failure and explicitly identifies the retained
 lock. It cannot silently report a successfully completed transaction. The missing
 client case is included in the shell cleanup regressions.
+
+
+Authorization expiry stops new driver launches, directory creation and lock
+acquisition after 300 seconds. The same authenticated session remains available
+until 420 seconds for same-identity read-only recovery, removal of its inactive
+mount directory, token-owned lock release and helper commit acknowledgement.
+Late unmount requests can target only the transaction's own controlled mount,
+not the original mount. Helper transactions use the same two-phase lifetime.
+The app's outer 420-second guard reports status 125 if it interrupts completion;
+a timeout never proves that privileged work or persistent-lock cleanup finished.
