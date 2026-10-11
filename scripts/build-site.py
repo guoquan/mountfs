@@ -40,7 +40,7 @@ COPY = {
   'downloadlabel': '02 · Development download', 'downloadtitle': 'Add mouNTFS to Applications',
   'downloadintro': 'Download the latest development build from GitHub Releases. These builds are ad-hoc signed and not Apple-notarized.',
   'downloadsteps': ['Open the latest Release and choose the app ZIP under Assets for your Mac architecture (arm64 means Apple Silicon).', 'Download without signing in to GitHub. Extract the application ZIP once; SHA256SUMS.txt contains its checksum.', 'Quit the old app if updating, then place mouNTFS.app in Applications. Open it and connect your drive.'],
-  'downloadcta': 'Get latest Release ↗', 'guidelink': 'Full installation guide ↗',
+  'downloadcta': 'Browse Releases ↗', 'guidelink': 'Full installation guide ↗',
   'permissionnote': 'Device access denied? Check Full Disk Access for the actual ntfs-3g executable. Administrator authorization is a separate permission. The usage guide covers both.',
   'faqtitle': 'Before you plug in.', 'faqintro': 'A few things worth knowing before your first write.',
   'questions': [
@@ -85,7 +85,7 @@ COPY = {
   'downloadlabel': '02 · 下载开发构建', 'downloadtitle': '将 mouNTFS 放入 Applications',
   'downloadintro': '从 GitHub Releases 下载最新开发构建。当前仍使用临时签名，尚未经过 Apple 公证。',
   'downloadsteps': ['打开最新 Release，在 Assets 中选择匹配 Mac 架构的应用 ZIP（arm64 为 Apple Silicon）。', '无需登录 GitHub 即可下载。解压应用 ZIP 一次；SHA256SUMS.txt 提供校验值。', '更新时先退出旧应用，再将 mouNTFS.app 放入 Applications。打开应用，连接磁盘。'],
-  'downloadcta': '获取最新 Release ↗', 'guidelink': '完整安装说明 ↗',
+  'downloadcta': '查看 Releases ↗', 'guidelink': '完整安装说明 ↗',
   'permissionnote': '设备访问被拒绝？核对实际 ntfs-3g 可执行文件的完全磁盘权限。管理员授权是另一项权限，使用说明中有对应处理步骤。',
   'faqtitle': '插盘之前，先了解这些。', 'faqintro': '首次启用写入前，你可能关心的几个问题。',
   'questions': [
@@ -106,7 +106,7 @@ def render(lang, c):
     zh = lang == 'zh-CN'
     guide = f'{REPO}/blob/{REF}/docs/USAGE.{"zh-CN" if zh else "en"}.md'
     source = f'{REPO}/tree/{REF}'
-    builds = f'{REPO}/releases/latest'
+    builds = f'{REPO}/releases'
     canonical = 'https://mountfs.sh/' + (c['file'] if zh else '')
     icons = ['<path d="M5 5h14v14H5zM8 15h.01M8 9h8"/>', '<path d="M4 7h6l2 2h8v11H4zM4 7V4h6l2 3"/>', '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/>']
     benefits = ''.join(f'<div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{symbol}</svg></span><div><strong>{e(title)}</strong><p>{e(body)}</p></div></div>' for symbol, (title, body) in zip(icons, c['benefits']))
@@ -146,7 +146,7 @@ def render(lang, c):
 <section class="hero"><div class="wrap"><div class="hero-grid">
   <div class="hero-text">
     <h1>{e(c['headline'][0])}<span>{e(c['headline'][1])}</span></h1><p class="hero-copy">{e(c['hero'])}</p>
-    <div class="actions"><a class="button primary" href="#get-started">{e(c['cta'])}<span aria-hidden="true">↓</span></a><a class="button" href="{source}">{e(c['source'])}<span aria-hidden="true">↗</span></a></div>
+    <div class="actions"><a class="button primary" href="{builds}">{e(c['cta'])}<span aria-hidden="true">↓</span></a><a class="button" href="{source}">{e(c['source'])}<span aria-hidden="true">↗</span></a></div>
     <p class="fine">{e(c['fine'])}</p><p class="hero-signoff">{e(c['eyebrow'])}</p>
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="{e(c['heroalt'])}" width="356" height="351" fetchpriority="high"><figcaption>{e(c['caption'])}</figcaption></figure>
@@ -165,8 +165,8 @@ def render(lang, c):
 brew install gromgit/fuse/ntfs-3g-mac</code></pre></div><p id="copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
       <p>{e(c['driverafter'])}</p><div class="actions"><a class="text-link" href="https://github.com/macfuse/macfuse/wiki/Getting-Started">{e(c['driverlink'])}</a></div>
     </article>
-    <article class="install-card"><span class="label">{e(c['downloadlabel'])}</span><h3>{e(c['downloadtitle'])}</h3><p>{e(c['downloadintro'])}</p><p data-release-info aria-live="polite"></p><ol>{downloadsteps}</ol>
-      <div class="actions"><a class="button primary" data-latest-release href="{builds}">{e(c['downloadcta'])}</a><a class="text-link" href="{guide}">{e(c['guidelink'])}</a></div>
+    <article class="install-card"><span class="label">{e(c['downloadlabel'])}</span><h3>{e(c['downloadtitle'])}</h3><p>{e(c['downloadintro'])}</p><ol>{downloadsteps}</ol>
+      <div class="actions"><a class="button primary" data-release-link href="{builds}">{e(c['downloadcta'])}</a><a class="text-link" href="{guide}">{e(c['guidelink'])}</a></div>
     </article>
   </div><p class="notice">{e(c['permissionnote'])}</p>
 </section>

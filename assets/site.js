@@ -38,29 +38,3 @@ document.querySelectorAll('[data-copy]').forEach(button => {
     }
   });
 });
-
-// Always leave the durable latest-Release link usable if the API is unavailable.
-(async () => {
-  const links = [...document.querySelectorAll('[data-latest-release]')];
-  if (!links.length) return;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-  try {
-    const response = await fetch('https://api.github.com/repos/guoquan/mountfs/releases/latest', {
-      signal: controller.signal, headers: { Accept: 'application/vnd.github+json' }
-    });
-    if (!response.ok) return;
-    const release = await response.json();
-    if (release.draft || release.prerelease || typeof release.tag_name !== 'string' ||
-        !/^v\d+\.\d+\.\d+-build\.\d+$/.test(release.tag_name) ||
-        !Array.isArray(release.assets) || !release.assets.some(asset =>
-          typeof asset.name === 'string' && /^mouNTFS-[\d.]+-dev-(arm64|x86_64)\.zip$/.test(asset.name))) return;
-    const destination = 'https://github.com/guoquan/mountfs/releases/tag/' + encodeURIComponent(release.tag_name);
-    links.forEach(link => { link.href = destination; });
-    const prefix = document.documentElement.lang === 'zh-CN' ? '最新开发构建：' : 'Latest development build: ';
-    document.querySelectorAll('[data-release-info]').forEach(item => {
-      item.textContent = prefix + release.tag_name;
-    });
-  } catch { /* Network errors and rate limits keep the static latest link. */ }
-  finally { clearTimeout(timeout); }
-})();
