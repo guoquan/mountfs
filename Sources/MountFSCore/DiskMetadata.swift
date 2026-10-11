@@ -40,3 +40,13 @@ public struct DiskMetadata {
         return "included"
     }
 }
+
+/// Command completion and observed mount state are independent: cleanup can
+/// fail after commit. Only retain a writable mount for the selected live medium.
+public func verifiedWritableMountPoint(expectedIdentity: String?, observedIdentity: String?, mountState: [String: Any]?) -> String? {
+    guard let expectedIdentity, !expectedIdentity.isEmpty,
+          expectedIdentity == observedIdentity,
+          mountState?["WritableVolume"] as? Bool == true,
+          let point = mountState?["MountPoint"] as? String, !point.isEmpty else { return nil }
+    return point
+}

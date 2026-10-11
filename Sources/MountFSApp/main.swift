@@ -553,13 +553,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 details += "\n\n--- Read-only disk scan ---\n" + scan
                 details += "\n\n--- Installation diagnosis ---\n" + diagnosis
             }
-            let verifiedDevice = result.status == 0 ? mountDevice : nil
+            // Cleanup may fail after a successful commit. Observe the selected
+            // device independently of command status; identity still gates retention.
+            let verifiedDevice = mountDevice
             let finalIdentity = verifiedDevice.flatMap { currentIdentity($0) }
             let finalState = verifiedDevice.flatMap { currentMountState($0) }
-            let verifiedPoint = identity != nil && identity == finalIdentity && finalState?["WritableVolume"] as? Bool == true
-                ? finalState?["MountPoint"] as? String : nil
+            let verifiedPoint = verifiedWritableMountPoint(expectedIdentity: identity, observedIdentity: finalIdentity, mountState: finalState)
             let finalVerificationMissing = result.status == 0 && mountDevice != nil && (verifiedPoint?.isEmpty ?? true)
             if finalVerificationMissing { details += "\nFinal drive identity/write state could not be verified. Refresh the drive list before writing; no additional disk mutation was attempted.\n" }
+            if result.status != 0, let point = verifiedPoint {
+                details += "\nWrite access remains enabled at \(point), but operation completion or device-lock release failed or is uncertain. The drive remains available in the menu; inspect the log before retrying.\n"
+            }
             let operationDetails = details
             DispatchQueue.main.async {
                 self.busy = false
@@ -570,7 +574,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let device = verifiedDevice, let identity, verifiedPoint != nil {
                     self.verifiedIdentities[device] = identity
                 }
-                self.status = result.status == 0 ? (mountDevice == nil ? "Completed" : (finalVerificationMissing ? "Write access state unavailable" : "Write access enabled")) : (result.status == 2 ? "Cancelled" : "Operation failed")
+                self.status = result.status == 0 ? (mountDevice == nil ? "Completed" : (finalVerificationMissing ? "Write access state unavailable" : "Write access enabled")) : (verifiedPoint != nil ? "Write access enabled; completion requires attention" : (result.status == 2 ? "Cancelled" : "Operation failed"))
                 self.operationStatus = self.status
                 self.statusItem.button?.toolTip = "mouNTFS — \(self.status)"
                 self.rebuildMenu()
@@ -594,7 +598,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 } else if result.status == 0 && (showSuccessOutput || finalVerificationMissing) {
                     self.showOutput(title: self.status, text: operationDetails)
                 }
-                if let point = verifiedPoint, !point.isEmpty, UserDefaults.standard.bool(forKey: "openFinderAfterMount") {
+                if result.status == 0, let point = verifiedPoint, !point.isEmpty, UserDefaults.standard.bool(forKey: "openFinderAfterMount") {
                     NSWorkspace.shared.open(URL(fileURLWithPath: point))
                 }
                 self.refresh()

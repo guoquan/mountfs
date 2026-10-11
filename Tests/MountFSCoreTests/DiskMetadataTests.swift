@@ -71,6 +71,23 @@ final class DiskMetadataTests: XCTestCase {
         XCTAssertFalse(DiskMetadata(info, verifiedNTFS: true).isExternalNTFSPartition)
     }
 
+    func testWritableMountSurvivesFailedCompletionOnlyForSameIdentity() {
+        let state: [String: Any] = ["MountPoint": "/Volumes/mountfs.disk4s1.test", "WritableVolume": true]
+        let point = verifiedWritableMountPoint(expectedIdentity: "selected", observedIdentity: "selected", mountState: state)
+        XCTAssertEqual(point, state["MountPoint"] as? String)
+        var info = ntfs
+        info["FilesystemType"] = "macfuse"
+        let retained = DiskMetadata(info, mountState: state, verifiedNTFS: point != nil)
+        XCTAssertTrue(retained.isExternalNTFSPartition)
+        XCTAssertFalse(retained.readOnly)
+        XCTAssertNil(verifiedWritableMountPoint(expectedIdentity: "selected", observedIdentity: "replacement", mountState: state))
+        XCTAssertNil(verifiedWritableMountPoint(expectedIdentity: nil, observedIdentity: nil, mountState: state))
+        XCTAssertNil(verifiedWritableMountPoint(expectedIdentity: "", observedIdentity: "", mountState: state))
+        XCTAssertNil(verifiedWritableMountPoint(expectedIdentity: "selected", observedIdentity: "selected", mountState: nil))
+        XCTAssertNil(verifiedWritableMountPoint(expectedIdentity: "selected", observedIdentity: "selected", mountState: ["MountPoint": "", "WritableVolume": true]))
+        XCTAssertNil(verifiedWritableMountPoint(expectedIdentity: "selected", observedIdentity: "selected", mountState: ["MountPoint": "/Volumes/test", "WritableVolume": false]))
+    }
+
     func testLiveMacOSSchema() throws {
         #if os(macOS)
         let process = Process()

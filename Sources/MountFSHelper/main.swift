@@ -194,6 +194,31 @@ private final class ClientService: NSObject, MountHelperProtocol {
         lockedDevices.remove(transaction.device)
         self.transaction = nil
     }
+    static func testClosedTransactionMarkers() {
+        let configuration = DriverConfiguration(uid: 501, source: "/opt/homebrew/bin/ntfs-3g", executable: "/tmp/untrusted-driver")
+        struct SimulatedReleaseFailure: Error {}
+        for scenario in 0..<4 {
+            let device = "disk99999s1"
+            var attempts = 0
+            let transaction = Transaction(device: device, identity: "not-live", original: "", configuration: configuration, gid: 20,
+                releaseDeviceLock: { _, _ in
+                    attempts += 1
+                    if scenario == 1 || scenario == 3 { throw SimulatedReleaseFailure() }
+                })
+            transaction.committed = scenario < 2
+            transaction.terminationUnconfirmed = scenario == 2
+            if scenario == 1 { guard transaction.perform("acknowledge").status != 0 else { exit(1) } }
+            let service = ClientService(uid: 501, gid: 20)
+            service.transaction = transaction
+            lockedDevices.insert(device)
+            service.close()
+            guard service.transaction == nil, !lockedDevices.contains(device), !transaction.lockReleased,
+                  attempts == (scenario == 1 || scenario == 3 ? 1 : 0) else { exit(1) }
+            service.close() // Retiring twice cannot release a later lease.
+            guard attempts == (scenario == 1 || scenario == 3 ? 1 : 0) else { exit(1) }
+        }
+        print("PASS closed helper transactions retire active markers without releasing persistent stale locks")
+    }
     func disconnected() { work.async { self.close() } }
 }
 
@@ -219,6 +244,7 @@ private final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
 
 if CommandLine.arguments.contains("--self-test") {
     // No service registration, privileges, filesystem changes or disk mutation.
+    ClientService.testClosedTransactionMarkers()
     guard !rootDirectory("/tmp"), !rootFile("/etc"), !verifyAdministratorAuthorization(Data()) else { exit(1) }
     let configuration = DriverConfiguration(uid: 501, source: "/opt/homebrew/bin/ntfs-3g", executable: "/tmp/untrusted-driver")
     var releaseAttempts = 0
