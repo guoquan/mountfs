@@ -50,6 +50,8 @@ try {
       assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'brew tap guoquan/mountfs https://github.com/guoquan/mountfs\nbrew install --cask guoquan/mountfs/mountfs\nbrew install gromgit/fuse/ntfs-3g-mac');
       assert.equal(await page.locator('#brew-feedback').textContent(), language === 'en' ? 'Commands copied.' : '命令已复制。');
       assert.equal(await page.locator('.brew-announcement a').getAttribute('href'), '#get-started');
+      assert.equal(await page.locator('[data-star-link]').getAttribute('href'), 'https://github.com/guoquan/mountfs');
+      assert.equal(await page.locator('.star-ask').isVisible(), true);
       const question = page.locator('summary').first(); await question.click();
       assert.equal(await page.locator('details').first().getAttribute('open'), '');
       await question.click();

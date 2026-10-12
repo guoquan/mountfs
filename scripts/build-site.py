@@ -56,6 +56,7 @@ COPY = {
   'faqguide': 'Usage & troubleshooting ↗',
   'storylabel': 'Human–AI collaboration', 'storytitle': 'Built with AI.<br>Shaped by humans.',
   'story': 'An experiment in making a useful little tool together. AI writes the code; humans lead the design, review, testing and direction. From a shell script to a native Mac app, the project keeps growing with real-world feedback.',
+  'starask': 'Finding mouNTFS useful? Give it a star.', 'starbody': 'A GitHub Star helps others find the project. Share it with a friend who needs to write to NTFS on a Mac.', 'starcta': 'Star on GitHub ↗',
   'contribute': 'Help shape the next step ↗', 'sponsor': 'Support the project ↗',
   'footer': 'Free & open source · MIT License', 'issues': 'Report an issue', 'docs': 'Documentation', 'roadmap': 'Roadmap',
  },
@@ -106,6 +107,7 @@ COPY = {
   'faqguide': '使用与故障处理 ↗',
   'storylabel': '人机协同开发', 'storytitle': '与 AI 一起开发，<br>由人类把握方向。',
   'story': '这是一场把小工具做得更好用的人机协同实验。AI 写代码，人类负责设计、审查、测试与方向。从 Shell 脚本到原生 Mac 应用，项目在真实使用反馈中继续成长。',
+  'starask': '觉得好用？给 mouNTFS 加颗星。', 'starbody': '在 GitHub 点个 Star，让更多人发现这个小工具。也欢迎分享给需要在 Mac 上写入 NTFS 的朋友。', 'starcta': '去 GitHub 加星 ↗',
   'contribute': '一起完善下一步 ↗', 'sponsor': '支持这个项目 ↗',
   'footer': '免费开源 · MIT 许可', 'issues': '反馈问题', 'docs': '使用说明', 'roadmap': '后续计划',
  },
@@ -198,7 +200,7 @@ brew install gromgit/fuse/ntfs-3g-mac</code></pre></div><p id="copy-feedback" cl
   </div>
 </section>
 <section class="section wrap faq"><div class="section-head"><h2>{e(c['faqtitle'])}</h2><p>{e(c['faqintro'])}</p><div class="actions"><a class="text-link" href="{guide}">{e(c['faqguide'])}</a></div></div><div>{questions}</div></section>
-<div class="wrap"><section class="story" id="story"><div><h2>{c['storytitle']}</h2><p class="story-label">{e(c['storylabel'])}</p></div><div><p>{e(c['story'])}</p><div class="actions"><a class="text-link" href="{REPO}/blob/{REF}/CONTRIBUTING.md">{e(c['contribute'])}</a><a class="text-link" href="https://github.com/sponsors/guoquan">{e(c['sponsor'])}</a></div></div></section></div>
+<div class="wrap"><section class="story" id="story"><div><h2>{c['storytitle']}</h2><p class="story-label">{e(c['storylabel'])}</p></div><div><p>{e(c['story'])}</p><div class="star-ask"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/></svg>{e(c['starask'])}</h3><p>{e(c['starbody'])}</p><a class="button primary" data-star-link href="{REPO}">{e(c['starcta'])}</a></div><div class="actions"><a class="text-link" href="{REPO}/blob/{REF}/CONTRIBUTING.md">{e(c['contribute'])}</a><a class="text-link" href="https://github.com/sponsors/guoquan">{e(c['sponsor'])}</a></div></div></section></div>
 </main>
 <footer class="footer"><div class="wrap footer-row"><div>{e(c['footer'])}<br>© 2024–2026 <a href="https://guoquan.net">{'郭泉' if zh else 'Quan Guo'}</a></div><div class="footer-links"><a href="{REPO}">GitHub</a><a href="{guide}">{e(c['docs'])}</a><a href="{REPO}/issues">{e(c['issues'])}</a><a href="{REPO}/blob/{REF}/ROADMAP.md">{e(c['roadmap'])}</a></div></div></footer>
 </body></html>
