@@ -239,3 +239,11 @@ section { scroll-margin-top: 100px; }
 @media (max-width: 520px) {
   .star-ask h3 { font-size: 18px; }
 }
+
+.hero-star { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px 9px; min-height: 44px; margin-top: 16px; color: var(--accent-hover); font-size: 13px; line-height: 1.6; }
+.hero-star svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.hero-star strong { white-space: nowrap; text-decoration: underline; text-underline-offset: 4px; }
+.hero-star:hover { color: var(--ink); }
+@media (max-width: 520px) {
+  .hero-star { font-size: 12px; }
+}

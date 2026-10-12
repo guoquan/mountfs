@@ -52,6 +52,8 @@ try {
       assert.equal(await page.locator('.brew-announcement a').getAttribute('href'), '#get-started');
       assert.equal(await page.locator('[data-star-link]').getAttribute('href'), 'https://github.com/guoquan/mountfs');
       assert.equal(await page.locator('.star-ask').isVisible(), true);
+      assert.equal(await page.locator('[data-hero-star]').getAttribute('href'), 'https://github.com/guoquan/mountfs');
+      assert.equal(await page.locator('.hero [data-hero-star]').isVisible(), true);
       const question = page.locator('summary').first(); await question.click();
       assert.equal(await page.locator('details').first().getAttribute('open'), '');
       await question.click();
