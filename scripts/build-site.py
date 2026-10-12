@@ -160,6 +160,7 @@ def render(lang, c):
   <div class="hero-text">
     <h1>{e(c['headline'][0])}<span>{e(c['headline'][1])}</span></h1><p class="hero-copy">{e(c['hero'])}</p>
     <div class="actions"><a class="button primary" href="{builds}">{e(c['cta'])}<span aria-hidden="true">↓</span></a><a class="button" href="{source}">{e(c['source'])}<span aria-hidden="true">↗</span></a></div>
+    <a class="hero-star" data-hero-star href="{REPO}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/></svg><span>{e(c['starask'])}</span><strong>{e(c['starcta'])}</strong></a>
     <p class="fine">{e(c['fine'])}</p><p class="hero-signoff">{e(c['eyebrow'])}</p>
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="{e(c['heroalt'])}" width="356" height="351" fetchpriority="high"><figcaption>{e(c['caption'])}</figcaption></figure>
