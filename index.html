@@ -24,6 +24,7 @@
   <div class="nav-links"><a class="desktop" href="#app">The app</a><a href="#get-started">Get started</a><a class="desktop" href="#story">Our story</a><a class="language" href="zh-CN.html" lang="zh-CN" hreflang="zh-CN">简体中文</a></div>
 </nav></header>
 <main id="main">
+<div class="brew-announcement"><div class="wrap"><a href="#homebrew"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg><strong>Now available via Homebrew</strong><span>See install commands <span aria-hidden="true">↓</span></span></a></div></div>
 <section class="hero"><div class="wrap"><div class="hero-grid">
   <div class="hero-text">
     <h1>Write to NTFS.<span>On your Mac.</span></h1><p class="hero-copy">No reformatting. Enable writing from the menu bar, then copy files in Finder.</p>
@@ -32,6 +33,16 @@
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="Actual mouNTFS menu with a sample drive marked writable" width="356" height="351" fetchpriority="high"><figcaption>Actual app UI · Sample drive data · UI currently in English</figcaption></figure>
 </div><div class="benefits"><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5zM8 15h.01M8 9h8"/></svg></span><div><strong>Keep NTFS</strong><p>Use the drive you already have.</p></div></div><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h6l2 2h8v11H4zM4 7V4h6l2 3"/></svg></span><div><strong>Continue in Finder</strong><p>Copy and edit files after enabling writing.</p></div></div><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg></span><div><strong>Free &amp; open source</strong><p>MIT licensed. No app license activation.</p></div></div></div></div></section>
+<section id="homebrew" class="brew-section"><div class="wrap brew-layout">
+  <div class="brew-message"><h2>A new way to get mouNTFS.</h2><p>Install from our Homebrew tap. Keep it up to date with brew upgrade.</p><a class="brew-guide" href="https://github.com/guoquan/mountfs/blob/main/docs/HOMEBREW.md">Homebrew installation guide ↗</a></div>
+  <div class="brew-install"><div class="brew-toolbar"><span>Homebrew</span><button class="brew-copy" data-copy="brew-commands" data-feedback="brew-feedback" data-success="Commands copied." data-fallback="Commands selected. Press ⌘C or Ctrl+C to copy.">Copy Homebrew commands</button></div>
+    <pre><code id="brew-commands">brew tap guoquan/mountfs https://github.com/guoquan/mountfs
+brew install --cask guoquan/mountfs/mountfs
+brew install gromgit/fuse/ntfs-3g-mac</code></pre>
+    <p id="brew-feedback" class="brew-feedback" role="status" aria-live="polite"></p>
+    <p class="brew-note">Apple Silicon · macOS 13+ · Development build, not Apple-notarized. Follow macFUSE approval and restart instructions.</p>
+  </div>
+</div></section>
 <section id="app" class="section wrap"><div class="section-head"><h2>Your drive. Your usual workflow.</h2><p>After driver setup, everyday use starts in the menu bar.</p></div>
   <div class="steps"><article class="step"><div class="number">01</div><h3>Connect your drive</h3><p>Open mouNTFS and select the external NTFS partition you want to use.</p></article><article class="step"><div class="number">02</div><h3>Enable writing</h3><p>Choose Enable Write Access, complete macOS authorization and wait for mounting to finish.</p></article><article class="step"><div class="number">03</div><h3>Continue in Finder</h3><p>Copy and edit files. Close files before using Safely Eject when you are finished.</p></article></div>
   <div class="showcase"><div><h3>A small app, right where you need it.</h3><p>See your drives, enable writing and open Finder from the menu bar. Progress stays visible while the app works; reports are there when you need them.</p>

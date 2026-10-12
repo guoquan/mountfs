@@ -26,7 +26,7 @@ document.querySelectorAll('[data-tabs]').forEach(group => {
 document.querySelectorAll('[data-copy]').forEach(button => {
   button.addEventListener('click', async () => {
     const code = document.getElementById(button.dataset.copy);
-    const feedback = document.getElementById('copy-feedback');
+    const feedback = document.getElementById(button.dataset.feedback || 'copy-feedback');
     try {
       await navigator.clipboard.writeText(code.textContent.trim());
       feedback.textContent = button.dataset.success;

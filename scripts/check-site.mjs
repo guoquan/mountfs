@@ -41,6 +41,10 @@ try {
       await page.locator('#tab-1').click();
       await page.getByRole('button', { name: copyLabel, exact: true }).click();
       assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'brew install --cask macfuse\nbrew install gromgit/fuse/ntfs-3g-mac');
+      await page.getByRole('button', { name: language === 'en' ? 'Copy Homebrew commands' : '复制 Homebrew 命令', exact: true }).click();
+      assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'brew tap guoquan/mountfs https://github.com/guoquan/mountfs\nbrew install --cask guoquan/mountfs/mountfs\nbrew install gromgit/fuse/ntfs-3g-mac');
+      assert.equal(await page.locator('#brew-feedback').textContent(), language === 'en' ? 'Commands copied.' : '命令已复制。');
+      assert.equal(await page.locator('.brew-announcement a').getAttribute('href'), '#homebrew');
       const question = page.locator('summary').first(); await question.click();
       assert.equal(await page.locator('details').first().getAttribute('open'), '');
       await question.click();
@@ -56,6 +60,7 @@ try {
     const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
     const page = await context.newPage(); await page.goto(`${url}/${file}`);
     assert.equal(await page.locator('h1').isVisible(), true);
+    assert.equal(await page.locator('#brew-commands').isVisible(), true);
     assert.equal(await page.locator('#panel-1').isVisible(), true);
     assert.equal(await page.locator('.no-js').isVisible(), true);
     assert.equal(await page.locator('.language').isVisible(), true);

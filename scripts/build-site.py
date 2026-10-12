@@ -16,6 +16,10 @@ COPY = {
   'skip': 'Skip to content', 'nav': ['The app', 'Get started', 'Our story'],
   'eyebrow': 'Free & open source · For macOS', 'headline': ['Write to NTFS.', 'On your Mac.'],
   'hero': 'No reformatting. Enable writing from the menu bar, then copy files in Finder.',
+  'brewannounce': 'Now available via Homebrew', 'brewanchor': 'See install commands',
+  'brewtitle': 'A new way to get mouNTFS.', 'brewintro': 'Install from our Homebrew tap. Keep it up to date with brew upgrade.',
+  'brewcopy': 'Copy Homebrew commands', 'brewguide': 'Homebrew installation guide ↗',
+  'brewnote': 'Apple Silicon · macOS 13+ · Development build, not Apple-notarized. Follow macFUSE approval and restart instructions.',
   'cta': 'Get the development app', 'source': 'View source',
   'fine': 'macOS 13+ · Requires macFUSE, ntfs-3g and system permissions. Development builds are ad-hoc signed and not notarized.',
   'heroalt': 'Actual mouNTFS menu with a sample drive marked writable',
@@ -61,6 +65,10 @@ COPY = {
   'skip': '跳到正文', 'nav': ['看看应用', '开始使用', '项目故事'],
   'eyebrow': '免费开源 · 为 macOS 而做', 'headline': ['Mac，也能', '写入 NTFS。'],
   'hero': '无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。',
+  'brewannounce': '现在可以从 Homebrew 下载了', 'brewanchor': '查看安装命令',
+  'brewtitle': '熟悉的 brew，新的安装方式。', 'brewintro': '从我们的 Homebrew tap 安装，用 brew upgrade 保持更新。',
+  'brewcopy': '复制 Homebrew 命令', 'brewguide': 'Homebrew 安装说明 ↗',
+  'brewnote': 'Apple Silicon · macOS 13+ · 开发构建，尚未经过 Apple 公证。仍需完成 macFUSE 系统批准和重启。',
   'cta': '获取开发版应用', 'source': '查看源代码',
   'fine': 'macOS 13+ · 需安装 macFUSE、ntfs-3g 并完成系统授权。开发构建使用 ad-hoc 签名，尚未公证。',
   'heroalt': 'mouNTFS 实际菜单界面，示例磁盘显示可写状态',
@@ -143,6 +151,7 @@ def render(lang, c):
   <div class="nav-links"><a class="desktop" href="#app">{e(c['nav'][0])}</a><a href="#get-started">{e(c['nav'][1])}</a><a class="desktop" href="#story">{e(c['nav'][2])}</a><a class="language" href="{c['other']}" lang="{c['otherlang']}" hreflang="{c['otherlang']}">{c['switch']}</a></div>
 </nav></header>
 <main id="main">
+<div class="brew-announcement"><div class="wrap"><a href="#homebrew"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg><strong>{e(c['brewannounce'])}</strong><span>{e(c['brewanchor'])} <span aria-hidden="true">↓</span></span></a></div></div>
 <section class="hero"><div class="wrap"><div class="hero-grid">
   <div class="hero-text">
     <h1>{e(c['headline'][0])}<span>{e(c['headline'][1])}</span></h1><p class="hero-copy">{e(c['hero'])}</p>
@@ -151,6 +160,16 @@ def render(lang, c):
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="{e(c['heroalt'])}" width="356" height="351" fetchpriority="high"><figcaption>{e(c['caption'])}</figcaption></figure>
 </div><div class="benefits">{benefits}</div></div></section>
+<section id="homebrew" class="brew-section"><div class="wrap brew-layout">
+  <div class="brew-message"><h2>{e(c['brewtitle'])}</h2><p>{e(c['brewintro'])}</p><a class="brew-guide" href="{REPO}/blob/main/docs/HOMEBREW.md">{e(c['brewguide'])}</a></div>
+  <div class="brew-install"><div class="brew-toolbar"><span>Homebrew</span><button class="brew-copy" data-copy="brew-commands" data-feedback="brew-feedback" data-success="{e(c['copied'])}" data-fallback="{e(c['fallback'])}">{e(c['brewcopy'])}</button></div>
+    <pre><code id="brew-commands">brew tap guoquan/mountfs https://github.com/guoquan/mountfs
+brew install --cask guoquan/mountfs/mountfs
+brew install gromgit/fuse/ntfs-3g-mac</code></pre>
+    <p id="brew-feedback" class="brew-feedback" role="status" aria-live="polite"></p>
+    <p class="brew-note">{e(c['brewnote'])}</p>
+  </div>
+</div></section>
 <section id="app" class="section wrap"><div class="section-head"><h2>{workflow_heading}</h2><p>{e(c['workflowintro'])}</p></div>
   <div class="steps">{steps}</div>
   <div class="showcase"><div><h3>{e(c['showtitle'])}</h3><p>{e(c['showintro'])}</p>

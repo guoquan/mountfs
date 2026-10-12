@@ -24,6 +24,7 @@
   <div class="nav-links"><a class="desktop" href="#app">看看应用</a><a href="#get-started">开始使用</a><a class="desktop" href="#story">项目故事</a><a class="language" href="index.html" lang="en" hreflang="en">English</a></div>
 </nav></header>
 <main id="main">
+<div class="brew-announcement"><div class="wrap"><a href="#homebrew"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg><strong>现在可以从 Homebrew 下载了</strong><span>查看安装命令 <span aria-hidden="true">↓</span></span></a></div></div>
 <section class="hero"><div class="wrap"><div class="hero-grid">
   <div class="hero-text">
     <h1>Mac，也能<span>写入 NTFS。</span></h1><p class="hero-copy">无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。</p>
@@ -32,6 +33,16 @@
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="mouNTFS 实际菜单界面，示例磁盘显示可写状态" width="356" height="351" fetchpriority="high"><figcaption>实际应用界面 · 示例磁盘数据 · 当前界面为英文</figcaption></figure>
 </div><div class="benefits"><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5zM8 15h.01M8 9h8"/></svg></span><div><strong>保留 NTFS 格式</strong><p>继续使用你已有的磁盘。</p></div></div><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h6l2 2h8v11H4zM4 7V4h6l2 3"/></svg></span><div><strong>继续在 Finder 中使用</strong><p>启用写入后，拷贝和编辑文件。</p></div></div><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg></span><div><strong>免费开源</strong><p>MIT 许可，无需激活应用许可证。</p></div></div></div></div></section>
+<section id="homebrew" class="brew-section"><div class="wrap brew-layout">
+  <div class="brew-message"><h2>熟悉的 brew，新的安装方式。</h2><p>从我们的 Homebrew tap 安装，用 brew upgrade 保持更新。</p><a class="brew-guide" href="https://github.com/guoquan/mountfs/blob/main/docs/HOMEBREW.md">Homebrew 安装说明 ↗</a></div>
+  <div class="brew-install"><div class="brew-toolbar"><span>Homebrew</span><button class="brew-copy" data-copy="brew-commands" data-feedback="brew-feedback" data-success="命令已复制。" data-fallback="命令已选中，请按 ⌘C 或 Ctrl+C 复制。">复制 Homebrew 命令</button></div>
+    <pre><code id="brew-commands">brew tap guoquan/mountfs https://github.com/guoquan/mountfs
+brew install --cask guoquan/mountfs/mountfs
+brew install gromgit/fuse/ntfs-3g-mac</code></pre>
+    <p id="brew-feedback" class="brew-feedback" role="status" aria-live="polite"></p>
+    <p class="brew-note">Apple Silicon · macOS 13+ · 开发构建，尚未经过 Apple 公证。仍需完成 macFUSE 系统批准和重启。</p>
+  </div>
+</div></section>
 <section id="app" class="section wrap"><div class="section-head"><h2>你的磁盘，<br class="mobile-break">熟悉的使用方式。</h2><p>完成驱动配置后，日常使用从菜单栏开始。</p></div>
   <div class="steps"><article class="step"><div class="number">01</div><h3>连接磁盘</h3><p>打开 mouNTFS，从菜单中选择要使用的外置 NTFS 分区。</p></article><article class="step"><div class="number">02</div><h3>启用写入</h3><p>点击 Enable Write Access，完成 macOS 授权，等待挂载完成。</p></article><article class="step"><div class="number">03</div><h3>继续在 Finder 中使用</h3><p>拷贝和编辑文件。用完关闭占用磁盘的文件，再点 Safely Eject 安全弹出。</p></article></div>
   <div class="showcase"><div><h3>一个小应用，就在菜单栏。</h3><p>查看磁盘，启用写入，打开 Finder。操作时显示进度，需要排查时再查看报告，不用一直盯着终端。</p>
