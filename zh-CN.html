@@ -24,7 +24,7 @@
   <div class="nav-links"><a class="desktop" href="#app">看看应用</a><a href="#get-started">开始使用</a><a class="desktop" href="#story">项目故事</a><a class="language" href="index.html" lang="en" hreflang="en">English</a></div>
 </nav></header>
 <main id="main">
-<div class="brew-announcement"><div class="wrap"><a href="#homebrew"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg><strong>现在可以从 Homebrew 下载了</strong><span>查看安装命令 <span aria-hidden="true">↓</span></span></a></div></div>
+<div class="brew-announcement"><div class="wrap"><a href="#get-started"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg><strong>现在可以从 Homebrew 下载了</strong><span>查看安装命令 <span aria-hidden="true">↓</span></span></a></div></div>
 <section class="hero"><div class="wrap"><div class="hero-grid">
   <div class="hero-text">
     <h1>Mac，也能<span>写入 NTFS。</span></h1><p class="hero-copy">无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。</p>
@@ -33,16 +33,6 @@
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="mouNTFS 实际菜单界面，示例磁盘显示可写状态" width="356" height="351" fetchpriority="high"><figcaption>实际应用界面 · 示例磁盘数据 · 当前界面为英文</figcaption></figure>
 </div><div class="benefits"><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5zM8 15h.01M8 9h8"/></svg></span><div><strong>保留 NTFS 格式</strong><p>继续使用你已有的磁盘。</p></div></div><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h6l2 2h8v11H4zM4 7V4h6l2 3"/></svg></span><div><strong>继续在 Finder 中使用</strong><p>启用写入后，拷贝和编辑文件。</p></div></div><div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/></svg></span><div><strong>免费开源</strong><p>MIT 许可，无需激活应用许可证。</p></div></div></div></div></section>
-<section id="homebrew" class="brew-section"><div class="wrap brew-layout">
-  <div class="brew-message"><h2>熟悉的 brew，新的安装方式。</h2><p>从我们的 Homebrew tap 安装，用 brew upgrade 保持更新。</p><a class="brew-guide" href="https://github.com/guoquan/mountfs/blob/main/docs/HOMEBREW.md">Homebrew 安装说明 ↗</a></div>
-  <div class="brew-install"><div class="brew-toolbar"><span>Homebrew</span><button class="brew-copy" data-copy="brew-commands" data-feedback="brew-feedback" data-success="命令已复制。" data-fallback="命令已选中，请按 ⌘C 或 Ctrl+C 复制。">复制 Homebrew 命令</button></div>
-    <pre><code id="brew-commands">brew tap guoquan/mountfs https://github.com/guoquan/mountfs
-brew install --cask guoquan/mountfs/mountfs
-brew install gromgit/fuse/ntfs-3g-mac</code></pre>
-    <p id="brew-feedback" class="brew-feedback" role="status" aria-live="polite"></p>
-    <p class="brew-note">Apple Silicon · macOS 13+ · 开发构建，尚未经过 Apple 公证。仍需完成 macFUSE 系统批准和重启。</p>
-  </div>
-</div></section>
 <section id="app" class="section wrap"><div class="section-head"><h2>你的磁盘，<br class="mobile-break">熟悉的使用方式。</h2><p>完成驱动配置后，日常使用从菜单栏开始。</p></div>
   <div class="steps"><article class="step"><div class="number">01</div><h3>连接磁盘</h3><p>打开 mouNTFS，从菜单中选择要使用的外置 NTFS 分区。</p></article><article class="step"><div class="number">02</div><h3>启用写入</h3><p>点击 Enable Write Access，完成 macOS 授权，等待挂载完成。</p></article><article class="step"><div class="number">03</div><h3>继续在 Finder 中使用</h3><p>拷贝和编辑文件。用完关闭占用磁盘的文件，再点 Safely Eject 安全弹出。</p></article></div>
   <div class="showcase"><div><h3>一个小应用，就在菜单栏。</h3><p>查看磁盘，启用写入，打开 Finder。操作时显示进度，需要排查时再查看报告，不用一直盯着终端。</p>
@@ -50,17 +40,33 @@ brew install gromgit/fuse/ntfs-3g-mac</code></pre>
     <noscript><p class="no-js">下方显示可写示例。启用 JavaScript 后可切换三个界面示例。</p></noscript>
   </div><figure class="preview"><div id="panel-0" role="tabpanel" aria-labelledby="tab-0" tabindex="0" hidden><img src="assets/menu-readonly.png" alt="实际菜单界面，显示只读示例 NTFS 磁盘" width="356" height="351" loading="lazy"></div><div id="panel-1" role="tabpanel" aria-labelledby="tab-1" tabindex="0" ><img src="assets/menu-writable.png" alt="实际菜单界面，显示可写示例 NTFS 磁盘" width="356" height="351" loading="lazy"></div><div id="panel-2" role="tabpanel" aria-labelledby="tab-2" tabindex="0" hidden><img src="assets/menu-progress.png" alt="实际菜单界面，显示挂载操作进行中的示例状态" width="356" height="351" loading="lazy"></div><figcaption>界面状态为示例；生成截图时未执行磁盘挂载。</figcaption></figure></div>
 </section>
-<section id="get-started" class="section wrap"><div class="section-head"><h2>先做好配置，<br class="mobile-break">再回到你的文件。</h2><p>先安装驱动，再放入应用。完成这些步骤后，才能启用写入。</p></div>
-  <div class="install-grid">
-    <article class="install-card"><span class="label">01 · 驱动与权限</span><h3>准备好你的 Mac</h3><p>安装 Homebrew 后，执行这两条命令：</p>
+<section id="get-started" class="section wrap"><div class="section-head"><h2>安装与配置，<br class="mobile-break">一处完成。</h2><p>选择 Homebrew 或手动下载，然后完成共用的驱动与系统配置。</p></div>
+  <div class="tabs install-tabs" role="tablist" aria-label="安装方式" data-tabs hidden>
+    <button class="tab" id="install-tab-brew" role="tab" aria-controls="install-brew" aria-selected="true" tabindex="0">Homebrew 安装</button>
+    <button class="tab" id="install-tab-manual" role="tab" aria-controls="install-manual" aria-selected="false" tabindex="-1">手动下载</button>
+  </div>
+  <div class="installation">
+    <div id="install-brew" class="install-panel" role="tabpanel" aria-labelledby="install-tab-brew" tabindex="0">
+      <h3>Homebrew 安装</h3><p>从我们的 Homebrew tap 安装，用 brew upgrade 保持更新。</p>
+      <div class="brew-install"><div class="brew-toolbar"><span>Homebrew</span><button class="brew-copy" data-copy="brew-commands" data-feedback="brew-feedback" data-success="命令已复制。" data-fallback="命令已选中，请按 ⌘C 或 Ctrl+C 复制。">复制 Homebrew 命令</button></div>
+        <pre><code id="brew-commands">brew tap guoquan/mountfs https://github.com/guoquan/mountfs
+brew install --cask guoquan/mountfs/mountfs
+brew install gromgit/fuse/ntfs-3g-mac</code></pre>
+        <p id="brew-feedback" class="brew-feedback" role="status" aria-live="polite"></p>
+      </div><a class="text-link install-guide" href="https://github.com/guoquan/mountfs/blob/main/docs/HOMEBREW.md">Homebrew 安装说明 ↗</a>
+    </div>
+    <div id="install-manual" class="install-panel" role="tabpanel" aria-labelledby="install-tab-manual" tabindex="0">
+      <h3>手动下载</h3><p>从 GitHub Releases 下载最新开发构建。当前仍使用临时签名，尚未经过 Apple 公证。</p><ol><li>打开最新 Release，在 Assets 中选择匹配 Mac 架构的应用 ZIP（arm64 为 Apple Silicon）。</li><li>无需登录 GitHub 即可下载。解压应用 ZIP 一次；SHA256SUMS.txt 提供校验值。</li><li>更新时先退出旧应用，再将 mouNTFS.app 放入 Applications。打开应用，连接磁盘。</li></ol>
+      <div class="actions"><a class="button primary" data-release-link href="https://github.com/guoquan/mountfs/releases">查看 Releases ↗</a></div>
+      <p class="manual-driver-intro">安装 Homebrew 后，执行这两条命令：</p>
       <div class="command"><button class="copy" data-copy="driver-commands" data-success="命令已复制。" data-fallback="命令已选中，请按 ⌘C 或 Ctrl+C 复制。">复制命令</button><pre><code id="driver-commands">brew install --cask macfuse
 brew install gromgit/fuse/ntfs-3g-mac</code></pre></div><p id="copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
-      <p>按 macFUSE 安装指南完成批准和重启。默认内核后端在 Apple Silicon 上可能需要调整启动安全策略。</p><div class="actions"><a class="text-link" href="https://github.com/macfuse/macfuse/wiki/Getting-Started">macFUSE 安装指南 ↗</a></div>
-    </article>
-    <article class="install-card"><span class="label">02 · 下载开发构建</span><h3>将 mouNTFS 放入 Applications</h3><p>从 GitHub Releases 下载最新开发构建。当前仍使用临时签名，尚未经过 Apple 公证。</p><ol><li>打开最新 Release，在 Assets 中选择匹配 Mac 架构的应用 ZIP（arm64 为 Apple Silicon）。</li><li>无需登录 GitHub 即可下载。解压应用 ZIP 一次；SHA256SUMS.txt 提供校验值。</li><li>更新时先退出旧应用，再将 mouNTFS.app 放入 Applications。打开应用，连接磁盘。</li></ol>
-      <div class="actions"><a class="button primary" data-release-link href="https://github.com/guoquan/mountfs/releases">查看 Releases ↗</a><a class="text-link" href="https://github.com/guoquan/mountfs/blob/main/docs/USAGE.zh-CN.md">完整安装说明 ↗</a></div>
-    </article>
-  </div><p class="notice">设备访问被拒绝？核对实际 ntfs-3g 可执行文件的完全磁盘权限。管理员授权是另一项权限，使用说明中有对应处理步骤。</p>
+    </div>
+    <div class="install-common"><h3>完成系统配置</h3><p>按 macFUSE 安装指南完成批准和重启。默认内核后端在 Apple Silicon 上可能需要调整启动安全策略。</p><p class="install-requirements">Apple Silicon · macOS 13+ · 临时签名开发构建，尚未经过 Apple 公证，首次启动可能被 macOS 拦截。</p>
+      <div class="actions"><a class="text-link" href="https://github.com/macfuse/macfuse/wiki/Getting-Started">macFUSE 安装指南 ↗</a><a class="text-link" href="https://github.com/guoquan/mountfs/blob/main/docs/USAGE.zh-CN.md">完整安装说明 ↗</a></div>
+      <p class="notice">设备访问被拒绝？核对实际 ntfs-3g 可执行文件的完全磁盘权限。管理员授权是另一项权限，使用说明中有对应处理步骤。</p>
+    </div>
+  </div>
 </section>
 <section class="section wrap faq"><div class="section-head"><h2>插盘之前，先了解这些。</h2><p>首次启用写入前，你可能关心的几个问题。</p><div class="actions"><a class="text-link" href="https://github.com/guoquan/mountfs/blob/main/docs/USAGE.zh-CN.md">使用与故障处理 ↗</a></div></div><div><details><summary>会格式化我的磁盘吗？</summary><p>不会。mouNTFS 为已有外置 NTFS 分区启用写入，不格式化磁盘。损坏或处于休眠状态的卷，可能需要先在 Windows 中处理，才能启用写入。</p></details><details><summary>插盘后会自动启用写入吗？</summary><p>不会。插盘只更新列表，由你决定何时启用写入。操作时 macOS 可能要求管理员授权，应用不保存密码。</p></details><details><summary>所有 Mac 和 NTFS 磁盘都能用吗？</summary><p>应用需要 macOS 13 或以上及兼容驱动。普通挂载已有有限的 Apple Silicon 使用反馈，更多硬件和驱动组合仍需验证；目前只处理外置 NTFS 分区。</p></details><details><summary>遇到问题怎么办？</summary><p>在 Diagnostics 中查看操作日志和只读磁盘扫描。使用说明涵盖驱动兼容、权限及磁盘忙碌等情况。不要因为操作失败就格式化磁盘。</p></details></div></section>
 <div class="wrap"><section class="story" id="story"><div><h2>与 AI 一起开发，<br>由人类把握方向。</h2><p class="story-label">人机协同开发</p></div><div><p>这是一场把小工具做得更好用的人机协同实验。AI 写代码，人类负责设计、审查、测试与方向。从 Shell 脚本到原生 Mac 应用，项目在真实使用反馈中继续成长。</p><div class="actions"><a class="text-link" href="https://github.com/guoquan/mountfs/blob/main/CONTRIBUTING.md">一起完善下一步 ↗</a><a class="text-link" href="https://github.com/sponsors/guoquan">支持这个项目 ↗</a></div></div></section></div>

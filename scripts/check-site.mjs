@@ -31,7 +31,7 @@ try {
         await page.waitForFunction(i => {
           const img = document.querySelector(`#panel-${i} img`); return img.complete && img.naturalWidth > 0;
         }, index);
-        assert.equal(await page.locator('[role="tabpanel"]:visible').count(), 1);
+        assert.equal(await page.locator('.preview [role="tabpanel"]:visible').count(), 1);
         assert.equal(await page.locator(`#tab-${index}`).getAttribute('aria-selected'), 'true');
       }
       await page.locator('#tab-1').focus(); await page.keyboard.press('ArrowRight');
@@ -39,12 +39,17 @@ try {
       await page.keyboard.press('Home');
       assert.equal(await page.locator('#tab-0').getAttribute('aria-selected'), 'true');
       await page.locator('#tab-1').click();
+      assert.equal(await page.locator('#install-brew').isVisible(), true);
+      assert.equal(await page.locator('#install-manual').isVisible(), false);
+      await page.locator('#install-tab-manual').click();
       await page.getByRole('button', { name: copyLabel, exact: true }).click();
       assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'brew install --cask macfuse\nbrew install gromgit/fuse/ntfs-3g-mac');
+      await page.locator('#install-tab-manual').focus(); await page.keyboard.press('ArrowLeft');
+      assert.equal(await page.locator('#install-tab-brew').getAttribute('aria-selected'), 'true');
       await page.getByRole('button', { name: language === 'en' ? 'Copy Homebrew commands' : '复制 Homebrew 命令', exact: true }).click();
       assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'brew tap guoquan/mountfs https://github.com/guoquan/mountfs\nbrew install --cask guoquan/mountfs/mountfs\nbrew install gromgit/fuse/ntfs-3g-mac');
       assert.equal(await page.locator('#brew-feedback').textContent(), language === 'en' ? 'Commands copied.' : '命令已复制。');
-      assert.equal(await page.locator('.brew-announcement a').getAttribute('href'), '#homebrew');
+      assert.equal(await page.locator('.brew-announcement a').getAttribute('href'), '#get-started');
       const question = page.locator('summary').first(); await question.click();
       assert.equal(await page.locator('details').first().getAttribute('open'), '');
       await question.click();
@@ -61,6 +66,8 @@ try {
     const page = await context.newPage(); await page.goto(`${url}/${file}`);
     assert.equal(await page.locator('h1').isVisible(), true);
     assert.equal(await page.locator('#brew-commands').isVisible(), true);
+    assert.equal(await page.locator('#install-manual').isVisible(), true);
+    assert.equal(await page.locator('.install-tabs').isVisible(), false);
     assert.equal(await page.locator('#panel-1').isVisible(), true);
     assert.equal(await page.locator('.no-js').isVisible(), true);
     assert.equal(await page.locator('.language').isVisible(), true);
