@@ -7,6 +7,7 @@ TAG="v$VERSION-build.$BUILD"
 # Re-running an unchanged version must never replace a published binary.
 if gh release view "$TAG" >/dev/null 2>&1; then
     printf 'Release %s already exists; keeping its original assets.\n' "$TAG"
+    python3 scripts/update-homebrew.py
     exit 0
 fi
 shopt -s nullglob
@@ -32,3 +33,5 @@ gh release create "$TAG" "${assets[@]}" release-assets/SHA256SUMS.txt \
     --target "$GITHUB_SHA" --title "mouNTFS $VERSION (build $BUILD · development)" \
     --notes-file release-assets/NOTES.md --draft
 gh release edit "$TAG" --draft=false --latest
+
+python3 scripts/update-homebrew.py

@@ -16,6 +16,7 @@ jobs:
       - name: Shell syntax and regression simulations
         run: |
           for script in mountfs.sh scripts/build-app.sh scripts/publish-release.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/macos_helper_service.sh tests/mount_state_tests.sh; do bash -n "$script"; done
+          python3 tests/homebrew_tests.py
           bash tests/core_tests.sh
           bash tests/ntfs_identity_tests.sh
           bash tests/media_identity_tests.sh
@@ -32,6 +33,15 @@ jobs:
         run: |
           bash tests/macos_metadata.sh
           swift test
+      - name: Validate and fetch the Homebrew cask
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+        run: |
+          ruby -c Casks/mountfs.rb
+          brew tap guoquan/mountfs "$GITHUB_WORKSPACE"
+          brew info --json=v2 --cask guoquan/mountfs/mountfs > /tmp/mountfs-cask.json
+          brew fetch --cask guoquan/mountfs/mountfs
       - name: Build local menu bar app
         if: runner.os == 'macOS'
         run: |

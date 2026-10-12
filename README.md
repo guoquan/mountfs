@@ -132,6 +132,18 @@ reviews are welcome.
 
 MIT License © 2024–2026 Quan Guo.
 
+## Homebrew development tap
+
+```bash
+brew tap guoquan/mountfs https://github.com/guoquan/mountfs
+brew install --cask guoquan/mountfs/mountfs
+brew install gromgit/fuse/ntfs-3g-mac
+```
+
+Apple Silicon, macOS 13+. macFUSE is a declared Cask dependency; system approval
+and driver setup remain necessary. Downloads are ad-hoc signed and unnotarized.
+See [installation, upgrades and uninstall](docs/HOMEBREW.md).
+
 ## Versioned downloads
 
 Successful main Checks runs publish a development Release when the combination
