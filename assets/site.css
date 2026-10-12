@@ -196,30 +196,37 @@ section { scroll-margin-top: 100px; }
 .brew-announcement svg { width: 24px; height: 24px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .brew-announcement a > span { font-size: 12px; white-space: nowrap; }
 .brew-announcement a:hover strong { text-decoration: underline; text-underline-offset: 4px; }
-.brew-section { margin-top: 54px; background: #242044; color: #fcfcff; padding: 48px 0; }
-.brew-layout { display: grid; grid-template-columns: .85fr 1.15fr; gap: 48px; align-items: center; }
-.brew-message h2 { font-size: 30px; line-height: 1.35; margin-bottom: 16px; }
-.brew-message p { color: #d0ccea; font-size: 16px; max-width: 34ch; }
-.brew-guide { display: inline-flex; align-items: center; min-height: 44px; margin-top: 20px; color: #e0dcff; font-size: 14px; text-decoration: underline; }
 .brew-install { min-width: 0; }
 .brew-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #625b84; }
 .brew-toolbar > span { color: #e0dcff; font-size: 14px; font-weight: 650; }
 .brew-copy { min-height: 44px; border: 1px solid #aaa2cc; border-radius: 8px; padding: 8px 12px; font-size: 12px; color: #fcfcff; background: transparent; }
 .brew-copy:hover { background: #3b345d; }
-.brew-section a:focus-visible, .brew-copy:focus-visible { outline-color: #d0c6ff; }
+.brew-install a:focus-visible, .brew-copy:focus-visible { outline-color: #d0c6ff; }
 .brew-install pre { margin: 20px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #fcfcff; }
 .brew-feedback { color: #e0dcff; font-size: 12px; min-height: 20px; margin-top: 8px; }
 .brew-note { color: #d0ccea; font-size: 12px; line-height: 1.8; margin-top: 6px; }
-@media (max-width: 768px) {
-  .brew-layout { grid-template-columns: 1fr; gap: 28px; }
-  .brew-section { padding: 32px 0; margin-top: 36px; }
-  .brew-message h2 { font-size: 26px; }
-  .brew-message p { max-width: none; }
-  .brew-guide { margin-top: 12px; }
-}
 @media (max-width: 520px) {
   .brew-announcement a { justify-content: flex-start; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; padding: 12px 0; }
   .brew-announcement a > span { margin-left: 34px; }
-  .brew-message h2 { font-size: 24px; }
   .brew-install pre { font-size: 11px; }
+}
+
+.install-tabs[hidden] { display: none; }
+.install-tabs { margin: 0 0 24px; background: var(--lavender); }
+.install-tabs .tab[aria-selected=true] { background: var(--accent); color: white; }
+.installation { border-top: 1px solid var(--border); }
+.install-panel { padding: 28px 0 32px; }
+.install-panel h3, .install-common h3 { font-size: 23px; margin-bottom: 12px; }
+.install-panel > p { max-width: 72ch; }
+.install-panel ol { color: var(--muted); padding-left: 22px; max-width: 72ch; }
+.install-panel li + li { margin-top: 10px; }
+.brew-install { background: #242044; color: #fcfcff; border-radius: 12px; padding: 24px 28px; margin-top: 22px; }
+.install-guide { display: inline-flex; align-items: center; min-height: 44px; margin-top: 14px; }
+.manual-driver-intro { margin-top: 26px; }
+.install-common { padding-top: 28px; border-top: 1px solid var(--border); }
+.install-requirements { margin-top: 12px; font-size: 13px; }
+.install-common .actions { margin-top: 18px; }
+@media (max-width: 520px) {
+  .brew-install { padding: 18px 16px; }
+  .install-panel h3, .install-common h3 { font-size: 21px; }
 }

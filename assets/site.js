@@ -9,6 +9,8 @@ document.querySelectorAll('[data-tabs]').forEach(group => {
       document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
     });
   };
+  group.hidden = false;
+  activate(tabs.find(tab => tab.getAttribute('aria-selected') === 'true') || tabs[0]);
   tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => activate(tab));
     tab.addEventListener('keydown', event => {

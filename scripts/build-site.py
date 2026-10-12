@@ -16,10 +16,11 @@ COPY = {
   'skip': 'Skip to content', 'nav': ['The app', 'Get started', 'Our story'],
   'eyebrow': 'Free & open source · For macOS', 'headline': ['Write to NTFS.', 'On your Mac.'],
   'hero': 'No reformatting. Enable writing from the menu bar, then copy files in Finder.',
+  'installtablabel': 'Installation method', 'installtabs': ['Homebrew', 'Manual download'], 'commonsetup': 'Finish macOS setup',
   'brewannounce': 'Now available via Homebrew', 'brewanchor': 'See install commands',
   'brewtitle': 'A new way to get mouNTFS.', 'brewintro': 'Install from our Homebrew tap. Keep it up to date with brew upgrade.',
   'brewcopy': 'Copy Homebrew commands', 'brewguide': 'Homebrew installation guide ↗',
-  'brewnote': 'Apple Silicon · macOS 13+ · Development build, not Apple-notarized. Follow macFUSE approval and restart instructions.',
+  'brewnote': 'Apple Silicon · macOS 13+ · Ad-hoc signed development build, not Apple-notarized. macOS may block first launch.',
   'cta': 'Get the development app', 'source': 'View source',
   'fine': 'macOS 13+ · Requires macFUSE, ntfs-3g and system permissions. Development builds are ad-hoc signed and not notarized.',
   'heroalt': 'Actual mouNTFS menu with a sample drive marked writable',
@@ -34,8 +35,8 @@ COPY = {
   'alts': ['Actual menu with a read-only sample NTFS drive', 'Actual menu with a writable sample NTFS drive', 'Actual menu during a sample mounting operation'],
   'sample': 'Sample interface states; no disk was mounted to create these captures.',
   'nojs': 'The writable example is shown below. Enable JavaScript to switch between all three examples.',
-  'installtitle': 'A little setup. Then back to your files.',
-  'installintro': 'Start with the drivers, then add the app. These steps are required before you can enable writing.',
+  'installtitle': 'Install. Then enable writing.',
+  'installintro': 'Choose Homebrew or a manual download. Both use the same driver and macOS setup.',
   'driverlabel': '01 · Drivers & permissions', 'drivertitle': 'Prepare your Mac',
   'driverintro': 'With Homebrew installed, run these two commands:',
   'copy': 'Copy commands', 'copied': 'Commands copied.', 'fallback': 'Commands selected. Press ⌘C or Ctrl+C to copy.',
@@ -65,10 +66,11 @@ COPY = {
   'skip': '跳到正文', 'nav': ['看看应用', '开始使用', '项目故事'],
   'eyebrow': '免费开源 · 为 macOS 而做', 'headline': ['Mac，也能', '写入 NTFS。'],
   'hero': '无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。',
+  'installtablabel': '安装方式', 'installtabs': ['Homebrew 安装', '手动下载'], 'commonsetup': '完成系统配置',
   'brewannounce': '现在可以从 Homebrew 下载了', 'brewanchor': '查看安装命令',
   'brewtitle': '熟悉的 brew，新的安装方式。', 'brewintro': '从我们的 Homebrew tap 安装，用 brew upgrade 保持更新。',
   'brewcopy': '复制 Homebrew 命令', 'brewguide': 'Homebrew 安装说明 ↗',
-  'brewnote': 'Apple Silicon · macOS 13+ · 开发构建，尚未经过 Apple 公证。仍需完成 macFUSE 系统批准和重启。',
+  'brewnote': 'Apple Silicon · macOS 13+ · 临时签名开发构建，尚未经过 Apple 公证，首次启动可能被 macOS 拦截。',
   'cta': '获取开发版应用', 'source': '查看源代码',
   'fine': 'macOS 13+ · 需安装 macFUSE、ntfs-3g 并完成系统授权。开发构建使用 ad-hoc 签名，尚未公证。',
   'heroalt': 'mouNTFS 实际菜单界面，示例磁盘显示可写状态',
@@ -83,8 +85,8 @@ COPY = {
   'alts': ['实际菜单界面，显示只读示例 NTFS 磁盘', '实际菜单界面，显示可写示例 NTFS 磁盘', '实际菜单界面，显示挂载操作进行中的示例状态'],
   'sample': '界面状态为示例；生成截图时未执行磁盘挂载。',
   'nojs': '下方显示可写示例。启用 JavaScript 后可切换三个界面示例。',
-  'installtitle': '先做好配置，再回到你的文件。',
-  'installintro': '先安装驱动，再放入应用。完成这些步骤后，才能启用写入。',
+  'installtitle': '安装与配置，一处完成。',
+  'installintro': '选择 Homebrew 或手动下载，然后完成共用的驱动与系统配置。',
   'driverlabel': '01 · 驱动与权限', 'drivertitle': '准备好你的 Mac',
   'driverintro': '安装 Homebrew 后，执行这两条命令：',
   'copy': '复制命令', 'copied': '命令已复制。', 'fallback': '命令已选中，请按 ⌘C 或 Ctrl+C 复制。',
@@ -151,7 +153,7 @@ def render(lang, c):
   <div class="nav-links"><a class="desktop" href="#app">{e(c['nav'][0])}</a><a href="#get-started">{e(c['nav'][1])}</a><a class="desktop" href="#story">{e(c['nav'][2])}</a><a class="language" href="{c['other']}" lang="{c['otherlang']}" hreflang="{c['otherlang']}">{c['switch']}</a></div>
 </nav></header>
 <main id="main">
-<div class="brew-announcement"><div class="wrap"><a href="#homebrew"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg><strong>{e(c['brewannounce'])}</strong><span>{e(c['brewanchor'])} <span aria-hidden="true">↓</span></span></a></div></div>
+<div class="brew-announcement"><div class="wrap"><a href="#get-started"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg><strong>{e(c['brewannounce'])}</strong><span>{e(c['brewanchor'])} <span aria-hidden="true">↓</span></span></a></div></div>
 <section class="hero"><div class="wrap"><div class="hero-grid">
   <div class="hero-text">
     <h1>{e(c['headline'][0])}<span>{e(c['headline'][1])}</span></h1><p class="hero-copy">{e(c['hero'])}</p>
@@ -160,16 +162,6 @@ def render(lang, c):
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="{e(c['heroalt'])}" width="356" height="351" fetchpriority="high"><figcaption>{e(c['caption'])}</figcaption></figure>
 </div><div class="benefits">{benefits}</div></div></section>
-<section id="homebrew" class="brew-section"><div class="wrap brew-layout">
-  <div class="brew-message"><h2>{e(c['brewtitle'])}</h2><p>{e(c['brewintro'])}</p><a class="brew-guide" href="{REPO}/blob/main/docs/HOMEBREW.md">{e(c['brewguide'])}</a></div>
-  <div class="brew-install"><div class="brew-toolbar"><span>Homebrew</span><button class="brew-copy" data-copy="brew-commands" data-feedback="brew-feedback" data-success="{e(c['copied'])}" data-fallback="{e(c['fallback'])}">{e(c['brewcopy'])}</button></div>
-    <pre><code id="brew-commands">brew tap guoquan/mountfs https://github.com/guoquan/mountfs
-brew install --cask guoquan/mountfs/mountfs
-brew install gromgit/fuse/ntfs-3g-mac</code></pre>
-    <p id="brew-feedback" class="brew-feedback" role="status" aria-live="polite"></p>
-    <p class="brew-note">{e(c['brewnote'])}</p>
-  </div>
-</div></section>
 <section id="app" class="section wrap"><div class="section-head"><h2>{workflow_heading}</h2><p>{e(c['workflowintro'])}</p></div>
   <div class="steps">{steps}</div>
   <div class="showcase"><div><h3>{e(c['showtitle'])}</h3><p>{e(c['showintro'])}</p>
@@ -178,16 +170,32 @@ brew install gromgit/fuse/ntfs-3g-mac</code></pre>
   </div><figure class="preview">{panels}<figcaption>{e(c['sample'])}</figcaption></figure></div>
 </section>
 <section id="get-started" class="section wrap"><div class="section-head"><h2>{install_heading}</h2><p>{e(c['installintro'])}</p></div>
-  <div class="install-grid">
-    <article class="install-card"><span class="label">{e(c['driverlabel'])}</span><h3>{e(c['drivertitle'])}</h3><p>{e(c['driverintro'])}</p>
+  <div class="tabs install-tabs" role="tablist" aria-label="{e(c['installtablabel'])}" data-tabs hidden>
+    <button class="tab" id="install-tab-brew" role="tab" aria-controls="install-brew" aria-selected="true" tabindex="0">{e(c['installtabs'][0])}</button>
+    <button class="tab" id="install-tab-manual" role="tab" aria-controls="install-manual" aria-selected="false" tabindex="-1">{e(c['installtabs'][1])}</button>
+  </div>
+  <div class="installation">
+    <div id="install-brew" class="install-panel" role="tabpanel" aria-labelledby="install-tab-brew" tabindex="0">
+      <h3>{e(c['installtabs'][0])}</h3><p>{e(c['brewintro'])}</p>
+      <div class="brew-install"><div class="brew-toolbar"><span>Homebrew</span><button class="brew-copy" data-copy="brew-commands" data-feedback="brew-feedback" data-success="{e(c['copied'])}" data-fallback="{e(c['fallback'])}">{e(c['brewcopy'])}</button></div>
+        <pre><code id="brew-commands">brew tap guoquan/mountfs https://github.com/guoquan/mountfs
+brew install --cask guoquan/mountfs/mountfs
+brew install gromgit/fuse/ntfs-3g-mac</code></pre>
+        <p id="brew-feedback" class="brew-feedback" role="status" aria-live="polite"></p>
+      </div><a class="text-link install-guide" href="{REPO}/blob/main/docs/HOMEBREW.md">{e(c['brewguide'])}</a>
+    </div>
+    <div id="install-manual" class="install-panel" role="tabpanel" aria-labelledby="install-tab-manual" tabindex="0">
+      <h3>{e(c['installtabs'][1])}</h3><p>{e(c['downloadintro'])}</p><ol>{downloadsteps}</ol>
+      <div class="actions"><a class="button primary" data-release-link href="{builds}">{e(c['downloadcta'])}</a></div>
+      <p class="manual-driver-intro">{e(c['driverintro'])}</p>
       <div class="command"><button class="copy" data-copy="driver-commands" data-success="{e(c['copied'])}" data-fallback="{e(c['fallback'])}">{e(c['copy'])}</button><pre><code id="driver-commands">brew install --cask macfuse
 brew install gromgit/fuse/ntfs-3g-mac</code></pre></div><p id="copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
-      <p>{e(c['driverafter'])}</p><div class="actions"><a class="text-link" href="https://github.com/macfuse/macfuse/wiki/Getting-Started">{e(c['driverlink'])}</a></div>
-    </article>
-    <article class="install-card"><span class="label">{e(c['downloadlabel'])}</span><h3>{e(c['downloadtitle'])}</h3><p>{e(c['downloadintro'])}</p><ol>{downloadsteps}</ol>
-      <div class="actions"><a class="button primary" data-release-link href="{builds}">{e(c['downloadcta'])}</a><a class="text-link" href="{guide}">{e(c['guidelink'])}</a></div>
-    </article>
-  </div><p class="notice">{e(c['permissionnote'])}</p>
+    </div>
+    <div class="install-common"><h3>{e(c['commonsetup'])}</h3><p>{e(c['driverafter'])}</p><p class="install-requirements">{e(c['brewnote'])}</p>
+      <div class="actions"><a class="text-link" href="https://github.com/macfuse/macfuse/wiki/Getting-Started">{e(c['driverlink'])}</a><a class="text-link" href="{guide}">{e(c['guidelink'])}</a></div>
+      <p class="notice">{e(c['permissionnote'])}</p>
+    </div>
+  </div>
 </section>
 <section class="section wrap faq"><div class="section-head"><h2>{e(c['faqtitle'])}</h2><p>{e(c['faqintro'])}</p><div class="actions"><a class="text-link" href="{guide}">{e(c['faqguide'])}</a></div></div><div>{questions}</div></section>
 <div class="wrap"><section class="story" id="story"><div><h2>{c['storytitle']}</h2><p class="story-label">{e(c['storylabel'])}</p></div><div><p>{e(c['story'])}</p><div class="actions"><a class="text-link" href="{REPO}/blob/{REF}/CONTRIBUTING.md">{e(c['contribute'])}</a><a class="text-link" href="https://github.com/sponsors/guoquan">{e(c['sponsor'])}</a></div></div></section></div>
