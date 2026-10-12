@@ -151,7 +151,7 @@ def render(lang, c):
 <body class="{'zh' if zh else 'en'}">
 <a class="skip" href="#main">{e(c['skip'])}</a>
 <header class="header"><nav class="wrap nav" aria-label="{'主导航' if zh else 'Main navigation'}">
-  <a href="{c['file']}" class="wordmark" aria-label="mouNTFS"><span class="mount">mouNT</span><span class="fs">FS</span></a>
+  <a href="{c['file']}" class="wordmark" aria-label="mouNTFS"><span class="logo-prefix" aria-hidden="true">https://</span><span class="logo-name"><span class="mount">mouNT</span><span class="fs">FS</span></span><span class="logo-suffix" aria-hidden="true">.sh</span></a>
   <div class="nav-links"><a class="desktop" href="#app">{e(c['nav'][0])}</a><a href="#get-started">{e(c['nav'][1])}</a><a class="desktop" href="#story">{e(c['nav'][2])}</a><a class="language" href="{c['other']}" lang="{c['otherlang']}" hreflang="{c['otherlang']}">{c['switch']}</a></div>
 </nav></header>
 <main id="main">
