@@ -230,3 +230,12 @@ section { scroll-margin-top: 100px; }
   .brew-install { padding: 18px 16px; }
   .install-panel h3, .install-common h3 { font-size: 21px; }
 }
+
+.star-ask { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
+.star-ask h3 { display: flex; align-items: flex-start; gap: 10px; font-size: 20px; line-height: 1.45; margin-bottom: 10px; }
+.star-ask svg { width: 24px; height: 24px; flex-shrink: 0; margin-top: 2px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.star-ask p { font-size: 14px; line-height: 1.8; }
+.star-ask .button { margin-top: 18px; }
+@media (max-width: 520px) {
+  .star-ask h3 { font-size: 18px; }
+}
