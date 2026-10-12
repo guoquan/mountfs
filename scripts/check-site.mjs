@@ -19,8 +19,20 @@ try {
       await page.evaluate(() => document.fonts.ready);
       assert.equal(await page.locator('[data-release-link]').getAttribute('href'), 'https://github.com/guoquan/mountfs/releases');
       assert.equal(await page.locator('.hero .actions .primary').getAttribute('href'), 'https://github.com/guoquan/mountfs/releases');
+
+      const logo = page.locator('.wordmark');
+      await logo.hover();
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('.logo-prefix')).opacity === '1');
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), false, 'Expanded logo must not overflow');
+      await page.locator('.skip').focus(); await page.keyboard.press('Tab');
+      assert.equal(await logo.evaluate(item => document.activeElement === item), true);
+      await page.mouse.move(0, 500);
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('.logo-prefix')).opacity === '1');
+      assert.equal(await logo.getAttribute('aria-label'), 'mouNTFS');
+      await logo.evaluate(item => item.blur());
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
       assert.equal(overflow, false, `${language} at ${width}px has horizontal overflow`);
+      await page.waitForFunction(() => getComputedStyle(document.querySelector('.logo-prefix')).opacity === '0');
       const images = await page.locator('img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0));
       // Hidden lazy-loaded previews are checked after selecting their tab below.
       const hero = page.locator('.app-image');
@@ -77,6 +89,11 @@ try {
     assert.equal(await page.locator('.language').isVisible(), true);
     assert.equal(await page.locator('[data-release-link]').getAttribute('href'), 'https://github.com/guoquan/mountfs/releases');
     await context.close();
+    const reduced = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 390, height: 844 } });
+    const reducedPage = await reduced.newPage(); await reducedPage.goto(`${url}/${file}`);
+    await reducedPage.locator('.wordmark').focus();
+    assert.equal(await reducedPage.locator('.logo-prefix').evaluate(item => getComputedStyle(item).transitionDuration), '0s');
+    await reduced.close();
 
   }
   await writeFile(`${output}/report.json`, JSON.stringify(report, null, 2));
