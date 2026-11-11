@@ -7,7 +7,7 @@ access to external NTFS partitions. Keep your drive's format, enable writing fro
 the menu bar, then continue in Finder. The app is free and open source.
 Connecting a drive does not enable writing automatically. The app does not format drives.
 
-The current version is **0.3.4, a development build**, not a notarized public release.
+The current version is **0.3.5, a development build**, not a notarized public release.
 Use the steps below; experimental authorization settings in Settings are not needed.
 Future features are described in the [roadmap](../ROADMAP.md).
 

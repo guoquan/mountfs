@@ -1,6 +1,6 @@
 # Optional permission helper and Touch ID
 
-Current version: **0.3.4 development build**. This opt-in feature is not yet a
+Current version: **0.3.5 development build**. This opt-in feature is not yet a
 working user-validated authorization path. On the reported physical Mac,
 registration repair returned `SMAppServiceErrorDomain / 1`, and the daemon still
 terminated with `OS_REASON_CODESIGNING`. Its explicit spawn constraint was visible
@@ -8,7 +8,7 @@ in launchd state but did not resolve the failure. Investigation is paused pendin
 an Apple-issued signing environment. Use ordinary mounting while the helper is
 not ready. Protected-driver mounting and biometric UI remain unvalidated.
 
-## Temporary GUI pause (build 19)
+## Temporary GUI pause (since build 19)
 
 The menu bar app temporarily disables helper activation, registration repair,
 protected-driver refresh and Touch ID confirmation. It does not probe the daemon

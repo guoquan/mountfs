@@ -12,13 +12,19 @@
 
 无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。mouNTFS 是管理外置 NTFS 磁盘的原生 Mac 应用，也提供命令行核心；挂载操作需要配套的原生身份校验工具。
 
-![mouNTFS：Mac 也能写入 NTFS，免费开源](docs/images/promo-hero.zh-CN.png)
+[![mouNTFS.app — From shell script to Mac app](docs/images/brand-upgrade.jpg)](https://mountfs.app)
 
-*宣传图依据应用英文界面制作，使用示例磁盘数据；需单独安装驱动并完成 macOS 权限配置。*
+## 新官网，新一程。
 
-**当前版本：0.3.4 开发版。** 需要单独安装 macFUSE 和 ntfs-3g。开发下载包使用 ad-hoc 签名，尚未公证。
+从 Shell 脚本到原生 Mac 应用，官网也升级为 **[mouNTFS.app](https://mountfs.app/zh-CN.html)**。
+现在可以通过 [Homebrew 安装](docs/HOMEBREW.md)，在 [Releases 查看更新动态](https://github.com/guoquan/mountfs/releases)，一起参与这个小工具的下一步。
+旧域名 mountfs.sh 在剩余注册期内继续跳转，到期不再续费。
 
-[开始使用](docs/USAGE.zh-CN.md) · [下载构建](https://github.com/guoquan/mountfs/actions) · [后续计划](ROADMAP.md)
+**喜欢这个项目？[给 mouNTFS 加颗星](https://github.com/guoquan/mountfs)，也欢迎分享给需要它的朋友。**
+
+**当前版本：0.3.5 开发版。** 需要单独安装 macFUSE 和 ntfs-3g。开发下载包使用 ad-hoc 签名，尚未公证。
+
+[开始使用](docs/USAGE.zh-CN.md) · [下载构建](https://github.com/guoquan/mountfs/releases) · [后续计划](ROADMAP.md)
 
 ## 看看现在的应用
 
@@ -55,7 +61,7 @@ brew install --cask macfuse
 brew install gromgit/fuse/ntfs-3g-mac
 ```
 
-按 [macFUSE 安装指南](https://github.com/macfuse/macfuse/wiki/Getting-Started)完成系统批准和重启。从 [Actions](https://github.com/guoquan/mountfs/actions)下载成功的 macOS 构建，解压后将 **mouNTFS.app** 放入 Applications。
+按 [macFUSE 安装指南](https://github.com/macfuse/macfuse/wiki/Getting-Started)完成系统批准和重启。从 [Releases](https://github.com/guoquan/mountfs/releases) 的 Assets 下载匹配 Mac 架构的应用 ZIP，解压后将 **mouNTFS.app** 放入 Applications。
 
 1. 连接磁盘，打开 mouNTFS 菜单。
 2. 点击 **Enable Write Access…**，完成 macOS 授权。

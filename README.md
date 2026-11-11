@@ -14,15 +14,20 @@ No reformatting. Enable writing from the menu bar, then copy files in Finder.
 mouNTFS is a native Mac app for external NTFS drives, with a command-line core
 that requires the bundled native identity tool for mounting.
 
-![mouNTFS: write to NTFS on your Mac, free and open source](docs/images/promo-hero.en.png)
+[![mouNTFS.app — From shell script to Mac app](docs/images/brand-upgrade.jpg)](https://mountfs.app)
 
-*Illustrative artwork based on the app's English UI with sample drive data.
-Requires separately installed drivers and macOS permissions.*
+## A new home. A new chapter.
 
-**Current version: 0.3.4 development build.** Requires separately installed macFUSE
+From a shell script to a native Mac app, now at **[mouNTFS.app](https://mountfs.app)**.
+Install via [Homebrew](docs/HOMEBREW.md), follow the [latest updates](https://github.com/guoquan/mountfs/releases), and help shape what comes next.
+The old mountfs.sh domain will redirect during its remaining registration period and will not be renewed.
+
+**Like where this is going? [Give mouNTFS a Star](https://github.com/guoquan/mountfs) and share it with a friend.**
+
+**Current version: 0.3.5 development build.** Requires separately installed macFUSE
 and ntfs-3g. Development downloads are ad-hoc signed and not notarized.
 
-[Get started](docs/USAGE.en.md) · [Downloads](https://github.com/guoquan/mountfs/actions) · [Roadmap](ROADMAP.md)
+[Get started](docs/USAGE.en.md) · [Downloads](https://github.com/guoquan/mountfs/releases) · [Roadmap](ROADMAP.md)
 
 ## See the app
 
@@ -66,8 +71,8 @@ brew install gromgit/fuse/ntfs-3g-mac
 ```
 
 Follow the [macFUSE setup guide](https://github.com/macfuse/macfuse/wiki/Getting-Started)
-for system approval and restart requirements. Download a successful macOS build
-from [Releases](https://github.com/guoquan/mountfs/releases/latest), extract the application ZIP, and
+for system approval and restart requirements. Download the application ZIP matching your Mac architecture under Assets
+in [Releases](https://github.com/guoquan/mountfs/releases), extract it once, and
 place **mouNTFS.app** in Applications.
 
 1. Connect the drive and open the mouNTFS menu.

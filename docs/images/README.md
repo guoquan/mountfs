@@ -30,3 +30,9 @@ captures and not evidence of physical-drive mounting. They retain the example UI
 version but add no separate release number. Both languages disclose driver/setup
 requirements. See [promotional copy and visual rules](../PROMOTION.md) and
 [generation prompts](promo-prompts.json).
+
+## Brand upgrade cover (2026-11-11)
+
+`brand-upgrade.jpg` is AI-generated typographic campaign artwork for the .sh → .app migration. It contains no application screenshot or hardware-validation claim. The original was generated with the built-in image tool and encoded as a 340,776-byte JPEG for GitHub social-preview compatibility; the image content is unchanged.
+
+Prompt: a 2:1 editorial cover in violet #5851dc, off-white #fcfcff and navy #111633, with exact mouNTFS.app branding, “From shell script to Mac app.”, “New home. Open source. Still growing.”, .sh → .app, Homebrew / GitHub Releases, and the development-build/driver requirement note. No photographs, app mockups, badges or version number.
