@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("updater", ROOT / "scripts/update-homebrew.py")
@@ -34,13 +35,40 @@ class CaskTests(unittest.TestCase):
     def test_build_only_upgrade_and_concurrent_blob_check(self):
         old = updater.render(release())
         current = {"content": base64.b64encode(old.encode()).decode(), "sha": "old-blob"}
-        with patch.object(updater, "request", side_effect=[release(20), current, {}]) as request, \
+        with patch.object(updater, "request", side_effect=[release(20), current, {"object": {"sha": "main-head"}}, {}, current, {}, [], {"html_url": "https://github.com/guoquan/mountfs/pull/1"}]) as request, \
              patch.dict(updater.os.environ, {"GH_TOKEN": "test"}), patch.object(updater.sys, "argv", ["updater"]):
             updater.main()
-        payload = request.call_args.args[2]
+        payload = request.call_args_list[5].args[2]
         self.assertEqual(payload["sha"], "old-blob")
-        self.assertEqual(payload["branch"], "main")
+        self.assertEqual(payload["branch"], "homebrew/v0.3.4-build.20")
+        self.assertEqual(request.call_args_list[3].kwargs["method"], "POST")
+        self.assertEqual(request.call_args.kwargs["method"], "POST")
         self.assertIn('version "0.3.4,20"', base64.b64decode(payload["content"]).decode())
+
+    def test_retry_reuses_existing_branch_and_pr_without_writing(self):
+        old = {"content": base64.b64encode(updater.render(release()).encode()).decode(), "sha": "old"}
+        desired = {"content": base64.b64encode(updater.render(release(20)).encode()).decode(), "sha": "new"}
+        exists = HTTPError("refs", 422, "exists", None, None)
+        replies = [release(20), old, {"object": {"sha": "head"}}, exists, {}, desired,
+                   [{"html_url": "https://github.com/guoquan/mountfs/pull/1"}]]
+        with patch.object(updater, "request", side_effect=replies) as request, \
+             patch.dict(updater.os.environ, {"GH_TOKEN": "test"}), patch.object(updater.sys, "argv", ["updater"]):
+            updater.main()
+        self.assertEqual(request.call_count, 7)
+        self.assertFalse(any(call.args[0] == "/contents/Casks/mountfs.rb" for call in request.call_args_list))
+
+    def test_pr_policy_error_reports_branch_without_writing_main(self):
+        old = {"content": base64.b64encode(updater.render(release()).encode()).decode(), "sha": "old"}
+        replies = [release(20), old, {"object": {"sha": "head"}}, {}, old, {}, [],
+                   HTTPError("pulls", 403, "policy", None, None)]
+        with patch.object(updater, "request", side_effect=replies) as request, \
+             patch.dict(updater.os.environ, {"GH_TOKEN": "test"}), patch.object(updater.sys, "argv", ["updater"]), \
+             patch.object(updater.sys, "stderr") as stderr:
+            with self.assertRaises(HTTPError):
+                updater.main()
+        self.assertIn("Update branch ready", str(stderr.write.call_args_list))
+        self.assertTrue(all(call.args[2]["branch"] != "main" for call in request.call_args_list
+                            if call.args[0] == "/contents/Casks/mountfs.rb"))
 
     def test_downgrade_and_same_version_replacement_refused(self):
         old = updater.render(release(20))
