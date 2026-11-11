@@ -151,10 +151,10 @@ def render(lang, c):
   <meta property="og:type" content="website"><meta property="og:url" content="{canonical}">
   <meta property="og:title" content="{e(c['title'])}"><meta property="og:description" content="{e(c['description'])}">
   <meta property="og:locale" content="{'zh_CN' if zh else 'en_US'}">
-  <meta property="og:image" content="https://mountfs.app/assets/share.{lang}.png">
-  <meta property="og:image:alt" content="{e(c['title'])}"><meta property="og:image:width" content="1254"><meta property="og:image:height" content="1254">
+  <meta property="og:image" content="https://mountfs.app/assets/brand-upgrade.jpg">
+  <meta property="og:image:alt" content="{e(c['title'])}"><meta property="og:image:width" content="1774"><meta property="og:image:height" content="887">
   <meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@guoquan">
-  <meta name="twitter:image" content="https://mountfs.app/assets/share.{lang}.png">
+  <meta name="twitter:image" content="https://mountfs.app/assets/brand-upgrade.jpg">
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
   <link rel="stylesheet" href="assets/site.css"><script src="assets/site.js" defer></script>
 </head>
