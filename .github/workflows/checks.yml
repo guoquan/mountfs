@@ -40,6 +40,9 @@ jobs:
         run: |
           ruby -c Casks/mountfs.rb
           brew tap guoquan/mountfs "$GITHUB_WORKSPACE"
+          if brew help trust >/dev/null 2>&1; then
+            brew trust --cask guoquan/mountfs/mountfs
+          fi
           brew info --json=v2 --cask guoquan/mountfs/mountfs > /tmp/mountfs-cask.json
           brew fetch --cask guoquan/mountfs/mountfs
       - name: Build local menu bar app
