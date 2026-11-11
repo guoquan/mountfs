@@ -71,8 +71,8 @@ brew install gromgit/fuse/ntfs-3g-mac
 ```
 
 Follow the [macFUSE setup guide](https://github.com/macfuse/macfuse/wiki/Getting-Started)
-for system approval and restart requirements. Download a successful macOS build
-from [Releases](https://github.com/guoquan/mountfs/releases/latest), extract the application ZIP, and
+for system approval and restart requirements. Download the application ZIP matching your Mac architecture under Assets
+in [Releases](https://github.com/guoquan/mountfs/releases), extract it once, and
 place **mouNTFS.app** in Applications.
 
 1. Connect the drive and open the mouNTFS menu.

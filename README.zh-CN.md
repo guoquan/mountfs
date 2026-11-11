@@ -61,7 +61,7 @@ brew install --cask macfuse
 brew install gromgit/fuse/ntfs-3g-mac
 ```
 
-按 [macFUSE 安装指南](https://github.com/macfuse/macfuse/wiki/Getting-Started)完成系统批准和重启。从 [Actions](https://github.com/guoquan/mountfs/releases)下载成功的 macOS 构建，解压后将 **mouNTFS.app** 放入 Applications。
+按 [macFUSE 安装指南](https://github.com/macfuse/macfuse/wiki/Getting-Started)完成系统批准和重启。从 [Releases](https://github.com/guoquan/mountfs/releases) 的 Assets 下载匹配 Mac 架构的应用 ZIP，解压后将 **mouNTFS.app** 放入 Applications。
 
 1. 连接磁盘，打开 mouNTFS 菜单。
 2. 点击 **Enable Write Access…**，完成 macOS 授权。
