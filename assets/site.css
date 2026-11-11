@@ -191,11 +191,6 @@ section { scroll-margin-top: 100px; }
 }
 
 /* Homebrew announcement and installation promotion; inherits the site palette. */
-.brew-announcement { background: var(--lavender); color: var(--accent-hover); }
-.brew-announcement a { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 52px; padding: 10px 0; font-size: 14px; }
-.brew-announcement svg { width: 24px; height: 24px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.brew-announcement a > span { font-size: 12px; white-space: nowrap; }
-.brew-announcement a:hover strong { text-decoration: underline; text-underline-offset: 4px; }
 .brew-install { min-width: 0; }
 .brew-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #625b84; }
 .brew-toolbar > span { color: #e0dcff; font-size: 14px; font-weight: 650; }
@@ -206,8 +201,6 @@ section { scroll-margin-top: 100px; }
 .brew-feedback { color: #e0dcff; font-size: 12px; min-height: 20px; margin-top: 8px; }
 .brew-note { color: #d0ccea; font-size: 12px; line-height: 1.8; margin-top: 6px; }
 @media (max-width: 520px) {
-  .brew-announcement a { justify-content: flex-start; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; padding: 12px 0; }
-  .brew-announcement a > span { margin-left: 34px; }
   .brew-install pre { font-size: 11px; }
 }
 
@@ -263,4 +256,41 @@ section { scroll-margin-top: 100px; }
 }
 @media print {
   .logo-name { background: none; color: var(--ink); }
+}
+
+/* One campaign surface for the app, domain and installation upgrade. */
+.upgrade-banner { background: var(--accent); color: white; padding: 38px 0 0; }
+.upgrade-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 44px; align-items: center; padding-bottom: 30px; }
+.upgrade-copy h2 { font-size: clamp(26px, 2.7vw, 36px); line-height: 1.25; max-width: 20ch; }
+.upgrade-copy p { color: white; font-size: 14px; line-height: 1.8; margin-top: 14px; max-width: 52ch; }
+.upgrade-domain { display: flex; align-items: center; justify-content: flex-end; gap: 18px; }
+.upgrade-domain svg { width: 36px; height: 24px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.domain-before > span, .domain-after > span { display: block; font-size: 11px; margin-bottom: 8px; }
+.domain-before s { font-size: 18px; text-decoration-thickness: 1px; }
+.domain-after strong { display: block; font-size: clamp(28px, 3vw, 42px); letter-spacing: -.04em; line-height: 1.15; white-space: nowrap; }
+.domain-after strong span { display: block; font-size: 1.45em; }
+.upgrade-footer { border-top: 1px solid #ffffff66; padding: 15px 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 12px; }
+.upgrade-links { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+.upgrade-links a { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-weight: 650; }
+.upgrade-links a:hover { text-decoration: underline; }
+.upgrade-banner a:focus-visible { outline-color: white; }
+@media (max-width: 900px) {
+  .upgrade-banner { padding-top: 28px; }
+  .upgrade-grid { grid-template-columns: 1fr; gap: 24px; padding-bottom: 24px; }
+  .upgrade-copy h2 { max-width: 22ch; }
+  .upgrade-copy p { max-width: 48ch; }
+  .upgrade-domain { justify-content: flex-start; gap: 16px; }
+  .domain-after strong { font-size: 28px; }
+  .domain-after strong span { display: inline; font-size: 1em; }
+  .domain-before s { font-size: 15px; }
+  .upgrade-footer { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .upgrade-links { gap: 8px 20px; }
+}
+
+@media (max-width: 480px) {
+  .upgrade-domain { display: grid; grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1.5fr); gap: 12px; }
+  .upgrade-domain svg { width: 24px; }
+  .domain-after strong { font-size: 25px; }
+  .domain-after strong span { display: block; font-size: 1.2em; }
+  .domain-before s { font-size: 14px; }
 }
