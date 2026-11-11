@@ -117,3 +117,7 @@ copy alignment, margins and rendering at small sizes before reuse.
 
 No disk operations were performed to produce the artwork. Dependencies, permissions
 and current release status must remain visible in accompanying download/setup copy.
+
+## .app chapter — November 2026
+
+Use [the brand upgrade cover](images/brand-upgrade.jpg) for the current README and GitHub social preview. The November 2026 campaign celebrates the existing native app, Homebrew installation and move to https://mountfs.app, not a new mounting engine or restored Touch ID support. Bilingual release copy lives in [0.3.5 release notes](releases/0.3.5.md). The `.sh` redirect lasts only for the remaining registration period.

@@ -24,7 +24,7 @@ jobs:
           cc -Wall -Wextra -Werror -I Sources/MountFSSystemTools/include Sources/MountFSSystemTools/Tools.c tests/tool_runner_tests.c -o /tmp/mountfs-tool-tests
           /tmp/mountfs-tool-tests
           bash mountfs.sh --help
-          test "$(bash mountfs.sh --version)" = 0.3.4
+          test "$(bash mountfs.sh --version)" = 0.3.5
       - name: ShellCheck
         if: runner.os == 'Linux'
         run: shellcheck mountfs.sh scripts/build-app.sh scripts/publish-release.sh tests/core_tests.sh tests/macos_metadata.sh tests/ntfs_identity_tests.sh tests/media_identity_tests.sh tests/macos_media_identity.sh tests/macos_helper_service.sh tests/mount_state_tests.sh
