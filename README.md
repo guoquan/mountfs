@@ -1,7 +1,7 @@
 # mouNTFS GitHub Pages redesign
 
 This branch prepares the native-app homepage. It is based on `gh-pages` and retains
-`.nojekyll` and the existing `CNAME` (`mountfs.sh`). It does not change the live site
+`.nojekyll` and the existing `CNAME` (`mountfs.app`). It does not change the live site
 until the branch is merged into the configured Pages branch.
 
 ## Structure
@@ -56,7 +56,7 @@ illustrations based on those captures, not proof of hardware validation.
 5. Recheck both page languages, mobile layouts, image loading, tabs and copy behavior.
 6. Merge this Pages iteration into `gh-pages` after those checks. Preserve CNAME.
 7. Confirm the actual configured GitHub Pages branch/path, deployment success and
-   `https://mountfs.sh/` before announcing the live site.
+   `https://mountfs.app/` before announcing the live site.
 
 Committed pages use durable `main` links. Until the coordinated app merge, those
 new documentation and build links may not be available on `main`; this is why the

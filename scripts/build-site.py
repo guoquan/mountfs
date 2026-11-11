@@ -15,6 +15,8 @@ COPY = {
   'description': 'A free, open-source Mac menu bar app for external NTFS drives. Keep NTFS, enable writing and continue in Finder. Requires macFUSE and ntfs-3g.',
   'skip': 'Skip to content', 'nav': ['The app', 'Get started', 'Our story'],
   'eyebrow': 'Free & open source · For macOS', 'headline': ['Write to NTFS.', 'On your Mac.'],
+  'migration': 'From shell script to native Mac app. Our new home: mouNTFS.app.',
+  'sunset': 'mountfs.sh is retiring. It will redirect during its remaining registration period and will not be renewed.',
   'hero': 'No reformatting. Enable writing from the menu bar, then copy files in Finder.',
   'installtablabel': 'Installation method', 'installtabs': ['Homebrew', 'Manual download'], 'commonsetup': 'Finish macOS setup',
   'brewannounce': 'Now available via Homebrew', 'brewanchor': 'See install commands',
@@ -66,6 +68,8 @@ COPY = {
   'description': '免费开源的 Mac NTFS 菜单栏工具。保留磁盘格式，启用写入，继续在 Finder 中使用。需安装 macFUSE 与 ntfs-3g。',
   'skip': '跳到正文', 'nav': ['看看应用', '开始使用', '项目故事'],
   'eyebrow': '免费开源 · 为 macOS 而做', 'headline': ['Mac，也能', '写入 NTFS。'],
+  'migration': '从脚本到原生 Mac 应用，官网也升级为 mouNTFS.app。',
+  'sunset': '旧域名 mountfs.sh 将退役：剩余注册期内继续跳转，到期后不再续费。',
   'hero': '无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。',
   'installtablabel': '安装方式', 'installtabs': ['Homebrew 安装', '手动下载'], 'commonsetup': '完成系统配置',
   'brewannounce': '现在可以从 Homebrew 下载了', 'brewanchor': '查看安装命令',
@@ -119,7 +123,7 @@ def render(lang, c):
     guide = f'{REPO}/blob/{REF}/docs/USAGE.{"zh-CN" if zh else "en"}.md'
     source = f'{REPO}/tree/{REF}'
     builds = f'{REPO}/releases'
-    canonical = 'https://mountfs.sh/' + (c['file'] if zh else '')
+    canonical = 'https://mountfs.app/' + (c['file'] if zh else '')
     icons = ['<path d="M5 5h14v14H5zM8 15h.01M8 9h8"/>', '<path d="M4 7h6l2 2h8v11H4zM4 7V4h6l2 3"/>', '<path d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"/>']
     benefits = ''.join(f'<div class="benefit"><span class="symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">{symbol}</svg></span><div><strong>{e(title)}</strong><p>{e(body)}</p></div></div>' for symbol, (title, body) in zip(icons, c['benefits']))
     workflow_heading = e(c['workflowtitle']).replace('，', '，<br class="mobile-break">', 1) if zh else e(c['workflowtitle'])
@@ -135,23 +139,23 @@ def render(lang, c):
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{e(c['title'])}</title><meta name="description" content="{e(c['description'])}">
   <meta name="theme-color" content="#fcfcff"><link rel="canonical" href="{canonical}">
-  <link rel="alternate" hreflang="en" href="https://mountfs.sh/">
-  <link rel="alternate" hreflang="zh-CN" href="https://mountfs.sh/zh-CN.html">
-  <link rel="alternate" hreflang="x-default" href="https://mountfs.sh/">
+  <link rel="alternate" hreflang="en" href="https://mountfs.app/">
+  <link rel="alternate" hreflang="zh-CN" href="https://mountfs.app/zh-CN.html">
+  <link rel="alternate" hreflang="x-default" href="https://mountfs.app/">
   <meta property="og:type" content="website"><meta property="og:url" content="{canonical}">
   <meta property="og:title" content="{e(c['title'])}"><meta property="og:description" content="{e(c['description'])}">
   <meta property="og:locale" content="{'zh_CN' if zh else 'en_US'}">
-  <meta property="og:image" content="https://mountfs.sh/assets/share.{lang}.png">
+  <meta property="og:image" content="https://mountfs.app/assets/share.{lang}.png">
   <meta property="og:image:alt" content="{e(c['title'])}"><meta property="og:image:width" content="1254"><meta property="og:image:height" content="1254">
   <meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@guoquan">
-  <meta name="twitter:image" content="https://mountfs.sh/assets/share.{lang}.png">
+  <meta name="twitter:image" content="https://mountfs.app/assets/share.{lang}.png">
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
   <link rel="stylesheet" href="assets/site.css"><script src="assets/site.js" defer></script>
 </head>
 <body class="{'zh' if zh else 'en'}">
 <a class="skip" href="#main">{e(c['skip'])}</a>
 <header class="header"><nav class="wrap nav" aria-label="{'主导航' if zh else 'Main navigation'}">
-  <a href="{c['file']}" class="wordmark" aria-label="mouNTFS"><span class="logo-prefix" aria-hidden="true">https://</span><span class="logo-name"><span class="mount">mouNT</span><span class="fs">FS</span></span><span class="logo-suffix" aria-hidden="true">.sh</span></a>
+  <a href="{c['file']}" class="wordmark" aria-label="mouNTFS"><span class="logo-prefix" aria-hidden="true">https://</span><span class="logo-name"><span class="mount">mouNT</span><span class="fs">FS</span></span><span class="logo-suffix" aria-hidden="true">.app</span></a>
   <div class="nav-links"><a class="desktop" href="#app">{e(c['nav'][0])}</a><a href="#get-started">{e(c['nav'][1])}</a><a class="desktop" href="#story">{e(c['nav'][2])}</a><a class="language" href="{c['other']}" lang="{c['otherlang']}" hreflang="{c['otherlang']}">{c['switch']}</a></div>
 </nav></header>
 <main id="main">
@@ -161,7 +165,7 @@ def render(lang, c):
     <h1>{e(c['headline'][0])}<span>{e(c['headline'][1])}</span></h1><p class="hero-copy">{e(c['hero'])}</p>
     <div class="actions"><a class="button primary" href="{builds}">{e(c['cta'])}<span aria-hidden="true">↓</span></a><a class="button" href="{source}">{e(c['source'])}<span aria-hidden="true">↗</span></a></div>
     <a class="hero-star" data-hero-star href="{REPO}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/></svg><span>{e(c['starask'])}</span><strong>{e(c['starcta'])}</strong></a>
-    <p class="fine">{e(c['fine'])}</p><p class="hero-signoff">{e(c['eyebrow'])}</p>
+    <p class="fine">{e(c['fine'])}</p><p class="hero-signoff">{e(c['migration'])}</p>
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="{e(c['heroalt'])}" width="356" height="351" fetchpriority="high"><figcaption>{e(c['caption'])}</figcaption></figure>
 </div><div class="benefits">{benefits}</div></div></section>
@@ -203,6 +207,7 @@ brew install gromgit/fuse/ntfs-3g-mac</code></pre></div><p id="copy-feedback" cl
 <section class="section wrap faq"><div class="section-head"><h2>{e(c['faqtitle'])}</h2><p>{e(c['faqintro'])}</p><div class="actions"><a class="text-link" href="{guide}">{e(c['faqguide'])}</a></div></div><div>{questions}</div></section>
 <div class="wrap"><section class="story" id="story"><div><h2>{c['storytitle']}</h2><p class="story-label">{e(c['storylabel'])}</p></div><div><p>{e(c['story'])}</p><div class="star-ask"><h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/></svg>{e(c['starask'])}</h3><p>{e(c['starbody'])}</p><a class="button primary" data-star-link href="{REPO}">{e(c['starcta'])}</a></div><div class="actions"><a class="text-link" href="{REPO}/blob/{REF}/CONTRIBUTING.md">{e(c['contribute'])}</a><a class="text-link" href="https://github.com/sponsors/guoquan">{e(c['sponsor'])}</a></div></div></section></div>
 </main>
+<aside class="wrap"><p class="fine">{e(c['sunset'])}</p></aside>
 <footer class="footer"><div class="wrap footer-row"><div>{e(c['footer'])}<br>© 2024–2026 <a href="https://guoquan.net">{'郭泉' if zh else 'Quan Guo'}</a></div><div class="footer-links"><a href="{REPO}">GitHub</a><a href="{guide}">{e(c['docs'])}</a><a href="{REPO}/issues">{e(c['issues'])}</a><a href="{REPO}/blob/{REF}/ROADMAP.md">{e(c['roadmap'])}</a></div></div></footer>
 </body></html>
 '''
