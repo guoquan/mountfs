@@ -20,6 +20,8 @@ try {
       assert.equal(await page.locator('[data-release-link]').getAttribute('href'), 'https://github.com/guoquan/mountfs/releases');
       assert.equal(await page.locator('.hero .actions .primary').getAttribute('href'), 'https://github.com/guoquan/mountfs/releases');
 
+      assert.equal(await page.locator('.upgrade-banner').isVisible(), true);
+      assert.equal(await page.locator('[data-update-link]').getAttribute('href'), 'https://github.com/guoquan/mountfs/releases');
       const logo = page.locator('.wordmark');
       await logo.hover();
       await page.waitForFunction(() => getComputedStyle(document.querySelector('.logo-prefix')).opacity === '1');

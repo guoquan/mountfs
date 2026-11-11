@@ -15,6 +15,9 @@ COPY = {
   'description': 'A free, open-source Mac menu bar app for external NTFS drives. Keep NTFS, enable writing and continue in Finder. Requires macFUSE and ntfs-3g.',
   'skip': 'Skip to content', 'nav': ['The app', 'Get started', 'Our story'],
   'eyebrow': 'Free & open source · For macOS', 'headline': ['Write to NTFS.', 'On your Mac.'],
+  'upgradeheading': 'From shell script to Mac app.',
+  'upgradebody': 'A menu bar app. Homebrew installation. A new home at mouNTFS.app. The next chapter is taking shape in the open.',
+  'upgradedate': 'Brand upgrade · November 2026', 'updatelink': 'Follow the updates', 'domainbefore': 'Where we started', 'domainafter': 'Our new home',
   'migration': 'From shell script to native Mac app. Our new home: mouNTFS.app.',
   'sunset': 'mountfs.sh is retiring. It will redirect during its remaining registration period and will not be renewed.',
   'hero': 'No reformatting. Enable writing from the menu bar, then copy files in Finder.',
@@ -68,6 +71,9 @@ COPY = {
   'description': '免费开源的 Mac NTFS 菜单栏工具。保留磁盘格式，启用写入，继续在 Finder 中使用。需安装 macFUSE 与 ntfs-3g。',
   'skip': '跳到正文', 'nav': ['看看应用', '开始使用', '项目故事'],
   'eyebrow': '免费开源 · 为 macOS 而做', 'headline': ['Mac，也能', '写入 NTFS。'],
+  'upgradeheading': '从脚本出发，向 App 升级。',
+  'upgradebody': '菜单栏应用、Homebrew 安装，全新官网 mouNTFS.app。这个小工具，正在开源社区里继续生长。',
+  'upgradedate': '品牌升级 · 2026 年 11 月', 'updatelink': '查看更新动态', 'domainbefore': '从这里出发', 'domainafter': '新的主场',
   'migration': '从脚本到原生 Mac 应用，官网也升级为 mouNTFS.app。',
   'sunset': '旧域名 mountfs.sh 将退役：剩余注册期内继续跳转，到期后不再续费。',
   'hero': '无需格式化。从菜单栏启用写入，继续在 Finder 中拷贝文件。',
@@ -159,13 +165,18 @@ def render(lang, c):
   <div class="nav-links"><a class="desktop" href="#app">{e(c['nav'][0])}</a><a href="#get-started">{e(c['nav'][1])}</a><a class="desktop" href="#story">{e(c['nav'][2])}</a><a class="language" href="{c['other']}" lang="{c['otherlang']}" hreflang="{c['otherlang']}">{c['switch']}</a></div>
 </nav></header>
 <main id="main">
-<div class="brew-announcement"><div class="wrap"><a href="#get-started"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/></svg><strong>{e(c['brewannounce'])}</strong><span>{e(c['brewanchor'])} <span aria-hidden="true">↓</span></span></a></div></div>
+<section class="upgrade-banner" aria-labelledby="upgrade-title"><div class="wrap">
+  <div class="upgrade-grid"><div class="upgrade-copy"><h2 id="upgrade-title">{e(c['upgradeheading'])}</h2><p>{e(c['upgradebody'])}</p></div>
+    <div class="upgrade-domain" aria-label="{'官网从 mountfs.sh 迁至 mountfs.app' if zh else 'Website moves from mountfs.sh to mountfs.app'}"><div class="domain-before"><span>{e(c['domainbefore'])}</span><s>mountfs.sh</s></div><svg viewBox="0 0 40 24" aria-hidden="true"><path d="M2 12h34M26 3l10 9-10 9"/></svg><div class="domain-after"><span>{e(c['domainafter'])}</span><strong>mouNTFS<span>.app</span></strong></div></div>
+  </div>
+  <div class="upgrade-footer"><time datetime="2026-11">{e(c['upgradedate'])}</time><div class="upgrade-links"><div class="brew-announcement"><a href="#get-started">{e(c['brewannounce'])} <span aria-hidden="true">↓</span></a></div><a data-update-link href="{builds}">{e(c['updatelink'])} <span aria-hidden="true">↗</span></a></div></div>
+</div></section>
 <section class="hero"><div class="wrap"><div class="hero-grid">
   <div class="hero-text">
     <h1>{e(c['headline'][0])}<span>{e(c['headline'][1])}</span></h1><p class="hero-copy">{e(c['hero'])}</p>
     <div class="actions"><a class="button primary" href="{builds}">{e(c['cta'])}<span aria-hidden="true">↓</span></a><a class="button" href="{source}">{e(c['source'])}<span aria-hidden="true">↗</span></a></div>
     <a class="hero-star" data-hero-star href="{REPO}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/></svg><span>{e(c['starask'])}</span><strong>{e(c['starcta'])}</strong></a>
-    <p class="fine">{e(c['fine'])}</p><p class="hero-signoff">{e(c['migration'])}</p>
+    <p class="fine">{e(c['fine'])}</p><p class="hero-signoff">{e(c['eyebrow'])}</p>
   </div>
   <figure class="hero-art"><img class="app-image" src="assets/menu-writable.png" alt="{e(c['heroalt'])}" width="356" height="351" fetchpriority="high"><figcaption>{e(c['caption'])}</figcaption></figure>
 </div><div class="benefits">{benefits}</div></div></section>
