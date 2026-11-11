@@ -5,7 +5,7 @@ cask "mountfs" do
   url "https://github.com/guoquan/mountfs/releases/download/v0.3.4-build.19/mouNTFS-0.3.4-dev-arm64.zip"
   name "mouNTFS"
   desc "Menu bar app for writing to external NTFS drives"
-  homepage "https://mountfs.sh/"
+  homepage "https://mountfs.app/"
 
   depends_on arch: :arm64
   depends_on cask: "macfuse"

@@ -31,7 +31,7 @@ run_case() (
             AUTH_HELPER=fake_commit
             AUTH_SESSION_PID=123
             # Called indirectly through AUTH_HELPER.
-            # shellcheck disable=SC2317
+            # shellcheck disable=SC2317,SC2329
             fake_commit() {
                 [ "$1" = --authorization-request ] && [ "$4" = --helper-commit ] || return 1
                 [ "$(cat "$TEST_DIR/state")" = driver-mounted ] || return 1
@@ -217,7 +217,7 @@ passed=$((passed + 1))
     GUI=1
     AUTH_SESSION_PID=123
     AUTH_HELPER=fake_authorization_host
-    # shellcheck disable=SC2317
+    # shellcheck disable=SC2317,SC2329
     fake_authorization_host() {
         [ "$1" = --authorization-request ] && [ "$3" = 123 ] &&
             [ "$4" = /usr/sbin/diskutil ] && [ "$5" = unmount ] && [ "$6" = disk6s1 ]

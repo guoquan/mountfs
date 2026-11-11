@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Built with AI](https://img.shields.io/badge/Built--with-AI-blueviolet)](#humanai-collaboration)
-[![Website](https://img.shields.io/badge/Website-mountfs.sh-blue)](https://mountfs.sh)
+[![Website](https://img.shields.io/badge/Website-mountfs.app-blue)](https://mountfs.app)
 
 ### Write to NTFS. On your Mac.
 
