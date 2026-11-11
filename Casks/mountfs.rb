@@ -1,8 +1,8 @@
 cask "mountfs" do
-  version "0.3.4,19"
-  sha256 "46186804b0c7464f2e1138d95df177cba987d41b8f5c976de250a74a3d8ea5c2"
+  version "0.3.5,20"
+  sha256 "35be4cb65bab0c1f90c6b8b16f4e281873be16588ec97ff890c92dbf15a2edab"
 
-  url "https://github.com/guoquan/mountfs/releases/download/v0.3.4-build.19/mouNTFS-0.3.4-dev-arm64.zip"
+  url "https://github.com/guoquan/mountfs/releases/download/v0.3.5-build.20/mouNTFS-0.3.5-dev-arm64.zip"
   name "mouNTFS"
   desc "Menu bar app for writing to external NTFS drives"
   homepage "https://mountfs.app/"

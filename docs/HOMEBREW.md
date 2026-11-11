@@ -32,14 +32,18 @@ brew update
 brew upgrade --cask guoquan/mountfs/mountfs
 ```
 
-Cask versions include the application build number (`0.3.4,19`), so a build-only
-hotfix is recognized as an upgrade. The main release workflow updates the cask
+Cask versions include the application build number (`0.3.5,20`), so a build-only
+hotfix is recognized as an upgrade. The main release workflow prepares a cask update PR
 from the latest published Release asset and its GitHub-provided SHA-256 digest.
-An existing release rerun also attempts synchronization. Exact download URLs
+Review and merge that PR to publish the tap update; main is never written directly.
+An existing release rerun reuses the pending update branch and PR. Exact download URLs
 and hashes are pinned; no mutable latest ZIP or unchecked checksum is used.
 The updater refuses version downgrades, changes under the same version, malformed
 release metadata and non-upstream asset URLs. Updates use GitHub's blob-SHA
 concurrency check and the workflow's existing repository token, without new secrets.
+GitHub must permit Actions to create pull requests for automatic PR creation. If
+repository policy blocks it, the job reports the prepared branch and compare link
+so a maintainer can open the PR. No branch protection is bypassed.
 
 ## Uninstall
 

@@ -7,6 +7,8 @@ from pathlib import Path
 import re
 import sys
 import urllib.request
+from urllib.error import HTTPError
+from urllib.parse import urlencode
 
 REPO = "guoquan/mountfs"
 API = f"https://api.github.com/repos/{REPO}"
@@ -55,12 +57,12 @@ end
 '''
 
 
-def request(path, token, data=None):
+def request(path, token, data=None, *, method=None):
     headers = {"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}"}
     body = json.dumps(data).encode() if data is not None else None
     if body is not None:
         headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(API + path, data=body, headers=headers, method="PUT" if data else "GET")
+    req = urllib.request.Request(API + path, data=body, headers=headers, method=method or ("PUT" if data else "GET"))
     with urllib.request.urlopen(req, timeout=30) as response:
         return json.load(response)
 
@@ -81,12 +83,44 @@ def main():
     new = re.search(r'version "(\d+)\.(\d+)\.(\d+),(\d+)"', desired)
     if not old or tuple(map(int, new.groups())) <= tuple(map(int, old.groups())):
         raise ValueError("Refusing an unchanged-version replacement or release downgrade")
-    request("/contents/Casks/mountfs.rb", token, {
-        "message": f"Update Homebrew cask to {release['tag_name']}",
-        "content": base64.b64encode(desired.encode()).decode(),
-        "sha": current["sha"], "branch": "main",
-    })
-    print(f"Homebrew cask updated to {release['tag_name']}")
+    # main requires a pull request. Never write a release update directly to it.
+    branch = f"homebrew/{release['tag_name']}"
+    head = request("/git/ref/heads/main", token)["object"]["sha"]
+    try:
+        request("/git/refs", token, {"ref": f"refs/heads/{branch}", "sha": head}, method="POST")
+    except HTTPError as error:
+        if error.code != 422:
+            raise
+        # A retried release may already have created this deterministic branch.
+        request(f"/git/ref/heads/{branch}", token)
+    pending = request(f"/contents/Casks/mountfs.rb?ref={branch}", token)
+    pending_text = base64.b64decode(pending["content"]).decode()
+    if pending_text != desired:
+        pending_version = re.search(r'version "(\d+)\.(\d+)\.(\d+),(\d+)"', pending_text)
+        if not pending_version or tuple(map(int, new.groups())) <= tuple(map(int, pending_version.groups())):
+            raise ValueError("Refusing to replace or downgrade an existing update branch")
+        request("/contents/Casks/mountfs.rb", token, {
+            "message": f"Update Homebrew cask to {release['tag_name']}",
+            "content": base64.b64encode(desired.encode()).decode(),
+            "sha": pending["sha"], "branch": branch,
+        })
+    query = urlencode({"state": "open", "head": f"guoquan:{branch}", "base": "main"})
+    prs = request(f"/pulls?{query}", token)
+    if prs:
+        pr = prs[0]
+    else:
+        try:
+            pr = request("/pulls", token, {
+                "title": f"Update Homebrew cask to {release['tag_name']}",
+                "head": branch, "base": "main",
+                "body": "Pin the latest published app archive and its GitHub SHA-256 digest. Merge after reviewing and validating the cask. This update preserves the main-branch pull-request requirement.",
+            }, method="POST")
+        except HTTPError:
+            print(f"Update branch ready: https://github.com/{REPO}/compare/main...{branch}?expand=1", file=sys.stderr)
+            print("Cask is not updated on main. Repository policy must allow Actions to create PRs, or open the update PR manually.", file=sys.stderr)
+            raise
+    print(f"Homebrew update PR ready: {pr['html_url']}; merge it to update the tap")
+
 
 
 if __name__ == "__main__":
